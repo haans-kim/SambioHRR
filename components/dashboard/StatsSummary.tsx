@@ -62,7 +62,7 @@ export function StatsSummary({ organizations }: StatsSummaryProps) {
         />
       )}
 
-      {needsAttention && needsAttention.stats?.avgWorkEfficiency < 60 && (
+      {needsAttention && needsAttention.stats?.avgWorkEfficiency !== undefined && needsAttention.stats.avgWorkEfficiency < 60 && (
         <AlertCard
           type="danger"
           title="개선 필요 조직"

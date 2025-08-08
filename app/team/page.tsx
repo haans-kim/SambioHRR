@@ -42,9 +42,9 @@ export default async function TeamPage({ searchParams }: TeamPageProps) {
         });
       }
     }
-    breadcrumbItems.push({ label: parent.orgName });
+    breadcrumbItems.push({ label: parent.orgName, href: '' });
   } else {
-    breadcrumbItems.push({ label: parent.orgName });
+    breadcrumbItems.push({ label: parent.orgName, href: '' });
   }
 
   const teams = getChildOrganizations(parentCode!).filter(

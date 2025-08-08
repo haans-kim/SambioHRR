@@ -54,7 +54,7 @@ export default async function GroupPage({ searchParams }: GroupPageProps) {
     }
   }
   
-  breadcrumbItems.push({ label: team.orgName });
+  breadcrumbItems.push({ label: team.orgName, href: '' });
 
   const groups = getChildOrganizations(teamCode).filter(
     org => org.orgLevel === 'group'
