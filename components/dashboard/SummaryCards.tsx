@@ -20,7 +20,7 @@ export function SummaryCards({
       <div className="relative">
         <div className={cn(
           "rounded-lg p-6 h-full bg-gradient-to-br from-red-50 to-white",
-          "border-l-4 border-red-500 shadow-sm"
+          "border-2 border-gray-300 border-l-4 border-l-red-500 shadow-sm"
         )}>
           <div className="flex items-start space-x-3">
             <div className="text-red-500 text-3xl">⚠</div>
@@ -38,7 +38,7 @@ export function SummaryCards({
       <div className="relative">
         <div className={cn(
           "rounded-lg p-6 h-full bg-gradient-to-br from-green-50 to-white",
-          "border-l-4 border-green-500 shadow-sm"
+          "border-2 border-gray-300 border-l-4 border-l-green-500 shadow-sm"
         )}>
           <div className="flex items-start space-x-3">
             <div className="text-green-500 text-3xl">✓</div>
@@ -56,7 +56,7 @@ export function SummaryCards({
       <div className="relative">
         <div className={cn(
           "rounded-lg p-6 h-full bg-gradient-to-br from-blue-50 to-white",
-          "border-l-4 border-blue-500 shadow-sm"
+          "border-2 border-gray-300 border-l-4 border-l-blue-500 shadow-sm"
         )}>
           <div className="flex items-start space-x-3">
             <div className="text-blue-500 text-3xl">📊</div>

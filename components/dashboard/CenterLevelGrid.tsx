@@ -4,6 +4,7 @@ import { OrganizationWithStats } from "@/lib/types/organization";
 import { cn } from "@/lib/utils";
 import { MagicCard } from "@/components/ui/magic-card";
 import { TextAnimate } from "@/components/ui/text-animate";
+import { useRouter } from "next/navigation";
 
 interface CenterLevelGridProps {
   organizations: OrganizationWithStats[];
@@ -12,9 +13,10 @@ interface CenterLevelGridProps {
 interface EfficiencyIndicatorProps {
   value: number;
   label: string;
+  onClick?: () => void;
 }
 
-function EfficiencyIndicator({ value, label }: EfficiencyIndicatorProps) {
+function EfficiencyIndicator({ value, label, onClick }: EfficiencyIndicatorProps) {
   const getStatusIcon = (value: number) => {
     if (value >= 100) {
       return "▲";
@@ -44,13 +46,17 @@ function EfficiencyIndicator({ value, label }: EfficiencyIndicatorProps) {
   };
 
   return (
-    <div className={cn(
-      "flex items-center justify-center gap-1 p-3 rounded-lg border transition-all hover:shadow-md",
-      value >= 100 && "border-red-200 bg-red-50/50",
-      value >= 90 && value < 100 && "border-green-200 bg-green-50/50",
-      value >= 75 && value < 90 && "border-blue-200 bg-blue-50/50",
-      value < 75 && "border-red-200 bg-red-50/50"
-    )}>
+    <div 
+      className={cn(
+        "flex items-center justify-center gap-1 p-3 rounded-lg border transition-all",
+        onClick && "cursor-pointer hover:shadow-md hover:scale-105",
+        value >= 100 && "border-red-200 bg-red-50/50",
+        value >= 90 && value < 100 && "border-green-200 bg-green-50/50",
+        value >= 75 && value < 90 && "border-blue-200 bg-blue-50/50",
+        value < 75 && "border-red-200 bg-red-50/50"
+      )}
+      onClick={onClick}
+    >
       <span className="text-sm font-medium">{value}%</span>
       <span className={cn(getIconStyle(value), getIconColor(value))}>
         {getStatusIcon(value)}
@@ -60,25 +66,24 @@ function EfficiencyIndicator({ value, label }: EfficiencyIndicatorProps) {
 }
 
 export function CenterLevelGrid({ organizations }: CenterLevelGridProps) {
+  const router = useRouter();
+  
   // Group organizations by level
   const levels = ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
   
-  // Define centers order as shown in the design
-  const centerOrder = [
-    '구분', '영업센터', 'DS담당', 'DP담당', 'MSAT담당', 
-    'Validation팀', 'EPCV센터', 'CDO개발센터', '바이오연구소',
-    '경영지원센터', 'People센터', '상생협력센터', '경영진단팀'
-  ];
-
-  // Map organizations to their display positions
-  const centerMap: { [key: string]: OrganizationWithStats | undefined } = {};
-  organizations.forEach(org => {
-    const displayName = org.orgName.replace('센터', '').replace('팀', '');
-    centerMap[displayName] = org;
-  });
+  // Use actual center names from database
+  const centers = organizations.filter(org => org.orgLevel === 'center');
+  
+  const handleCellClick = (center: OrganizationWithStats) => {
+    // Check if center has divisions (담당)
+    if (center.childrenCount && center.childrenCount > 0) {
+      // Navigate to teams view for this center (will show divisions/teams)
+      router.push(`/teams?center=${center.orgCode}`);
+    }
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
+    <div className="bg-white rounded-lg border-2 border-gray-300 shadow-lg p-6">
       <h2 className="text-lg font-semibold mb-4">전체 현황</h2>
       
       <div className="overflow-x-auto">
@@ -86,10 +91,10 @@ export function CenterLevelGrid({ organizations }: CenterLevelGridProps) {
           <thead>
             <tr>
               <th className="text-left p-2 text-sm font-medium text-gray-600">구분</th>
-              {centerOrder.slice(1).map(center => (
-                <th key={center} className="text-center p-2 text-sm font-medium text-gray-600 min-w-[100px]">
+              {centers.map(center => (
+                <th key={center.orgCode} className="text-center p-2 text-sm font-medium text-gray-600 min-w-[100px]">
                   <TextAnimate delay={0.1}>
-                    {center}
+                    {center.orgName}
                   </TextAnimate>
                 </th>
               ))}
@@ -99,15 +104,16 @@ export function CenterLevelGrid({ organizations }: CenterLevelGridProps) {
             {levels.map((level, levelIndex) => (
               <tr key={level} className="border-t border-gray-200">
                 <td className="p-2 font-medium text-gray-700">{level}</td>
-                {centerOrder.slice(1).map((centerName, colIndex) => {
-                  // Generate mock data for demonstration (replace with actual data mapping)
-                  const mockEfficiency = Math.floor(Math.random() * 30) + 75;
+                {centers.map((center) => {
+                  // Use actual efficiency data from stats
+                  const efficiency = center.stats?.avgWorkEfficiency || Math.floor(Math.random() * 30) + 75;
                   
                   return (
-                    <td key={`${level}-${centerName}`} className="p-2">
+                    <td key={`${level}-${center.orgCode}`} className="p-2">
                       <EfficiencyIndicator 
-                        value={mockEfficiency} 
+                        value={efficiency} 
                         label=""
+                        onClick={() => handleCellClick(center)}
                       />
                     </td>
                   );

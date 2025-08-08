@@ -18,9 +18,9 @@ interface GroupCardProps {
 
 function GroupCard({ name, efficiency, employees }: GroupCardProps) {
   const getCardStyle = (value: number) => {
-    if (value >= 90) return "border-green-200 bg-gradient-to-br from-green-50 to-white";
-    if (value >= 85) return "border-blue-200 bg-gradient-to-br from-blue-50 to-white";
-    return "border-amber-200 bg-gradient-to-br from-amber-50 to-white";
+    if (value >= 90) return "border-green-200 bg-gradient-to-br from-green-50/50 to-white";
+    if (value >= 85) return "border-blue-200 bg-gradient-to-br from-blue-50/50 to-white";
+    return "border-amber-200 bg-gradient-to-br from-amber-50/50 to-white";
   };
 
   const getProgressColor = (value: number) => {
@@ -32,7 +32,7 @@ function GroupCard({ name, efficiency, employees }: GroupCardProps) {
   return (
     <MagicCard 
       className={cn(
-        "p-6 rounded-xl border-2 shadow-sm hover:shadow-lg transition-all",
+        "p-6 rounded-xl border shadow-sm hover:shadow-lg transition-all",
         getCardStyle(efficiency)
       )}
     >
@@ -82,7 +82,7 @@ export function GroupCards({ groups, plantName }: GroupCardsProps) {
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
+    <div className="bg-white rounded-lg border-2 border-gray-300 shadow-lg p-6">
       <h2 className="text-lg font-semibold mb-4">{plantName} 현황</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -1,26 +1,29 @@
 "use client";
 
-import { OrganizationWithStats } from "@/lib/types/organization";
+import { OrganizationWithStats, Organization } from "@/lib/types/organization";
 import { MagicCard } from "@/components/ui/magic-card";
 import { AnimatedCircularProgressBar } from "@/components/ui/animated-circular-progress-bar";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface TeamPlantCardsProps {
   teams: OrganizationWithStats[];
+  parentOrg?: Organization | null;
 }
 
 interface PlantCardProps {
-  name: string;
-  efficiency: number;
-  employees: number;
+  org: OrganizationWithStats;
+  onClick?: () => void;
 }
 
-function PlantCard({ name, efficiency, employees }: PlantCardProps) {
+function PlantCard({ org, onClick }: PlantCardProps) {
+  const efficiency = org.stats?.avgWorkEfficiency || 0;
+  const employees = org.stats?.totalEmployees || 0;
   const getCardStyle = (value: number) => {
-    if (value >= 90) return "border-green-200 bg-gradient-to-br from-green-50 to-white";
-    if (value >= 75) return "border-blue-200 bg-gradient-to-br from-blue-50 to-white";
-    return "border-amber-200 bg-gradient-to-br from-amber-50 to-white";
+    if (value >= 90) return "border-green-200 bg-gradient-to-br from-green-50/50 to-white";
+    if (value >= 75) return "border-blue-200 bg-gradient-to-br from-blue-50/50 to-white";
+    return "border-amber-200 bg-gradient-to-br from-amber-50/50 to-white";
   };
 
   const getProgressColor = (value: number) => {
@@ -32,12 +35,13 @@ function PlantCard({ name, efficiency, employees }: PlantCardProps) {
   return (
     <MagicCard 
       className={cn(
-        "p-6 rounded-xl border-2 shadow-sm hover:shadow-lg transition-all",
+        "p-6 rounded-xl border shadow-sm hover:shadow-lg transition-all cursor-pointer",
         getCardStyle(efficiency)
       )}
+      onClick={onClick}
     >
       <div className="flex flex-col h-full">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{name}</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{org.orgName}</h3>
         
         <div className="flex items-center justify-between mb-4">
           <div className="text-center">
@@ -72,30 +76,30 @@ function PlantCard({ name, efficiency, employees }: PlantCardProps) {
   );
 }
 
-export function TeamPlantCards({ teams }: TeamPlantCardsProps) {
-  // Group teams by Plant (mock data - replace with actual grouping logic)
-  const plants = [
-    { name: "Plant 1팀", teams: teams.slice(0, 4), efficiency: 92.1, employees: 179 },
-    { name: "Plant 2팀", teams: teams.slice(4, 8), efficiency: 89.4, employees: 401 },
-    { name: "Plant 3팀", teams: teams.slice(8, 12), efficiency: 87.8, employees: 430 },
-    { name: "Plant 4A팀", teams: teams.slice(12, 16), efficiency: 93.6, employees: 435 },
-    { name: "Plant 4B팀", teams: teams.slice(16, 20), efficiency: 92.1, employees: 209 },
-    { name: "Plant 5팀", teams: teams.slice(20, 24), efficiency: 84.2, employees: 111 },
-    { name: "오퍼레이션혁신팀", teams: teams.slice(24, 28), efficiency: 91.3, employees: 24 },
-    { name: "오퍼레이션기획팀", teams: teams.slice(28, 32), efficiency: 88.7, employees: 48 },
-  ];
+export function TeamPlantCards({ teams, parentOrg }: TeamPlantCardsProps) {
+  const router = useRouter();
+  
+  // Handle card click to navigate to groups
+  const handleCardClick = (team: OrganizationWithStats) => {
+    if (team.orgLevel === 'division') {
+      router.push(`/teams?division=${team.orgCode}`);
+    } else if (team.orgLevel === 'team') {
+      router.push(`/groups?team=${team.orgCode}`);
+    }
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-lg font-semibold mb-4">DS담당 현황</h2>
+    <div className="bg-white rounded-lg border-2 border-gray-300 shadow-lg p-6">
+      <h2 className="text-lg font-semibold mb-4">
+        {parentOrg ? `${parentOrg.orgName} 현황` : 'DS담당 현황'}
+      </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {plants.map((plant) => (
+        {teams.map((team) => (
           <PlantCard
-            key={plant.name}
-            name={plant.name}
-            efficiency={plant.efficiency}
-            employees={plant.employees}
+            key={team.orgCode}
+            org={team}
+            onClick={() => handleCardClick(team)}
           />
         ))}
       </div>
