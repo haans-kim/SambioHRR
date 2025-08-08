@@ -1,5 +1,4 @@
-import { BentoGrid } from "@/components/ui/bento-grid";
-import { MetricCard } from "@/components/dashboard/MetricCard";
+import { DivisionGrid } from "@/components/dashboard/DivisionGrid";
 import { Breadcrumb } from "@/components/navigation/Breadcrumb";
 import { 
   getOrganizationById, 
@@ -47,21 +46,7 @@ export default async function DivisionPage({ searchParams }: DivisionPageProps) 
         </p>
       </div>
 
-      <BentoGrid className="max-w-7xl mx-auto">
-        {divisionsWithStats.map((division) => (
-          <MetricCard
-            key={division.orgCode}
-            orgName={division.orgName}
-            orgCode={division.orgCode}
-            efficiency={division.stats?.avgWorkEfficiency || 0}
-            totalEmployees={division.stats?.totalEmployees || 0}
-            avgWorkHours={division.stats?.avgActualWorkHours || 0}
-            childrenCount={division.childrenCount}
-            onClick={() => window.location.href = `/team?division=${division.orgCode}`}
-            size="medium"
-          />
-        ))}
-      </BentoGrid>
+      <DivisionGrid divisions={divisionsWithStats} />
     </div>
   );
 }

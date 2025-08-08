@@ -1,5 +1,4 @@
-import { BentoGrid } from "@/components/ui/bento-grid";
-import { MetricCard } from "@/components/dashboard/MetricCard";
+import { TeamGrid } from "@/components/dashboard/TeamGrid";
 import { Breadcrumb } from "@/components/navigation/Breadcrumb";
 import { 
   getOrganizationById, 
@@ -64,21 +63,7 @@ export default async function TeamPage({ searchParams }: TeamPageProps) {
         </p>
       </div>
 
-      <BentoGrid className="max-w-7xl mx-auto">
-        {teamsWithStats.map((team) => (
-          <MetricCard
-            key={team.orgCode}
-            orgName={team.orgName}
-            orgCode={team.orgCode}
-            efficiency={team.stats?.avgWorkEfficiency || 0}
-            totalEmployees={team.stats?.totalEmployees || 0}
-            avgWorkHours={team.stats?.avgActualWorkHours || 0}
-            childrenCount={team.childrenCount}
-            onClick={() => window.location.href = `/group?team=${team.orgCode}`}
-            size="medium"
-          />
-        ))}
-      </BentoGrid>
+      <TeamGrid teams={teamsWithStats} />
     </div>
   );
 }

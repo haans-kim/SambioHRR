@@ -1,29 +1,29 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { CenterLevelGrid } from "@/components/dashboard/CenterLevelGrid";
+import { TeamPlantCards } from "@/components/dashboard/TeamPlantCards";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { getOrganizationsWithStats } from "@/lib/db/queries/organization";
 
-export default function HomePage() {
-  const centers = getOrganizationsWithStats('center');
+export default function TeamsPage() {
+  const teams = getOrganizationsWithStats('team');
   
   // Calculate total employees and average efficiency
-  const totalEmployees = centers.reduce(
+  const totalEmployees = teams.reduce(
     (sum, org) => sum + (org.stats?.totalEmployees || 0),
     0
   );
   
   const avgEfficiency =
-    centers.reduce(
+    teams.reduce(
       (sum, org) => sum + (org.stats?.avgWorkEfficiency || 0),
       0
-    ) / (centers.length || 1);
+    ) / (teams.length || 1);
 
   return (
     <DashboardLayout 
       totalEmployees={totalEmployees}
       avgEfficiency={avgEfficiency}
     >
-      <CenterLevelGrid organizations={centers} />
+      <TeamPlantCards teams={teams} />
       <SummaryCards />
     </DashboardLayout>
   );
