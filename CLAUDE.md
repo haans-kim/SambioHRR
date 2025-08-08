@@ -7,7 +7,14 @@ HR Dashboard for organizational work analysis and rebalancing, built with React 
 
 ## Tech Stack
 - **Frontend**: React + Next.js (App Router)
-- **UI Framework**: shadcn/ui (clean design, no emojis)
+- **UI Framework**: 
+  - shadcn/ui (base components)
+  - Magic UI (interactive components)
+    - bento-grid (layout system)
+    - magic-card (spotlight effects)
+    - number-ticker (animated numbers)
+    - animated-circular-progress-bar (performance gauges)
+    - neon-gradient-card (alerts)
 - **Database**: SQLite with better-sqlite3
 - **Language**: TypeScript
 
@@ -22,9 +29,12 @@ HR Dashboard for organizational work analysis and rebalancing, built with React 
 ## Organization Hierarchy
 ```
 center (센터)
-  └── team (팀)
-      └── group (그룹)
+  └── division (담당) - optional, some centers have this level
+      └── team (팀)
+          └── group (그룹)
 ```
+
+Note: The database currently uses 3 levels (center/team/group) where "담당" appears as names within team/group levels. The application should handle both 3-level and 4-level hierarchies flexibly.
 
 ## Core Metrics
 - **근태기록시간** (Clock-in/out time)
@@ -66,16 +76,18 @@ HR_Dashboard/
 ├── app/                    # Next.js app router pages
 │   ├── layout.tsx         # Root layout with navigation
 │   ├── page.tsx           # Center view (default)
+│   ├── division/[id]/page.tsx # Division detail view (optional level)
 │   ├── team/[id]/page.tsx # Team detail view
 │   └── group/[id]/page.tsx # Group detail view
 ├── components/
 │   ├── ui/                # shadcn/ui components
 │   ├── dashboard/         # Dashboard-specific components
 │   │   ├── CenterView.tsx
+│   │   ├── DivisionView.tsx
 │   │   ├── TeamView.tsx
 │   │   └── GroupView.tsx
 │   └── navigation/
-│       └── Breadcrumb.tsx # Center > Team > Group navigation
+│       └── Breadcrumb.tsx # Center > Division > Team > Group navigation
 ├── lib/
 │   ├── db.ts              # Database connection and utilities
 │   └── queries/           # SQL query functions
@@ -85,9 +97,10 @@ HR_Dashboard/
 ```
 
 ## Key Features & UI Requirements
-1. **Three-level hierarchy views** with drill-down navigation:
+1. **Four-level hierarchy views** with drill-down navigation:
    - Center view: Stock market-style display with markers and colors
-   - Team view: Shows teams within selected center
+   - Division view: Shows divisions within selected center (optional level)
+   - Team view: Shows teams within selected division or center
    - Group view: Shows groups within selected team
 
 2. **Color-coded performance indicators**:
@@ -95,7 +108,7 @@ HR_Dashboard/
    - Based on efficiency ratio (actual work time / clocked time)
    - User-selectable metric display
 
-3. **Breadcrumb navigation**: Easy navigation between center/team/group levels
+3. **Breadcrumb navigation**: Easy navigation between center/division/team/group levels (handles both 3 and 4 level hierarchies)
 
 4. **Data aggregation**: 
    - Daily and monthly aggregation
@@ -109,7 +122,7 @@ import Database from 'better-sqlite3';
 const db = new Database('./sambio_human.db', { readonly: false });
 
 // Get organization data
-const getOrganizationData = (orgLevel: 'center' | 'team' | 'group') => {
+const getOrganizationData = (orgLevel: 'center' | 'division' | 'team' | 'group') => {
   return db.prepare(`
     SELECT * FROM organization_master 
     WHERE org_level = ? AND is_active = 1
@@ -123,7 +136,8 @@ const getOrganizationData = (orgLevel: 'center' | 'team' | 'group') => {
 /api/
 ├── organizations/
 │   ├── centers/       # GET all centers
-│   ├── teams/[id]     # GET teams by center
+│   ├── divisions/[id] # GET divisions by center (optional)
+│   ├── teams/[id]     # GET teams by division or center
 │   └── groups/[id]    # GET groups by team
 └── work-data/
     ├── daily/         # GET daily aggregated data
