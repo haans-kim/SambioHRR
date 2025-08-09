@@ -13,6 +13,7 @@ interface CenterLevelGridProps {
     centers: string[];
     matrix: Record<string, Record<string, number>>;
   };
+  avgEfficiency?: number;
 }
 
 interface EfficiencyIndicatorProps {
@@ -24,18 +25,18 @@ interface EfficiencyIndicatorProps {
 function EfficiencyIndicator({ value, label, onClick }: EfficiencyIndicatorProps) {
   const getStatusIcon = (value: number) => {
     if (value >= 88.4) {
-      return "▲"; // 상위 20% - 파란 삼각형
+      return "▲"; // 상위 20% 모범사례 - 파란 삼각형
     }
     if (value > 73.2) {
-      return "●"; // 중간 60% - 초록 원
+      return "●"; // 중간 60% 양호 - 초록 원
     }
-    return "▼"; // 하위 20% - 빨간 역삼각형
+    return "▼"; // 하위 20% 관찰 주시 필요 - 빨간 역삼각형
   };
 
   const getIconColor = (value: number) => {
-    if (value >= 88.4) return "text-blue-500"; // 상위 20%
-    if (value > 73.2) return "text-green-500"; // 중간 60%
-    return "text-red-500"; // 하위 20%
+    if (value >= 88.4) return "text-blue-600"; // 모범사례
+    if (value > 73.2) return "text-green-600"; // 양호
+    return "text-red-600"; // 관찰 주시 필요
   };
 
   const getIconStyle = (value: number) => {
@@ -51,13 +52,13 @@ function EfficiencyIndicator({ value, label, onClick }: EfficiencyIndicatorProps
       className={cn(
         "flex items-center justify-center gap-1 p-3 rounded-lg border transition-all",
         onClick && "cursor-pointer hover:shadow-md hover:scale-105",
-        value >= 88.4 && "border-blue-200 bg-blue-50/50", // 상위 20%
-        value > 73.2 && value < 88.4 && "border-green-200 bg-green-50/50", // 중간 60%
-        value <= 73.2 && "border-red-200 bg-red-50/50" // 하위 20%
+        value >= 88.4 && "border-blue-200 bg-blue-50/50", // 모범사례
+        value > 73.2 && value < 88.4 && "border-green-200 bg-green-50/50", // 양호
+        value <= 73.2 && "border-red-200 bg-red-50/50" // 관찰 주시 필요
       )}
       onClick={onClick}
     >
-      <span className="text-sm font-medium">{value}%</span>
+      <span className="text-base font-medium">{value}%</span>
       <span className={cn(getIconStyle(value), getIconColor(value))}>
         {getStatusIcon(value)}
       </span>
@@ -65,7 +66,7 @@ function EfficiencyIndicator({ value, label, onClick }: EfficiencyIndicatorProps
   );
 }
 
-export function CenterLevelGrid({ organizations, gradeMatrix }: CenterLevelGridProps) {
+export function CenterLevelGrid({ organizations, gradeMatrix, avgEfficiency = 88 }: CenterLevelGridProps) {
   const router = useRouter();
   
   // Use grade levels from matrix if available, otherwise default (high to low)
@@ -83,16 +84,16 @@ export function CenterLevelGrid({ organizations, gradeMatrix }: CenterLevelGridP
   };
 
   return (
-    <div className="bg-white rounded-lg border-2 border-gray-300 shadow-lg p-6">
-      <h2 className="text-lg font-semibold mb-4">전체 현황</h2>
+    <div className="bg-white rounded-lg border-2 border-gray-300 shadow-lg p-6 w-full">
+      <h2 className="text-xl font-semibold mb-4">전체 현황</h2>
       
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-[1400px]">
           <thead>
             <tr>
-              <th className="text-left p-2 text-sm font-medium text-gray-600">구분</th>
+              <th className="text-left p-2 text-base font-medium text-gray-600">구분</th>
               {centers.map(center => (
-                <th key={center.orgCode} className="text-center p-2 text-sm font-medium text-gray-600 min-w-[100px]">
+                <th key={center.orgCode} className="text-center p-2 text-base font-medium text-gray-600 min-w-[100px]">
                   <TextAnimate delay={0.1}>
                     {center.orgName}
                   </TextAnimate>
@@ -103,7 +104,7 @@ export function CenterLevelGrid({ organizations, gradeMatrix }: CenterLevelGridP
           <tbody>
             {levels.map((level, levelIndex) => (
               <tr key={level} className="border-t border-gray-200">
-                <td className="p-2 font-medium text-gray-700">{level}</td>
+                <td className="p-2 font-medium text-gray-700 text-base">{level}</td>
                 {centers.map((center) => {
                   // Use actual efficiency data from gradeMatrix if available
                   let efficiency: number;
@@ -131,13 +132,15 @@ export function CenterLevelGrid({ organizations, gradeMatrix }: CenterLevelGridP
         </table>
       </div>
 
-      {/* Tooltip for selected cell */}
-      <div className="mt-4 p-3 bg-gray-900 text-white rounded-lg text-sm max-w-xs">
-        <div className="font-semibold">효율율 : 80.3%</div>
+      {/* Tooltip for information */}
+      <div className="mt-4 p-3 bg-gray-900 text-white rounded-lg text-sm max-w-md">
+        <div className="font-semibold">평균 효율성 비율 : {avgEfficiency}%</div>
         <div className="text-xs text-gray-300 mt-1">
-          근무추정시간 38h | 근테기록시간 43h
+          실제 작업시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
         </div>
-        <div className="text-xs text-gray-300">오늘 기준 주간 데이터</div>
+        <div className="text-xs text-gray-300 mt-1">
+          ▲ 모범사례(≥88.4%) | ● 양호(73.3-88.3%) | ▼ 관찰필요(≤73.2%)
+        </div>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ export default function HomePage() {
       <CenterLevelGrid 
         organizations={centers} 
         gradeMatrix={gradeMatrix}
+        avgEfficiency={avgEfficiency}
       />
       <SummaryCards />
     </DashboardLayout>

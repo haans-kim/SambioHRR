@@ -16,55 +16,46 @@ export function SummaryCards({
 }: SummaryCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-      {/* 즉시 개입 필요 */}
+      {/* 관찰 주시 필요 하위 20% */}
       <div className="relative">
         <div className={cn(
           "rounded-lg p-6 h-full bg-gradient-to-br from-red-50 to-white",
           "border-2 border-gray-300 border-l-4 border-l-red-500 shadow-sm"
         )}>
           <div className="flex items-start space-x-3">
-            <div className="text-red-500 text-3xl">⚠</div>
+            <div className="text-red-500 text-xl">▼</div>
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-2">즉시 개입 필요</h3>
-              <p className="text-sm text-gray-600">
-                {immediateAttention[0]}
-              </p>
+              <h3 className="font-semibold text-gray-900 mb-2">관찰 주시 필요</h3>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 모범 사례 */}
+      {/* 양호 */}
       <div className="relative">
         <div className={cn(
           "rounded-lg p-6 h-full bg-gradient-to-br from-green-50 to-white",
           "border-2 border-gray-300 border-l-4 border-l-green-500 shadow-sm"
         )}>
           <div className="flex items-start space-x-3">
-            <div className="text-green-500 text-3xl">✓</div>
+            <div className="text-green-500 text-xl">●</div>
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-2">모범 사례</h3>
-              <p className="text-sm text-gray-600">
-                {bestPractices[0]}
-              </p>
+              <h3 className="font-semibold text-gray-900 mb-2">양호</h3>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 효율성 개선 대상 */}
+      {/* 모범사례 상위 20% */}
       <div className="relative">
         <div className={cn(
           "rounded-lg p-6 h-full bg-gradient-to-br from-blue-50 to-white",
           "border-2 border-gray-300 border-l-4 border-l-blue-500 shadow-sm"
         )}>
           <div className="flex items-start space-x-3">
-            <div className="text-blue-500 text-3xl">📊</div>
+            <div className="text-blue-500 text-xl">▲</div>
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-2">효율성 개선 대상</h3>
-              <p className="text-sm text-gray-600">
-                {improvementTargets[0]}
-              </p>
+              <h3 className="font-semibold text-gray-900 mb-2">모범사례</h3>
             </div>
           </div>
         </div>
