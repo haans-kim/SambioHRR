@@ -8,6 +8,11 @@ import { useRouter } from "next/navigation";
 
 interface CenterLevelGridProps {
   organizations: OrganizationWithStats[];
+  gradeMatrix?: {
+    grades: string[];
+    centers: string[];
+    matrix: Record<string, Record<string, number>>;
+  };
 }
 
 interface EfficiencyIndicatorProps {
@@ -18,29 +23,25 @@ interface EfficiencyIndicatorProps {
 
 function EfficiencyIndicator({ value, label, onClick }: EfficiencyIndicatorProps) {
   const getStatusIcon = (value: number) => {
-    if (value >= 100) {
-      return "▲";
+    if (value >= 88.4) {
+      return "▲"; // 상위 20% - 파란 삼각형
     }
-    if (value >= 90) {
-      return "●";
+    if (value > 73.2) {
+      return "●"; // 중간 60% - 초록 원
     }
-    if (value >= 75) {
-      return "▼";
-    }
-    return "▲";
+    return "▼"; // 하위 20% - 빨간 역삼각형
   };
 
   const getIconColor = (value: number) => {
-    if (value >= 100) return "text-red-500";
-    if (value >= 90) return "text-green-500";
-    if (value >= 75) return "text-blue-500";
-    return "text-red-500";
+    if (value >= 88.4) return "text-blue-500"; // 상위 20%
+    if (value > 73.2) return "text-green-500"; // 중간 60%
+    return "text-red-500"; // 하위 20%
   };
 
   const getIconStyle = (value: number) => {
     // Make circle slightly larger than default to match triangle size
-    if (value >= 90 && value < 100) {
-      return "text-lg scale-[1.35]";
+    if (value > 73.2 && value < 88.4) {
+      return "text-lg scale-[1.35]"; // 중간 60% 원형 크게
     }
     return "text-lg";
   };
@@ -50,10 +51,9 @@ function EfficiencyIndicator({ value, label, onClick }: EfficiencyIndicatorProps
       className={cn(
         "flex items-center justify-center gap-1 p-3 rounded-lg border transition-all",
         onClick && "cursor-pointer hover:shadow-md hover:scale-105",
-        value >= 100 && "border-red-200 bg-red-50/50",
-        value >= 90 && value < 100 && "border-green-200 bg-green-50/50",
-        value >= 75 && value < 90 && "border-blue-200 bg-blue-50/50",
-        value < 75 && "border-red-200 bg-red-50/50"
+        value >= 88.4 && "border-blue-200 bg-blue-50/50", // 상위 20%
+        value > 73.2 && value < 88.4 && "border-green-200 bg-green-50/50", // 중간 60%
+        value <= 73.2 && "border-red-200 bg-red-50/50" // 하위 20%
       )}
       onClick={onClick}
     >
@@ -65,11 +65,11 @@ function EfficiencyIndicator({ value, label, onClick }: EfficiencyIndicatorProps
   );
 }
 
-export function CenterLevelGrid({ organizations }: CenterLevelGridProps) {
+export function CenterLevelGrid({ organizations, gradeMatrix }: CenterLevelGridProps) {
   const router = useRouter();
   
-  // Group organizations by level
-  const levels = ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
+  // Use grade levels from matrix if available, otherwise default (high to low)
+  const levels = gradeMatrix?.grades || ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
   
   // Use actual center names from database
   const centers = organizations.filter(org => org.orgLevel === 'center');
@@ -105,8 +105,15 @@ export function CenterLevelGrid({ organizations }: CenterLevelGridProps) {
               <tr key={level} className="border-t border-gray-200">
                 <td className="p-2 font-medium text-gray-700">{level}</td>
                 {centers.map((center) => {
-                  // Use actual efficiency data from stats
-                  const efficiency = center.stats?.avgWorkEfficiency || Math.floor(Math.random() * 30) + 75;
+                  // Use actual efficiency data from gradeMatrix if available
+                  let efficiency: number;
+                  if (gradeMatrix?.matrix[level]?.[center.orgName]) {
+                    efficiency = gradeMatrix.matrix[level][center.orgName];
+                  } else if (center.stats?.avgWorkEfficiency) {
+                    efficiency = center.stats.avgWorkEfficiency;
+                  } else {
+                    efficiency = Math.floor(Math.random() * 30) + 75;
+                  }
                   
                   return (
                     <td key={`${level}-${center.orgCode}`} className="p-2">

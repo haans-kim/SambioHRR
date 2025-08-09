@@ -1,6 +1,52 @@
 import db from '../client';
 import type { Organization, OrganizationWithStats, OrgLevel } from '@/lib/types/organization';
 
+// Helper function to get the latest date with data
+function getLatestDataDate(): string {
+  // Try daily_analysis_results first (actual employee data)
+  let stmt = db.prepare(`
+    SELECT MAX(analysis_date) as latestDate 
+    FROM daily_analysis_results 
+    WHERE analysis_date IS NOT NULL
+  `);
+  let result = stmt.get() as { latestDate: string } | undefined;
+  
+  if (result?.latestDate) {
+    // Handle datetime format from database
+    return result.latestDate.split(' ')[0];
+  }
+  
+  // Fallback to organization_daily_stats
+  stmt = db.prepare(`
+    SELECT MAX(work_date) as latestDate 
+    FROM organization_daily_stats 
+    WHERE total_employees > 0
+  `);
+  result = stmt.get() as { latestDate: string } | undefined;
+  
+  if (result?.latestDate) {
+    // Handle datetime format from database
+    return result.latestDate.split(' ')[0];
+  }
+  
+  return new Date().toISOString().split('T')[0];
+}
+
+// Get total employees across all organizations for a specific date
+export function getTotalEmployees(date?: string): number {
+  const workDate = date || getLatestDataDate();
+  
+  // Use daily_analysis_results table which has actual employee data
+  const stmt = db.prepare(`
+    SELECT COUNT(DISTINCT employee_id) as total 
+    FROM daily_analysis_results 
+    WHERE analysis_date = ?
+  `);
+  
+  const result = stmt.get(workDate) as { total: number | null } | undefined;
+  return result?.total || 0;
+}
+
 export function getOrganizationsByLevel(level: OrgLevel): Organization[] {
   const stmt = db.prepare(`
     SELECT 
@@ -12,6 +58,8 @@ export function getOrganizationsByLevel(level: OrgLevel): Organization[] {
       is_active as isActive
     FROM organization_master
     WHERE org_level = ? AND is_active = 1
+      AND org_name != '경영진단팀'
+      AND org_name != '대표이사'
     ORDER BY display_order, org_name
   `);
   
@@ -52,7 +100,8 @@ export function getChildOrganizations(parentOrgCode: string): Organization[] {
 }
 
 export function getOrganizationsWithStats(level: OrgLevel, date?: string): OrganizationWithStats[] {
-  const workDate = date || new Date().toISOString().split('T')[0];
+  // Use the latest date with data if no date is provided
+  const workDate = date || getLatestDataDate();
   
   const stmt = db.prepare(`
     SELECT 
@@ -70,6 +119,8 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
     FROM organization_master o
     LEFT JOIN organization_daily_stats s ON o.org_code = s.org_code AND s.work_date = ?
     WHERE o.org_level = ? AND o.is_active = 1
+      AND o.org_name != '경영진단팀'
+      AND o.org_name != '대표이사'
     ORDER BY o.display_order, o.org_name
   `);
   
