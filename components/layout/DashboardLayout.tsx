@@ -5,11 +5,16 @@ import { Breadcrumb } from "@/components/navigation/Breadcrumb";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { cn } from "@/lib/utils";
 import { Organization } from "@/lib/types/organization";
+import { MetricType, MetricSelector } from "@/components/dashboard/MetricSelector";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   totalEmployees?: number;
   avgEfficiency?: number;
+  avgWorkHours?: number;
+  avgClaimedHours?: number;
+  selectedMetric?: MetricType;
+  onMetricChange?: (metric: MetricType) => void;
   parentOrg?: Organization | null;
 }
 
@@ -17,6 +22,10 @@ export function DashboardLayout({
   children, 
   totalEmployees = 0, 
   avgEfficiency = 0,
+  avgWorkHours = 8.2,
+  avgClaimedHours = 8.5,
+  selectedMetric = 'efficiency',
+  onMetricChange,
   parentOrg 
 }: DashboardLayoutProps) {
   // Build breadcrumb items
@@ -61,20 +70,48 @@ export function DashboardLayout({
             </p>
             
             {/* Stats Cards */}
-            <div className="flex gap-6 mt-6">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 min-w-[200px]">
-                <div className="text-3xl font-bold text-blue-600">
-                  <NumberTicker value={totalEmployees} />
+            <div className="flex justify-between items-end gap-12 mt-6">
+              <div className="flex gap-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 min-w-[200px]">
+                  <div className="text-3xl font-bold text-blue-600">
+                    <NumberTicker value={totalEmployees} />
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">총 분석 인원</div>
                 </div>
-                <div className="text-sm text-gray-600 mt-1">총 분석 인원</div>
+                
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 min-w-[200px]">
+                  <div className="text-3xl font-bold text-blue-600">
+                    <NumberTicker 
+                      value={
+                        selectedMetric === 'efficiency' 
+                          ? avgEfficiency 
+                          : selectedMetric === 'workHours' 
+                          ? avgWorkHours 
+                          : avgClaimedHours
+                      } 
+                      decimalPlaces={1} 
+                    />
+                    {selectedMetric === 'efficiency' ? '%' : 'h'}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {selectedMetric === 'efficiency' 
+                      ? '평균 효율성 비율' 
+                      : selectedMetric === 'workHours' 
+                      ? '평균 근무시간' 
+                      : '평균 Claim시간'}
+                  </div>
+                </div>
               </div>
               
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 min-w-[200px]">
-                <div className="text-3xl font-bold text-blue-600">
-                  <NumberTicker value={avgEfficiency} decimalPlaces={1} />%
+              {/* 지표 선택기 */}
+              {onMetricChange && (
+                <div className="flex-shrink-0">
+                  <MetricSelector 
+                    selectedMetric={selectedMetric}
+                    onMetricChange={onMetricChange}
+                  />
                 </div>
-                <div className="text-sm text-gray-600 mt-1">평균 효율성 비율</div>
-              </div>
+              )}
             </div>
           </div>
         </div>

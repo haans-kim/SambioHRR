@@ -2,18 +2,34 @@
 
 import { NeonGradientCard } from "@/components/ui/neon-gradient-card";
 import { cn } from "@/lib/utils";
+import { MetricType } from "./MetricSelector";
 
 interface SummaryCardsProps {
+  selectedMetric?: MetricType;
+  thresholds?: {
+    efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+  };
   immediateAttention?: string[];
   bestPractices?: string[];
   improvementTargets?: string[];
 }
 
 export function SummaryCards({
+  selectedMetric = 'efficiency',
+  thresholds,
   immediateAttention = ["실각한 과로 상태입니다. 업무량 재분배 및 인력 충원이 시급합니다."],
   bestPractices = ["최적 범위의 근무율과 높은 효율성을 보이는 조직/직급입니다."],
   improvementTargets = ["Lv.4 직급의 실근무율이 낮습니다. [의사결정 프로세스 개선] 및 [관리 업무 간소화]가 필요합니다."]
 }: SummaryCardsProps) {
+  
+  // 동적 임계값 또는 기본값 사용
+  const currentThresholds = thresholds ? thresholds[selectedMetric] : {
+    high: '',
+    middle: '',
+    low: ''
+  };
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
       {/* 관찰 주시 필요 하위 20% */}
@@ -26,6 +42,7 @@ export function SummaryCards({
             <div className="text-red-500 text-xl">▼</div>
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 mb-2">관찰 주시 필요</h3>
+              <p className="text-sm text-gray-500">하위 20% ({currentThresholds.low})</p>
             </div>
           </div>
         </div>
@@ -41,6 +58,7 @@ export function SummaryCards({
             <div className="text-green-500 text-xl">●</div>
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 mb-2">양호</h3>
+              <p className="text-sm text-gray-500">중간 60% ({currentThresholds.middle})</p>
             </div>
           </div>
         </div>
@@ -56,6 +74,7 @@ export function SummaryCards({
             <div className="text-blue-500 text-xl">▲</div>
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 mb-2">모범사례</h3>
+              <p className="text-sm text-gray-500">상위 20% ({currentThresholds.high})</p>
             </div>
           </div>
         </div>

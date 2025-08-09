@@ -362,6 +362,50 @@ export function getGradeEfficiencyMatrix(date?: string) {
   };
 }
 
+// Get grade-level work hours matrix for 30 days
+export function getGradeWorkHoursMatrix30Days() {
+  const { startDate, endDate } = get30DayDateRange();
+  
+  const query = `
+    SELECT 
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      COUNT(DISTINCT dar.employee_id) as employeeCount,
+      ROUND(AVG(dar.actual_work_hours), 1) as avgWorkHours
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사')
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY e.center_name, e.job_grade
+  `;
+  
+  const stmt = db.prepare(query);
+  const results = stmt.all(startDate, endDate) as any[];
+  
+  // Transform to matrix format
+  const matrix: Record<string, Record<string, number>> = {};
+  const centers: Set<string> = new Set();
+  const grades = ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
+  
+  // Initialize matrix
+  results.forEach(row => {
+    centers.add(row.centerName);
+    if (!matrix[row.grade]) {
+      matrix[row.grade] = {};
+    }
+    matrix[row.grade][row.centerName] = row.avgWorkHours;
+  });
+  
+  return {
+    grades,
+    centers: Array.from(centers),
+    matrix
+  };
+}
+
 // Get grade-level efficiency matrix for 30 days
 export function getGradeEfficiencyMatrix30Days() {
   const { startDate, endDate } = get30DayDateRange();
@@ -404,4 +448,230 @@ export function getGradeEfficiencyMatrix30Days() {
     centers: Array.from(centers),
     matrix
   };
+}
+
+// Get grade-level claimed hours matrix for 30 days
+export function getGradeClaimedHoursMatrix30Days() {
+  const { startDate, endDate } = get30DayDateRange();
+  
+  const query = `
+    SELECT 
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      COUNT(DISTINCT dar.employee_id) as employeeCount,
+      ROUND(AVG(dar.claimed_work_hours), 1) as avgClaimedHours
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사')
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY e.center_name, e.job_grade
+  `;
+  
+  const stmt = db.prepare(query);
+  const results = stmt.all(startDate, endDate) as any[];
+  
+  // Transform to matrix format
+  const matrix: Record<string, Record<string, number>> = {};
+  const centers: Set<string> = new Set();
+  const grades = ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
+  
+  // Initialize matrix
+  results.forEach(row => {
+    centers.add(row.centerName);
+    if (!matrix[row.grade]) {
+      matrix[row.grade] = {};
+    }
+    matrix[row.grade][row.centerName] = row.avgClaimedHours;
+  });
+  
+  return {
+    grades,
+    centers: Array.from(centers),
+    matrix
+  };
+}
+
+// Get metric thresholds based on grid matrix data (center-grade averages)
+export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours' | 'claimedHours') {
+  const { startDate, endDate } = get30DayDateRange();
+  
+  let column = '';
+  switch (metricType) {
+    case 'efficiency':
+      column = 'efficiency_ratio';
+      break;
+    case 'workHours':
+      column = 'actual_work_hours';
+      break;
+    case 'claimedHours':
+      column = 'claimed_work_hours';
+      break;
+  }
+  
+  // Get center-grade averages (same as what's displayed in the grid)
+  const dataQuery = `
+    SELECT 
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      ROUND(AVG(dar.${column}), 1) as avgValue
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사')
+      AND dar.${column} IS NOT NULL
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY avgValue ASC
+  `;
+  
+  const stmt = db.prepare(dataQuery);
+  const results = stmt.all(startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
+  
+  if (results.length === 0) {
+    // Return default values if no data
+    if (metricType === 'efficiency') {
+      return {
+        low: '≤73.2%',
+        middle: '73.3-88.3%',
+        high: '≥88.4%',
+        thresholds: { low: 73.2, high: 88.4 }
+      };
+    } else if (metricType === 'workHours') {
+      return {
+        low: '<6.0h',
+        middle: '6.0-7.9h',
+        high: '≥8.0h',
+        thresholds: { low: 6.0, high: 8.0 }
+      };
+    } else {
+      return {
+        low: '<7.0h',
+        middle: '7.0-8.9h',
+        high: '≥9.0h',
+        thresholds: { low: 7.0, high: 9.0 }
+      };
+    }
+  }
+  
+  // Calculate percentiles from center-grade averages
+  const values = results.map(r => r.avgValue).sort((a, b) => a - b);
+  const p20Index = Math.floor(values.length * 0.2);
+  const p80Index = Math.floor(values.length * 0.8);
+  
+  const percentile20 = Math.round(values[p20Index] * 10) / 10;
+  const percentile80 = Math.round(values[p80Index] * 10) / 10;
+  
+  if (metricType === 'efficiency') {
+    return {
+      low: `≤${percentile20}%`,
+      middle: `${percentile20 + 0.1}-${percentile80}%`,
+      high: `≥${percentile80 + 0.1}%`,
+      thresholds: {
+        low: percentile20,
+        high: percentile80
+      }
+    };
+  } else {
+    return {
+      low: `<${percentile20}h`,
+      middle: `${percentile20}-${percentile80 - 0.1}h`,
+      high: `≥${percentile80}h`,
+      thresholds: {
+        low: percentile20,
+        high: percentile80
+      }
+    };
+  }
+}
+
+// Get metric thresholds based on actual data percentiles
+export function getMetricThresholds(metricType: 'efficiency' | 'workHours' | 'claimedHours') {
+  const { startDate, endDate } = get30DayDateRange();
+  
+  let column = '';
+  switch (metricType) {
+    case 'efficiency':
+      column = 'efficiency_ratio';
+      break;
+    case 'workHours':
+      column = 'actual_work_hours';
+      break;
+    case 'claimedHours':
+      column = 'claimed_work_hours';
+      break;
+  }
+  
+  // Get all values and calculate percentiles in JavaScript for now
+  const dataQuery = `
+    SELECT dar.${column} as value
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.center_name NOT IN ('경영진단팀', '대표이사')
+      AND dar.${column} IS NOT NULL
+    ORDER BY dar.${column} ASC
+  `;
+  
+  const stmt = db.prepare(dataQuery);
+  const results = stmt.all(startDate, endDate) as { value: number }[];
+  
+  if (results.length === 0) {
+    // Return default values if no data
+    if (metricType === 'efficiency') {
+      return {
+        low: '≤73.2%',
+        middle: '73.3-88.3%',
+        high: '≥88.4%',
+        thresholds: { low: 73.2, high: 88.4 }
+      };
+    } else if (metricType === 'workHours') {
+      return {
+        low: '<6.0h',
+        middle: '6.0-7.9h',
+        high: '≥8.0h',
+        thresholds: { low: 6.0, high: 8.0 }
+      };
+    } else {
+      return {
+        low: '<7.0h',
+        middle: '7.0-8.9h',
+        high: '≥9.0h',
+        thresholds: { low: 7.0, high: 9.0 }
+      };
+    }
+  }
+  
+  // Calculate percentiles
+  const values = results.map(r => r.value).sort((a, b) => a - b);
+  const p20Index = Math.floor(values.length * 0.2);
+  const p80Index = Math.floor(values.length * 0.8);
+  
+  const percentile20 = Math.round(values[p20Index] * 10) / 10;
+  const percentile80 = Math.round(values[p80Index] * 10) / 10;
+  
+  if (metricType === 'efficiency') {
+    return {
+      low: `≤${percentile20}%`,
+      middle: `${percentile20 + 0.1}-${percentile80}%`,
+      high: `≥${percentile80 + 0.1}%`,
+      thresholds: {
+        low: percentile20,
+        high: percentile80
+      }
+    };
+  } else {
+    return {
+      low: `<${percentile20}h`,
+      middle: `${percentile20}-${percentile80 - 0.1}h`,
+      high: `≥${percentile80}h`,
+      thresholds: {
+        low: percentile20,
+        high: percentile80
+      }
+    };
+  }
 }

@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { MagicCard } from "@/components/ui/magic-card";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { useRouter } from "next/navigation";
+import { MetricSelector, MetricType } from "./MetricSelector";
+import { useState } from "react";
 
 interface CenterLevelGridProps {
   organizations: OrganizationWithStats[];
@@ -13,38 +15,139 @@ interface CenterLevelGridProps {
     centers: string[];
     matrix: Record<string, Record<string, number>>;
   };
+  workHoursMatrix?: {
+    grades: string[];
+    centers: string[];
+    matrix: Record<string, Record<string, number>>;
+  };
+  claimedHoursMatrix?: {
+    grades: string[];
+    centers: string[];
+    matrix: Record<string, Record<string, number>>;
+  };
   avgEfficiency?: number;
+  avgWorkHours?: number;
+  avgClaimedHours?: number;
+  selectedMetric?: MetricType;
+  onMetricChange?: (metric: MetricType) => void;
+  thresholds?: {
+    efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+  };
 }
 
-interface EfficiencyIndicatorProps {
+interface MetricIndicatorProps {
   value: number;
   label: string;
+  metricType: MetricType;
+  thresholds?: { low: number; high: number };
   onClick?: () => void;
 }
 
-function EfficiencyIndicator({ value, label, onClick }: EfficiencyIndicatorProps) {
-  const getStatusIcon = (value: number) => {
-    if (value >= 88.4) {
-      return "▲"; // 상위 20% 모범사례 - 파란 삼각형
+function MetricIndicator({ value, label, metricType, thresholds, onClick }: MetricIndicatorProps) {
+  const getStatusIcon = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
+    if (!thresholds) {
+      // Fallback to hardcoded values if thresholds are not available
+      if (metricType === 'efficiency') {
+        if (value >= 88.4) return "▲";
+        if (value > 73.2) return "●";
+        return "▼";
+      } else if (metricType === 'workHours') {
+        if (value >= 8.0) return "▲";
+        if (value >= 6.0) return "●";
+        return "▼";
+      } else {
+        if (value >= 9.0) return "▲";
+        if (value >= 7.0) return "●";
+        return "▼";
+      }
     }
-    if (value > 73.2) {
-      return "●"; // 중간 60% 양호 - 초록 원
-    }
+    
+    // Use dynamic thresholds
+    if (value >= thresholds.high) return "▲"; // 상위 20% 모범사례 - 파란 삼각형
+    if (value > thresholds.low) return "●"; // 중간 60% 양호 - 초록 원
     return "▼"; // 하위 20% 관찰 주시 필요 - 빨간 역삼각형
   };
 
-  const getIconColor = (value: number) => {
-    if (value >= 88.4) return "text-blue-600"; // 모범사례
-    if (value > 73.2) return "text-green-600"; // 양호
+  const getIconColor = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
+    if (!thresholds) {
+      // Fallback to hardcoded values if thresholds are not available
+      if (metricType === 'efficiency') {
+        if (value >= 88.4) return "text-blue-600";
+        if (value > 73.2) return "text-green-600";
+        return "text-red-600";
+      } else if (metricType === 'workHours') {
+        if (value >= 8.0) return "text-blue-600";
+        if (value >= 6.0) return "text-green-600";
+        return "text-red-600";
+      } else {
+        if (value >= 9.0) return "text-blue-600";
+        if (value >= 7.0) return "text-green-600";
+        return "text-red-600";
+      }
+    }
+    
+    // Use dynamic thresholds
+    if (value >= thresholds.high) return "text-blue-600"; // 모범사례
+    if (value > thresholds.low) return "text-green-600"; // 양호
     return "text-red-600"; // 관찰 주시 필요
   };
 
-  const getIconStyle = (value: number) => {
+  const getIconStyle = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
     // Make circle slightly larger than default to match triangle size
-    if (value > 73.2 && value < 88.4) {
+    let isCircle = false;
+    
+    if (!thresholds) {
+      // Fallback to hardcoded values if thresholds are not available
+      if (metricType === 'efficiency') {
+        isCircle = value > 73.2 && value < 88.4;
+      } else if (metricType === 'workHours') {
+        isCircle = value >= 6.0 && value < 8.0;
+      } else {
+        isCircle = value >= 7.0 && value < 9.0;
+      }
+    } else {
+      // Use dynamic thresholds
+      isCircle = value > thresholds.low && value < thresholds.high;
+    }
+    
+    if (isCircle) {
       return "text-lg scale-[1.35]"; // 중간 60% 원형 크게
     }
     return "text-lg";
+  };
+
+  const getBorderColor = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
+    if (!thresholds) {
+      // Fallback to hardcoded values if thresholds are not available
+      if (metricType === 'efficiency') {
+        if (value >= 88.4) return "border-blue-200 bg-blue-50/50";
+        if (value > 73.2) return "border-green-200 bg-green-50/50";
+        return "border-red-200 bg-red-50/50";
+      } else if (metricType === 'workHours') {
+        if (value >= 8.0) return "border-blue-200 bg-blue-50/50";
+        if (value >= 6.0) return "border-green-200 bg-green-50/50";
+        return "border-red-200 bg-red-50/50";
+      } else {
+        if (value >= 9.0) return "border-blue-200 bg-blue-50/50";
+        if (value >= 7.0) return "border-green-200 bg-green-50/50";
+        return "border-red-200 bg-red-50/50";
+      }
+    }
+    
+    // Use dynamic thresholds
+    if (value >= thresholds.high) return "border-blue-200 bg-blue-50/50"; // 모범사례
+    if (value > thresholds.low) return "border-green-200 bg-green-50/50"; // 양호
+    return "border-red-200 bg-red-50/50"; // 관찰 주시 필요
+  };
+
+  const formatValue = (value: number, metricType: MetricType) => {
+    if (metricType === 'efficiency') {
+      return `${value.toFixed(1)}%`;
+    } else {
+      return `${value.toFixed(1)}h`;
+    }
   };
 
   return (
@@ -52,21 +155,30 @@ function EfficiencyIndicator({ value, label, onClick }: EfficiencyIndicatorProps
       className={cn(
         "flex items-center justify-center gap-1 p-3 rounded-lg border transition-all",
         onClick && "cursor-pointer hover:shadow-md hover:scale-105",
-        value >= 88.4 && "border-blue-200 bg-blue-50/50", // 모범사례
-        value > 73.2 && value < 88.4 && "border-green-200 bg-green-50/50", // 양호
-        value <= 73.2 && "border-red-200 bg-red-50/50" // 관찰 주시 필요
+        getBorderColor(value, metricType, thresholds)
       )}
       onClick={onClick}
     >
-      <span className="text-base font-medium">{value}%</span>
-      <span className={cn(getIconStyle(value), getIconColor(value))}>
-        {getStatusIcon(value)}
+      <span className="text-base font-medium">{formatValue(value, metricType)}</span>
+      <span className={cn(getIconStyle(value, metricType, thresholds), getIconColor(value, metricType, thresholds))}>
+        {getStatusIcon(value, metricType, thresholds)}
       </span>
     </div>
   );
 }
 
-export function CenterLevelGrid({ organizations, gradeMatrix, avgEfficiency = 88 }: CenterLevelGridProps) {
+export function CenterLevelGrid({ 
+  organizations, 
+  gradeMatrix, 
+  workHoursMatrix, 
+  claimedHoursMatrix,
+  avgEfficiency = 88, 
+  avgWorkHours = 8.2,
+  avgClaimedHours = 8.5,
+  selectedMetric = 'efficiency',
+  onMetricChange,
+  thresholds
+}: CenterLevelGridProps) {
   const router = useRouter();
   
   // Use grade levels from matrix if available, otherwise default (high to low)
@@ -106,21 +218,40 @@ export function CenterLevelGrid({ organizations, gradeMatrix, avgEfficiency = 88
               <tr key={level} className="border-t border-gray-200">
                 <td className="p-2 font-medium text-gray-700 text-base">{level}</td>
                 {centers.map((center) => {
-                  // Use actual efficiency data from gradeMatrix if available
-                  let efficiency: number;
-                  if (gradeMatrix?.matrix[level]?.[center.orgName]) {
-                    efficiency = gradeMatrix.matrix[level][center.orgName];
-                  } else if (center.stats?.avgWorkEfficiency) {
-                    efficiency = center.stats.avgWorkEfficiency;
+                  let value: number;
+                  
+                  if (selectedMetric === 'efficiency') {
+                    // Use actual efficiency data from gradeMatrix if available
+                    if (gradeMatrix?.matrix[level]?.[center.orgName]) {
+                      value = gradeMatrix.matrix[level][center.orgName];
+                    } else if (center.stats?.avgWorkEfficiency) {
+                      value = center.stats.avgWorkEfficiency;
+                    } else {
+                      value = Math.floor(Math.random() * 30) + 75;
+                    }
+                  } else if (selectedMetric === 'workHours') {
+                    // Use work hours data from workHoursMatrix
+                    if (workHoursMatrix?.matrix[level]?.[center.orgName]) {
+                      value = workHoursMatrix.matrix[level][center.orgName];
+                    } else {
+                      value = Math.floor(Math.random() * 3) + 7; // 7-10 hours range
+                    }
                   } else {
-                    efficiency = Math.floor(Math.random() * 30) + 75;
+                    // Use claimed hours data from claimedHoursMatrix
+                    if (claimedHoursMatrix?.matrix[level]?.[center.orgName]) {
+                      value = claimedHoursMatrix.matrix[level][center.orgName];
+                    } else {
+                      value = Math.floor(Math.random() * 3) + 8; // 8-11 hours range
+                    }
                   }
                   
                   return (
                     <td key={`${level}-${center.orgCode}`} className="p-2">
-                      <EfficiencyIndicator 
-                        value={efficiency} 
+                      <MetricIndicator 
+                        value={value} 
                         label=""
+                        metricType={selectedMetric}
+                        thresholds={thresholds?.[selectedMetric]?.thresholds}
                         onClick={() => handleCellClick(center)}
                       />
                     </td>
@@ -134,13 +265,41 @@ export function CenterLevelGrid({ organizations, gradeMatrix, avgEfficiency = 88
 
       {/* Tooltip for information */}
       <div className="mt-4 p-3 bg-gray-900 text-white rounded-lg text-sm max-w-md">
-        <div className="font-semibold">평균 효율성 비율 : {avgEfficiency}%</div>
-        <div className="text-xs text-gray-300 mt-1">
-          실제 작업시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
-        </div>
-        <div className="text-xs text-gray-300 mt-1">
-          ▲ 모범사례(≥88.4%) | ● 양호(73.3-88.3%) | ▼ 관찰필요(≤73.2%)
-        </div>
+        {selectedMetric === 'efficiency' ? (
+          <>
+            <div className="font-semibold">평균 효율성 비율 : {avgEfficiency}%</div>
+            <div className="text-xs text-gray-300 mt-1">
+              실제 작업시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-300 mt-1">
+              ▲ 모범사례({thresholds?.efficiency?.high || '≥88.4%'}) | ● 양호({thresholds?.efficiency?.middle || '73.3-88.3%'}) | ▼ 관찰필요({thresholds?.efficiency?.low || '≤73.2%'})
+            </div>
+          </>
+        ) : (
+          <>
+            {selectedMetric === 'workHours' ? (
+              <>
+                <div className="font-semibold">평균 근무시간 : {avgWorkHours}h</div>
+                <div className="text-xs text-gray-300 mt-1">
+                  실제 작업시간 평균 | 30일 평균 데이터
+                </div>
+                <div className="text-xs text-gray-300 mt-1">
+                  ▲ 모범사례({thresholds?.workHours?.high || '≥8.0h'}) | ● 양호({thresholds?.workHours?.middle || '6.0-7.9h'}) | ▼ 관찰필요({thresholds?.workHours?.low || '<6.0h'})
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="font-semibold">평균 Claim시간 : {avgClaimedHours}h</div>
+                <div className="text-xs text-gray-300 mt-1">
+                  신고 근무시간 평균 | 30일 평균 데이터
+                </div>
+                <div className="text-xs text-gray-300 mt-1">
+                  ▲ 모범사례({thresholds?.claimedHours?.high || '≥9.0h'}) | ● 양호({thresholds?.claimedHours?.middle || '7.0-8.9h'}) | ▼ 관찰필요({thresholds?.claimedHours?.low || '<7.0h'})
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
