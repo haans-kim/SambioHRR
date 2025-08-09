@@ -3,9 +3,9 @@ import db from '@/lib/db/client';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const groupCode = params.id;
+  const { id: groupCode } = await params;
   
   try {
     // Get group information
