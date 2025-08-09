@@ -19,16 +19,16 @@ export function MetricSelector({ selectedMetric, onMetricChange }: MetricSelecto
   ];
 
   return (
-    <div className="flex bg-gray-200 rounded-lg p-2 gap-3">
+    <div className="flex bg-white rounded-lg p-1 gap-2">
       {metrics.map((metric) => (
         <button
           key={metric.id}
           onClick={() => onMetricChange(metric.id)}
           className={cn(
-            "px-3 py-2 text-sm font-medium rounded-md transition-all",
+            "px-4 py-2 text-sm font-medium rounded-md transition-all",
             selectedMetric === metric.id
-              ? "bg-blue-500 text-white shadow-sm"
-              : "text-gray-600 hover:text-gray-900 hover:bg-white"
+              ? "bg-gray-900 text-white shadow-sm"
+              : "bg-white text-gray-700 border-2 border-gray-400 hover:border-gray-600"
           )}
         >
           {metric.label}
