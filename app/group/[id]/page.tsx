@@ -69,6 +69,15 @@ export default function GroupDetailPage() {
         const response = await fetch(`/api/group-detail/${groupId}`);
         if (!response.ok) throw new Error('Failed to fetch');
         const groupData = await response.json();
+        console.log('Fetched data for', groupId, ':', {
+          totalEmployees: groupData.employees?.length,
+          summary: groupData.summary,
+          firstFew: groupData.employees?.slice(0, 3).map(e => ({
+            id: e.employeeId,
+            name: e.name,
+            efficiency: e.efficiencyRatio
+          }))
+        });
         setData(groupData);
       } catch (error) {
         console.error('Failed to fetch group detail:', error);
@@ -126,6 +135,7 @@ export default function GroupDetailPage() {
         : (bValue as number) - (aValue as number);
     });
     
+    console.log('Final processed employees:', sorted.length);
     return sorted;
   }, [data, sortField, sortDirection, filterText, efficiencyFilter, workHoursFilter]);
   

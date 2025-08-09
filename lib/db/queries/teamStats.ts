@@ -123,8 +123,18 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
       }
     }
     
-    // Get group summaries using the view (same as center analysis)
-    const groupSummaries = getGroupSummary(teamFilter, undefined, latestDate);
+    // Get group summaries for entire period instead of just latest date
+    const groupSummaries = db.prepare(`
+      SELECT 
+        e.group_name as groupName,
+        COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
+        ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgEfficiencyRatio,
+        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours
+      FROM daily_analysis_results dar
+      JOIN employees e ON dar.employee_id = e.employee_id
+      ${teamFilter ? "WHERE e.team_name = ?" : ""}
+      GROUP BY e.group_name
+    `).all(teamFilter ? teamFilter : undefined) as any[];
     
     // Get organization_master mapping for proper org_code
     const orgMapping = db.prepare(`
