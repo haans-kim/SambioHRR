@@ -11,6 +11,7 @@ export const NumberTicker = ({
   className,
   suffix = "",
   prefix = "",
+  decimalPlaces = 0,
 }: {
   value: number;
   direction?: "up" | "down";
@@ -18,11 +19,15 @@ export const NumberTicker = ({
   className?: string;
   suffix?: string;
   prefix?: string;
+  decimalPlaces?: number;
 }) => {
   const spring = useSpring(0, { damping: 60, stiffness: 300 });
-  const display = useTransform(spring, (current) =>
-    Math.round(current).toLocaleString()
-  );
+  const display = useTransform(spring, (current) => {
+    if (decimalPlaces > 0) {
+      return current.toFixed(decimalPlaces);
+    }
+    return Math.round(current).toLocaleString();
+  });
 
   useEffect(() => {
     const timeout = setTimeout(() => {

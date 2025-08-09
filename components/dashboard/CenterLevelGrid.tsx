@@ -25,15 +25,29 @@ interface CenterLevelGridProps {
     centers: string[];
     matrix: Record<string, Record<string, number>>;
   };
+  weeklyWorkHoursMatrix?: {
+    grades: string[];
+    centers: string[];
+    matrix: Record<string, Record<string, number>>;
+  };
+  weeklyClaimedHoursMatrix?: {
+    grades: string[];
+    centers: string[];
+    matrix: Record<string, Record<string, number>>;
+  };
   avgEfficiency?: number;
   avgWorkHours?: number;
   avgClaimedHours?: number;
+  avgWeeklyWorkHours?: number;
+  avgWeeklyClaimedHours?: number;
   selectedMetric?: MetricType;
   onMetricChange?: (metric: MetricType) => void;
   thresholds?: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    weeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    weeklyClaimedHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -57,9 +71,18 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
         if (value >= 8.0) return "▲";
         if (value >= 6.0) return "●";
         return "▼";
-      } else {
+      } else if (metricType === 'claimedHours') {
         if (value >= 9.0) return "▲";
         if (value >= 7.0) return "●";
+        return "▼";
+      } else if (metricType === 'weeklyWorkHours') {
+        if (value >= 45.0) return "▲";
+        if (value >= 35.0) return "●";
+        return "▼";
+      } else {
+        // weeklyClaimedHours
+        if (value >= 48.0) return "▲";
+        if (value >= 38.0) return "●";
         return "▼";
       }
     }
@@ -81,9 +104,18 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
         if (value >= 8.0) return "text-blue-600";
         if (value >= 6.0) return "text-green-600";
         return "text-red-600";
-      } else {
+      } else if (metricType === 'claimedHours') {
         if (value >= 9.0) return "text-blue-600";
         if (value >= 7.0) return "text-green-600";
+        return "text-red-600";
+      } else if (metricType === 'weeklyWorkHours') {
+        if (value >= 45.0) return "text-blue-600";
+        if (value >= 35.0) return "text-green-600";
+        return "text-red-600";
+      } else {
+        // weeklyClaimedHours
+        if (value >= 48.0) return "text-blue-600";
+        if (value >= 38.0) return "text-green-600";
         return "text-red-600";
       }
     }
@@ -129,9 +161,18 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
         if (value >= 8.0) return "border-blue-200 bg-blue-50/50";
         if (value >= 6.0) return "border-green-200 bg-green-50/50";
         return "border-red-200 bg-red-50/50";
-      } else {
+      } else if (metricType === 'claimedHours') {
         if (value >= 9.0) return "border-blue-200 bg-blue-50/50";
         if (value >= 7.0) return "border-green-200 bg-green-50/50";
+        return "border-red-200 bg-red-50/50";
+      } else if (metricType === 'weeklyWorkHours') {
+        if (value >= 45.0) return "border-blue-200 bg-blue-50/50";
+        if (value >= 35.0) return "border-green-200 bg-green-50/50";
+        return "border-red-200 bg-red-50/50";
+      } else {
+        // weeklyClaimedHours
+        if (value >= 48.0) return "border-blue-200 bg-blue-50/50";
+        if (value >= 38.0) return "border-green-200 bg-green-50/50";
         return "border-red-200 bg-red-50/50";
       }
     }
@@ -172,9 +213,13 @@ export function CenterLevelGrid({
   gradeMatrix, 
   workHoursMatrix, 
   claimedHoursMatrix,
+  weeklyWorkHoursMatrix,
+  weeklyClaimedHoursMatrix,
   avgEfficiency = 88, 
   avgWorkHours = 8.2,
   avgClaimedHours = 8.5,
+  avgWeeklyWorkHours = 40.0,
+  avgWeeklyClaimedHours = 42.5,
   selectedMetric = 'efficiency',
   onMetricChange,
   thresholds
@@ -236,12 +281,26 @@ export function CenterLevelGrid({
                     } else {
                       value = Math.floor(Math.random() * 3) + 7; // 7-10 hours range
                     }
-                  } else {
+                  } else if (selectedMetric === 'claimedHours') {
                     // Use claimed hours data from claimedHoursMatrix
                     if (claimedHoursMatrix?.matrix[level]?.[center.orgName]) {
                       value = claimedHoursMatrix.matrix[level][center.orgName];
                     } else {
                       value = Math.floor(Math.random() * 3) + 8; // 8-11 hours range
+                    }
+                  } else if (selectedMetric === 'weeklyWorkHours') {
+                    // Use weekly work hours data
+                    if (weeklyWorkHoursMatrix?.matrix[level]?.[center.orgName]) {
+                      value = weeklyWorkHoursMatrix.matrix[level][center.orgName];
+                    } else {
+                      value = Math.floor(Math.random() * 10) + 35; // 35-45 hours range
+                    }
+                  } else {
+                    // Use weekly claimed hours data
+                    if (weeklyClaimedHoursMatrix?.matrix[level]?.[center.orgName]) {
+                      value = weeklyClaimedHoursMatrix.matrix[level][center.orgName];
+                    } else {
+                      value = Math.floor(Math.random() * 10) + 40; // 40-50 hours range
                     }
                   }
                   
@@ -264,40 +323,56 @@ export function CenterLevelGrid({
       </div>
 
       {/* Tooltip for information */}
-      <div className="mt-4 p-3 bg-gray-900 text-white rounded-lg text-sm max-w-md">
+      <div className="mt-4 p-3 bg-white border border-gray-200 text-gray-900 rounded-lg text-sm max-w-md shadow-sm">
         {selectedMetric === 'efficiency' ? (
           <>
-            <div className="font-semibold">평균 효율성 비율 : {avgEfficiency}%</div>
-            <div className="text-xs text-gray-300 mt-1">
+            <div className="font-semibold text-gray-900">평균 효율성 비율 : {avgEfficiency.toFixed(1)}%</div>
+            <div className="text-xs text-gray-700 mt-1">
               실제 작업시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
             </div>
-            <div className="text-xs text-gray-300 mt-1">
-              ▲ 모범사례({thresholds?.efficiency?.high || '≥88.4%'}) | ● 양호({thresholds?.efficiency?.middle || '73.3-88.3%'}) | ▼ 관찰필요({thresholds?.efficiency?.low || '≤73.2%'})
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.efficiency?.high}) | ● 양호({thresholds?.efficiency?.middle}) | ▼ 관찰필요({thresholds?.efficiency?.low})
+            </div>
+          </>
+        ) : selectedMetric === 'workHours' ? (
+          <>
+            <div className="font-semibold text-gray-900">일간 작업추정시간 : {avgWorkHours.toFixed(1)}h</div>
+            <div className="text-xs text-gray-700 mt-1">
+              실제 작업시간 평균 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.workHours?.high}) | ● 양호({thresholds?.workHours?.middle}) | ▼ 관찰필요({thresholds?.workHours?.low})
+            </div>
+          </>
+        ) : selectedMetric === 'claimedHours' ? (
+          <>
+            <div className="font-semibold text-gray-900">일간 근무시간 : {avgClaimedHours.toFixed(1)}h</div>
+            <div className="text-xs text-gray-700 mt-1">
+              신고 근무시간 평균 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.claimedHours?.high}) | ● 양호({thresholds?.claimedHours?.middle}) | ▼ 관찰필요({thresholds?.claimedHours?.low})
+            </div>
+          </>
+        ) : selectedMetric === 'weeklyWorkHours' ? (
+          <>
+            <div className="font-semibold text-gray-900">주간 작업추정시간 : {avgWeeklyWorkHours.toFixed(1)}h</div>
+            <div className="text-xs text-gray-700 mt-1">
+              주당 실제 작업시간 평균 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.weeklyWorkHours?.high}) | ● 양호({thresholds?.weeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyWorkHours?.low})
             </div>
           </>
         ) : (
           <>
-            {selectedMetric === 'workHours' ? (
-              <>
-                <div className="font-semibold">평균 근무시간 : {avgWorkHours}h</div>
-                <div className="text-xs text-gray-300 mt-1">
-                  실제 작업시간 평균 | 30일 평균 데이터
-                </div>
-                <div className="text-xs text-gray-300 mt-1">
-                  ▲ 모범사례({thresholds?.workHours?.high || '≥8.0h'}) | ● 양호({thresholds?.workHours?.middle || '6.0-7.9h'}) | ▼ 관찰필요({thresholds?.workHours?.low || '<6.0h'})
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="font-semibold">평균 Claim시간 : {avgClaimedHours}h</div>
-                <div className="text-xs text-gray-300 mt-1">
-                  신고 근무시간 평균 | 30일 평균 데이터
-                </div>
-                <div className="text-xs text-gray-300 mt-1">
-                  ▲ 모범사례({thresholds?.claimedHours?.high || '≥9.0h'}) | ● 양호({thresholds?.claimedHours?.middle || '7.0-8.9h'}) | ▼ 관찰필요({thresholds?.claimedHours?.low || '<7.0h'})
-                </div>
-              </>
-            )}
+            <div className="font-semibold text-gray-900">주간 근무시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
+            <div className="text-xs text-gray-700 mt-1">
+              주당 신고 근무시간 평균 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.weeklyClaimedHours?.high}) | ● 양호({thresholds?.weeklyClaimedHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyClaimedHours?.low})
+            </div>
           </>
         )}
       </div>

@@ -265,7 +265,7 @@ export function getOrganizationStats(date?: string) {
     FROM daily_analysis_results dar
     LEFT JOIN employees e ON e.employee_id = dar.employee_id
     WHERE dar.analysis_date = ?
-      AND (e.center_name NOT IN ('경영진단팀', '대표이사') OR e.center_name IS NULL)
+      AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
   `;
   
   const stmt = db.prepare(query);
@@ -279,6 +279,43 @@ export function getOrganizationStats(date?: string) {
     efficiency80To90: number;
     efficiency70To80: number;
     efficiencyBelow70: number;
+  };
+}
+
+// Get organization-wide weekly statistics for 30 days
+export function getOrganizationWeeklyStats30Days() {
+  const { startDate, endDate } = get30DayDateRange();
+  
+  const query = `
+    SELECT 
+      COUNT(DISTINCT emp_weekly.employee_id) as totalEmployees,
+      ROUND(AVG(emp_weekly.avgEfficiency), 1) as avgEfficiencyRatio,
+      ROUND(AVG(emp_weekly.weeklyWorkHours), 1) as avgWeeklyWorkHours,
+      ROUND(AVG(emp_weekly.weeklyClaimedHours), 1) as avgWeeklyClaimedHours,
+      ROUND(AVG(emp_weekly.avgConfidence), 1) as avgConfidenceScore
+    FROM (
+      SELECT 
+        dar.employee_id,
+        strftime('%W-%Y', dar.analysis_date) as week,
+        AVG(dar.efficiency_ratio) as avgEfficiency,
+        SUM(dar.actual_work_hours) as weeklyWorkHours,
+        SUM(dar.claimed_work_hours) as weeklyClaimedHours,
+        AVG(dar.confidence_score) as avgConfidence
+      FROM daily_analysis_results dar
+      LEFT JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
+      GROUP BY dar.employee_id, strftime('%W-%Y', dar.analysis_date)
+    ) emp_weekly
+  `;
+  
+  const stmt = db.prepare(query);
+  return stmt.get(startDate, endDate) as {
+    totalEmployees: number;
+    avgEfficiencyRatio: number;
+    avgWeeklyWorkHours: number;
+    avgWeeklyClaimedHours: number;
+    avgConfidenceScore: number;
   };
 }
 
@@ -300,7 +337,7 @@ export function getOrganizationStats30Days() {
     FROM daily_analysis_results dar
     LEFT JOIN employees e ON e.employee_id = dar.employee_id
     WHERE dar.analysis_date BETWEEN ? AND ?
-      AND (e.center_name NOT IN ('경영진단팀', '대표이사') OR e.center_name IS NULL)
+      AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
   `;
   
   const stmt = db.prepare(query);
@@ -332,8 +369,7 @@ export function getGradeEfficiencyMatrix(date?: string) {
     WHERE dar.analysis_date = ? 
       AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
-      AND e.center_name != '경영진단팀'
-      AND e.center_name != '대표이사'
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     GROUP BY e.center_name, e.job_grade
     ORDER BY e.center_name, e.job_grade
   `;
@@ -377,7 +413,7 @@ export function getGradeWorkHoursMatrix30Days() {
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
-      AND e.center_name NOT IN ('경영진단팀', '대표이사')
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     GROUP BY e.center_name, e.job_grade
     ORDER BY e.center_name, e.job_grade
   `;
@@ -421,7 +457,7 @@ export function getGradeEfficiencyMatrix30Days() {
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
-      AND e.center_name NOT IN ('경영진단팀', '대표이사')
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     GROUP BY e.center_name, e.job_grade
     ORDER BY e.center_name, e.job_grade
   `;
@@ -450,6 +486,108 @@ export function getGradeEfficiencyMatrix30Days() {
   };
 }
 
+// Get grade-level weekly claimed hours matrix for 30 days
+export function getGradeWeeklyClaimedHoursMatrix30Days() {
+  const { startDate, endDate } = get30DayDateRange();
+  
+  const query = `
+    SELECT 
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      COUNT(DISTINCT weekly_claimed.employee_id) as employeeCount,
+      ROUND(AVG(weekly_claimed.weeklyTotal), 1) as avgWeeklyClaimedHours
+    FROM (
+      SELECT 
+        employee_id,
+        strftime('%W-%Y', analysis_date) as week,
+        SUM(claimed_work_hours) as weeklyTotal
+      FROM daily_analysis_results
+      WHERE analysis_date BETWEEN ? AND ?
+      GROUP BY employee_id, strftime('%W-%Y', analysis_date)
+    ) weekly_claimed
+    JOIN employees e ON e.employee_id = weekly_claimed.employee_id
+    WHERE e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY e.center_name, e.job_grade
+  `;
+  
+  const stmt = db.prepare(query);
+  const results = stmt.all(startDate, endDate) as any[];
+  
+  // Transform to matrix format
+  const matrix: Record<string, Record<string, number>> = {};
+  const centers: Set<string> = new Set();
+  const grades = ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
+  
+  // Initialize matrix
+  results.forEach(row => {
+    centers.add(row.centerName);
+    if (!matrix[row.grade]) {
+      matrix[row.grade] = {};
+    }
+    matrix[row.grade][row.centerName] = row.avgWeeklyClaimedHours;
+  });
+  
+  return {
+    grades,
+    centers: Array.from(centers),
+    matrix
+  };
+}
+
+// Get grade-level weekly work hours matrix for 30 days
+export function getGradeWeeklyWorkHoursMatrix30Days() {
+  const { startDate, endDate } = get30DayDateRange();
+  
+  const query = `
+    SELECT 
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      COUNT(DISTINCT weekly_work.employee_id) as employeeCount,
+      ROUND(AVG(weekly_work.weeklyTotal), 1) as avgWeeklyWorkHours
+    FROM (
+      SELECT 
+        employee_id,
+        strftime('%W-%Y', analysis_date) as week,
+        SUM(actual_work_hours) as weeklyTotal
+      FROM daily_analysis_results
+      WHERE analysis_date BETWEEN ? AND ?
+      GROUP BY employee_id, strftime('%W-%Y', analysis_date)
+    ) weekly_work
+    JOIN employees e ON e.employee_id = weekly_work.employee_id
+    WHERE e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY e.center_name, e.job_grade
+  `;
+  
+  const stmt = db.prepare(query);
+  const results = stmt.all(startDate, endDate) as any[];
+  
+  // Transform to matrix format
+  const matrix: Record<string, Record<string, number>> = {};
+  const centers: Set<string> = new Set();
+  const grades = ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
+  
+  // Initialize matrix
+  results.forEach(row => {
+    centers.add(row.centerName);
+    if (!matrix[row.grade]) {
+      matrix[row.grade] = {};
+    }
+    matrix[row.grade][row.centerName] = row.avgWeeklyWorkHours;
+  });
+  
+  return {
+    grades,
+    centers: Array.from(centers),
+    matrix
+  };
+}
+
 // Get grade-level claimed hours matrix for 30 days
 export function getGradeClaimedHoursMatrix30Days() {
   const { startDate, endDate } = get30DayDateRange();
@@ -465,7 +603,7 @@ export function getGradeClaimedHoursMatrix30Days() {
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
-      AND e.center_name NOT IN ('경영진단팀', '대표이사')
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     GROUP BY e.center_name, e.job_grade
     ORDER BY e.center_name, e.job_grade
   `;
@@ -495,10 +633,11 @@ export function getGradeClaimedHoursMatrix30Days() {
 }
 
 // Get metric thresholds based on grid matrix data (center-grade averages)
-export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours' | 'claimedHours') {
+export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours' | 'claimedHours' | 'weeklyWorkHours' | 'weeklyClaimedHours') {
   const { startDate, endDate } = get30DayDateRange();
   
   let column = '';
+  let isWeekly = false;
   switch (metricType) {
     case 'efficiency':
       column = 'efficiency_ratio';
@@ -509,24 +648,58 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
     case 'claimedHours':
       column = 'claimed_work_hours';
       break;
+    case 'weeklyWorkHours':
+      column = 'actual_work_hours';
+      isWeekly = true;
+      break;
+    case 'weeklyClaimedHours':
+      column = 'claimed_work_hours';
+      isWeekly = true;
+      break;
   }
   
   // Get center-grade averages (same as what's displayed in the grid)
-  const dataQuery = `
-    SELECT 
-      e.center_name as centerName,
-      'Lv.' || e.job_grade as grade,
-      ROUND(AVG(dar.${column}), 1) as avgValue
-    FROM daily_analysis_results dar
-    JOIN employees e ON e.employee_id = dar.employee_id
-    WHERE dar.analysis_date BETWEEN ? AND ?
-      AND e.job_grade IS NOT NULL
-      AND e.center_name IS NOT NULL
-      AND e.center_name NOT IN ('경영진단팀', '대표이사')
-      AND dar.${column} IS NOT NULL
-    GROUP BY e.center_name, e.job_grade
-    ORDER BY avgValue ASC
-  `;
+  let dataQuery = '';
+  if (isWeekly) {
+    dataQuery = `
+      SELECT 
+        e.center_name as centerName,
+        'Lv.' || e.job_grade as grade,
+        ROUND(AVG(weekly_data.weeklyTotal), 1) as avgValue
+      FROM (
+        SELECT 
+          employee_id,
+          strftime('%W-%Y', analysis_date) as week,
+          SUM(${column}) as weeklyTotal
+        FROM daily_analysis_results
+        WHERE analysis_date BETWEEN ? AND ?
+          AND ${column} IS NOT NULL
+        GROUP BY employee_id, strftime('%W-%Y', analysis_date)
+      ) weekly_data
+      JOIN employees e ON e.employee_id = weekly_data.employee_id
+      WHERE e.job_grade IS NOT NULL
+        AND e.center_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+      GROUP BY e.center_name, e.job_grade
+      ORDER BY avgValue ASC
+    `;
+  } else {
+    dataQuery = `
+      SELECT 
+        e.center_name as centerName,
+        'Lv.' || e.job_grade as grade,
+        ROUND(AVG(dar.${column}), 1) as avgValue
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.job_grade IS NOT NULL
+        AND e.center_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.${column} IS NOT NULL
+      GROUP BY e.center_name, e.job_grade
+      ORDER BY avgValue ASC
+    `;
+  }
   
   const stmt = db.prepare(dataQuery);
   const results = stmt.all(startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
@@ -547,12 +720,27 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
         high: '≥8.0h',
         thresholds: { low: 6.0, high: 8.0 }
       };
-    } else {
+    } else if (metricType === 'claimedHours') {
       return {
         low: '<7.0h',
         middle: '7.0-8.9h',
         high: '≥9.0h',
         thresholds: { low: 7.0, high: 9.0 }
+      };
+    } else if (metricType === 'weeklyWorkHours') {
+      return {
+        low: '<35.0h',
+        middle: '35.0-44.9h',
+        high: '≥45.0h',
+        thresholds: { low: 35.0, high: 45.0 }
+      };
+    } else {
+      // weeklyClaimedHours
+      return {
+        low: '<38.0h',
+        middle: '38.0-47.9h',
+        high: '≥48.0h',
+        thresholds: { low: 38.0, high: 48.0 }
       };
     }
   }
@@ -568,8 +756,18 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
   if (metricType === 'efficiency') {
     return {
       low: `≤${percentile20}%`,
-      middle: `${percentile20 + 0.1}-${percentile80}%`,
-      high: `≥${percentile80 + 0.1}%`,
+      middle: `${(percentile20 + 0.1).toFixed(1)}-${percentile80.toFixed(1)}%`,
+      high: `≥${(percentile80 + 0.1).toFixed(1)}%`,
+      thresholds: {
+        low: percentile20,
+        high: percentile80
+      }
+    };
+  } else if (metricType === 'weeklyWorkHours' || metricType === 'weeklyClaimedHours') {
+    return {
+      low: `<${percentile20}h`,
+      middle: `${percentile20.toFixed(1)}-${percentile80.toFixed(1)}h`,
+      high: `≥${percentile80}h`,
       thresholds: {
         low: percentile20,
         high: percentile80
@@ -578,7 +776,7 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
   } else {
     return {
       low: `<${percentile20}h`,
-      middle: `${percentile20}-${percentile80 - 0.1}h`,
+      middle: `${percentile20.toFixed(1)}-${percentile80.toFixed(1)}h`,
       high: `≥${percentile80}h`,
       thresholds: {
         low: percentile20,
@@ -611,7 +809,7 @@ export function getMetricThresholds(metricType: 'efficiency' | 'workHours' | 'cl
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
     WHERE dar.analysis_date BETWEEN ? AND ?
-      AND e.center_name NOT IN ('경영진단팀', '대표이사')
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
       AND dar.${column} IS NOT NULL
     ORDER BY dar.${column} ASC
   `;
@@ -656,8 +854,18 @@ export function getMetricThresholds(metricType: 'efficiency' | 'workHours' | 'cl
   if (metricType === 'efficiency') {
     return {
       low: `≤${percentile20}%`,
-      middle: `${percentile20 + 0.1}-${percentile80}%`,
-      high: `≥${percentile80 + 0.1}%`,
+      middle: `${(percentile20 + 0.1).toFixed(1)}-${percentile80.toFixed(1)}%`,
+      high: `≥${(percentile80 + 0.1).toFixed(1)}%`,
+      thresholds: {
+        low: percentile20,
+        high: percentile80
+      }
+    };
+  } else if (metricType === 'weeklyWorkHours' || metricType === 'weeklyClaimedHours') {
+    return {
+      low: `<${percentile20}h`,
+      middle: `${percentile20.toFixed(1)}-${percentile80.toFixed(1)}h`,
+      high: `≥${percentile80}h`,
       thresholds: {
         low: percentile20,
         high: percentile80
@@ -666,7 +874,7 @@ export function getMetricThresholds(metricType: 'efficiency' | 'workHours' | 'cl
   } else {
     return {
       low: `<${percentile20}h`,
-      middle: `${percentile20}-${percentile80 - 0.1}h`,
+      middle: `${percentile20.toFixed(1)}-${percentile80.toFixed(1)}h`,
       high: `≥${percentile80}h`,
       thresholds: {
         low: percentile20,

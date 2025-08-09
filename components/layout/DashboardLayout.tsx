@@ -13,6 +13,8 @@ interface DashboardLayoutProps {
   avgEfficiency?: number;
   avgWorkHours?: number;
   avgClaimedHours?: number;
+  avgWeeklyWorkHours?: number;
+  avgWeeklyClaimedHours?: number;
   selectedMetric?: MetricType;
   onMetricChange?: (metric: MetricType) => void;
   parentOrg?: Organization | null;
@@ -24,6 +26,8 @@ export function DashboardLayout({
   avgEfficiency = 0,
   avgWorkHours = 8.2,
   avgClaimedHours = 8.5,
+  avgWeeklyWorkHours = 40.0,
+  avgWeeklyClaimedHours = 42.5,
   selectedMetric = 'efficiency',
   onMetricChange,
   parentOrg 
@@ -87,7 +91,11 @@ export function DashboardLayout({
                           ? avgEfficiency 
                           : selectedMetric === 'workHours' 
                           ? avgWorkHours 
-                          : avgClaimedHours
+                          : selectedMetric === 'claimedHours'
+                          ? avgClaimedHours
+                          : selectedMetric === 'weeklyWorkHours'
+                          ? avgWeeklyWorkHours
+                          : avgWeeklyClaimedHours
                       } 
                       decimalPlaces={1} 
                     />
@@ -97,8 +105,12 @@ export function DashboardLayout({
                     {selectedMetric === 'efficiency' 
                       ? '평균 효율성 비율' 
                       : selectedMetric === 'workHours' 
-                      ? '평균 근무시간' 
-                      : '평균 Claim시간'}
+                      ? '일간 작업추정시간' 
+                      : selectedMetric === 'claimedHours'
+                      ? '일간 근무시간'
+                      : selectedMetric === 'weeklyWorkHours'
+                      ? '주간 작업추정시간'
+                      : '주간 근무시간'}
                   </div>
                 </div>
               </div>

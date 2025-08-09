@@ -58,8 +58,7 @@ export function getOrganizationsByLevel(level: OrgLevel): Organization[] {
       is_active as isActive
     FROM organization_master
     WHERE org_level = ? AND is_active = 1
-      AND org_name != '경영진단팀'
-      AND org_name != '대표이사'
+      AND org_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     ORDER BY display_order, org_name
   `);
   
@@ -119,8 +118,7 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
     FROM organization_master o
     LEFT JOIN organization_daily_stats s ON o.org_code = s.org_code AND s.work_date = ?
     WHERE o.org_level = ? AND o.is_active = 1
-      AND o.org_name != '경영진단팀'
-      AND o.org_name != '대표이사'
+      AND o.org_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     ORDER BY o.display_order, o.org_name
   `);
   

@@ -12,13 +12,19 @@ interface DashboardData {
   avgEfficiency: number;
   avgWorkHours: number;
   avgClaimedHours: number;
+  avgWeeklyWorkHours: number;
+  avgWeeklyClaimedHours: number;
   gradeMatrix: any;
   workHoursMatrix: any;
   claimedHoursMatrix: any;
+  weeklyWorkHoursMatrix: any;
+  weeklyClaimedHoursMatrix: any;
   thresholds: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    weeklyWorkHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    weeklyClaimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -66,6 +72,8 @@ export default function HomePage() {
       avgEfficiency={data.avgEfficiency}
       avgWorkHours={data.avgWorkHours}
       avgClaimedHours={data.avgClaimedHours}
+      avgWeeklyWorkHours={data.avgWeeklyWorkHours}
+      avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
     >
@@ -74,9 +82,13 @@ export default function HomePage() {
         gradeMatrix={data.gradeMatrix}
         workHoursMatrix={data.workHoursMatrix}
         claimedHoursMatrix={data.claimedHoursMatrix}
+        weeklyWorkHoursMatrix={data.weeklyWorkHoursMatrix}
+        weeklyClaimedHoursMatrix={data.weeklyClaimedHoursMatrix}
         avgEfficiency={data.avgEfficiency}
         avgWorkHours={data.avgWorkHours}
         avgClaimedHours={data.avgClaimedHours}
+        avgWeeklyWorkHours={data.avgWeeklyWorkHours}
+        avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
         selectedMetric={selectedMetric}
         thresholds={data.thresholds}
       />
