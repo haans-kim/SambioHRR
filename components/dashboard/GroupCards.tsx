@@ -4,6 +4,7 @@ import { OrganizationWithStats, Organization } from "@/lib/types/organization";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { cn } from "@/lib/utils";
 import { MetricType } from "./MetricSelector";
+import { useRouter } from "next/navigation";
 
 interface GroupCardsProps {
   groups: OrganizationWithStats[];
@@ -27,9 +28,10 @@ interface GroupCardProps {
   org: OrganizationWithStats;
   selectedMetric: MetricType;
   thresholds?: { low: number; high: number };
+  onClick?: () => void;
 }
 
-function GroupCard({ org, selectedMetric, thresholds }: GroupCardProps) {
+function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps) {
   const efficiency = org.stats?.avgWorkEfficiency || 0;
   const workHours = org.stats?.avgActualWorkHours || 0;
   const claimedHours = org.stats?.avgAttendanceHours || 0;
@@ -181,6 +183,7 @@ function GroupCard({ org, selectedMetric, thresholds }: GroupCardProps) {
         "p-4 rounded-lg border shadow-sm hover:shadow-md transition-all h-[140px]",
         getCardStyle(value)
       )}
+      onClick={onClick}
     >
       <div className="flex flex-col h-full">
         <h3 className="text-sm font-semibold text-gray-900 mb-2 truncate">{org.orgName}</h3>
@@ -234,8 +237,14 @@ export function GroupCards({
   avgWeeklyClaimedHours = 42.5,
   thresholds
 }: GroupCardsProps) {
+  const router = useRouter();
+  
   const getCurrentThresholds = () => {
     return thresholds?.[selectedMetric]?.thresholds;
+  };
+  
+  const handleGroupClick = (groupCode: string) => {
+    router.push(`/group/${groupCode}`);
   };
 
   return (
@@ -251,6 +260,7 @@ export function GroupCards({
             org={group}
             selectedMetric={selectedMetric}
             thresholds={getCurrentThresholds()}
+            onClick={() => handleGroupClick(group.orgCode)}
           />
         ))}
       </div>
