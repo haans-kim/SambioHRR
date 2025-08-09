@@ -159,7 +159,12 @@ export function getTeamSummary(centerId?: string, teamId?: string, date?: string
   const params: any[] = [analysisDate];
   
   if (centerId) {
-    query += ' AND center_id = ?';
+    // Check if it's a center code or center name
+    if (centerId.startsWith('CENTER_')) {
+      query += ' AND center_id = ?';
+    } else {
+      query += ' AND center_name = ?';
+    }
     params.push(centerId);
   }
   
@@ -195,7 +200,12 @@ export function getGroupSummary(teamId?: string, groupId?: string, date?: string
   const params: any[] = [analysisDate];
   
   if (teamId) {
-    query += ' AND team_id = ?';
+    // Check if it's a team code or team name
+    if (teamId.startsWith('TEAM_')) {
+      query += ' AND team_id = ?';
+    } else {
+      query += ' AND team_name = ?';
+    }
     params.push(teamId);
   }
   

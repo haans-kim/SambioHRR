@@ -154,33 +154,33 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
     if (!thresholds) {
       // Fallback to hardcoded values if thresholds are not available
       if (metricType === 'efficiency') {
-        if (value >= 88.4) return "border-blue-200 bg-blue-50/50";
-        if (value > 73.2) return "border-green-200 bg-green-50/50";
-        return "border-red-200 bg-red-50/50";
+        if (value >= 88.4) return "border-blue-200 bg-blue-50";
+        if (value > 73.2) return "border-green-200 bg-green-50";
+        return "border-red-200 bg-red-50";
       } else if (metricType === 'workHours') {
-        if (value >= 8.0) return "border-blue-200 bg-blue-50/50";
-        if (value >= 6.0) return "border-green-200 bg-green-50/50";
-        return "border-red-200 bg-red-50/50";
+        if (value >= 8.0) return "border-blue-200 bg-blue-50";
+        if (value >= 6.0) return "border-green-200 bg-green-50";
+        return "border-red-200 bg-red-50";
       } else if (metricType === 'claimedHours') {
-        if (value >= 9.0) return "border-blue-200 bg-blue-50/50";
-        if (value >= 7.0) return "border-green-200 bg-green-50/50";
-        return "border-red-200 bg-red-50/50";
+        if (value >= 9.0) return "border-blue-200 bg-blue-50";
+        if (value >= 7.0) return "border-green-200 bg-green-50";
+        return "border-red-200 bg-red-50";
       } else if (metricType === 'weeklyWorkHours') {
-        if (value >= 45.0) return "border-blue-200 bg-blue-50/50";
-        if (value >= 35.0) return "border-green-200 bg-green-50/50";
-        return "border-red-200 bg-red-50/50";
+        if (value >= 45.0) return "border-blue-200 bg-blue-50";
+        if (value >= 35.0) return "border-green-200 bg-green-50";
+        return "border-red-200 bg-red-50";
       } else {
         // weeklyClaimedHours
-        if (value >= 48.0) return "border-blue-200 bg-blue-50/50";
-        if (value >= 38.0) return "border-green-200 bg-green-50/50";
-        return "border-red-200 bg-red-50/50";
+        if (value >= 48.0) return "border-blue-200 bg-blue-50";
+        if (value >= 38.0) return "border-green-200 bg-green-50";
+        return "border-red-200 bg-red-50";
       }
     }
     
     // Use dynamic thresholds
-    if (value >= thresholds.high) return "border-blue-200 bg-blue-50/50"; // 모범사례
-    if (value > thresholds.low) return "border-green-200 bg-green-50/50"; // 양호
-    return "border-red-200 bg-red-50/50"; // 관찰 주시 필요
+    if (value >= thresholds.high) return "border-blue-200 bg-blue-50"; // 모범사례
+    if (value > thresholds.low) return "border-green-200 bg-green-50"; // 양호
+    return "border-red-200 bg-red-50"; // 관찰 주시 필요
   };
 
   const formatValue = (value: number, metricType: MetricType) => {
