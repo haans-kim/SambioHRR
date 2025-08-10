@@ -28,6 +28,10 @@ export function deleteFromCache(key: string): void {
   cache.delete(key);
 }
 
+export function clearAllCache(): void {
+  cache.clear();
+}
+
 export function buildCacheHeaders(hit: boolean, ttlSeconds: number) {
   return {
     'x-cache': hit ? 'HIT' : 'MISS',

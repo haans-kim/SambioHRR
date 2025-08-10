@@ -7,6 +7,8 @@ import {
 import { getTeamStats } from '@/lib/db/queries/teamStats';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
+import { get30DayDateRange } from '@/lib/db/queries/analytics';
+import db from '@/lib/db/client';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -120,29 +122,55 @@ export async function GET(request: NextRequest) {
     return team;
   });
   
-  // Calculate total employees and averages
-  const totalEmployees = teams.reduce(
-    (sum: number, org: any) => sum + (org.stats?.totalEmployees || 0),
-    0
-  );
-  
-  const avgEfficiency =
-    teams.reduce(
-      (sum: number, org: any) => sum + (org.stats?.avgWorkEfficiency || 0),
-      0
-    ) / (teams.length || 1);
-  
-  const avgWorkHours =
-    teams.reduce(
-      (sum: number, org: any) => sum + (org.stats?.avgActualWorkHours || 0),
-      0
-    ) / (teams.length || 1);
-  
-  const avgClaimedHours =
-    teams.reduce(
-      (sum: number, org: any) => sum + (org.stats?.avgAttendanceHours || 0),
-      0
-    ) / (teams.length || 1);
+  // Calculate totals and weighted averages based on real man-days (30일 누적)
+  const { startDate, endDate } = get30DayDateRange();
+  let totalEmployees = 0;
+  let avgEfficiency = 0;
+  let avgWorkHours = 0;
+  let avgClaimedHours = 0;
+
+  try {
+    let where = 'dar.analysis_date BETWEEN ? AND ?';
+    const params: any[] = [startDate, endDate];
+
+    if (divisionCode) {
+      // Filter by teams under division
+      const divisionTeams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
+      const teamNames = divisionTeams.map((t: any) => t.orgName).filter(Boolean);
+      if (teamNames.length > 0) {
+        where += ` AND e.team_name IN (${teamNames.map(() => '?').join(',')})`;
+        params.push(...teamNames);
+      } else {
+        // No teams found; return zeros
+        where += ' AND 1=0';
+      }
+    } else if (centerCode && parentOrg) {
+      where += ' AND e.center_name = ?';
+      params.push(parentOrg.orgName);
+    }
+
+    const row = db.prepare(
+      `SELECT 
+         COUNT(DISTINCT dar.employee_id) as unique_employees,
+         COUNT(*) as man_days,
+         SUM(dar.actual_work_hours) as sum_actual,
+         SUM(dar.claimed_work_hours) as sum_claimed
+       FROM daily_analysis_results dar
+       JOIN employees e ON e.employee_id = dar.employee_id
+       WHERE ${where}
+         AND (dar.actual_work_hours > 0 OR dar.claimed_work_hours > 0)`
+    ).get(...params) as any;
+
+    const manDays = row?.man_days || 0;
+    const sumActual = row?.sum_actual || 0;
+    const sumClaimed = row?.sum_claimed || 0;
+    totalEmployees = row?.unique_employees || 0;
+    avgEfficiency = sumClaimed > 0 ? Math.round((sumActual / sumClaimed) * 1000) / 10 : 0;
+    avgWorkHours = manDays > 0 ? Math.round((sumActual / manDays) * 10) / 10 : 0;
+    avgClaimedHours = manDays > 0 ? Math.round((sumClaimed / manDays) * 10) / 10 : 0;
+  } catch (e) {
+    console.error('Failed to compute weighted team summary:', e);
+  }
   
   // Weekly averages (multiply daily by 5)
   const avgWeeklyWorkHours = avgWorkHours * 5;

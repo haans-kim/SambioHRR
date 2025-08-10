@@ -6,6 +6,8 @@ import {
 } from '@/lib/db/queries/organization';
 import { getGroupStats } from '@/lib/db/queries/teamStats';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
+import db from '@/lib/db/client';
+import { get30DayDateRange } from '@/lib/db/queries/analytics';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -68,29 +70,44 @@ export async function GET(request: NextRequest) {
     return group;
   });
   
-  // Calculate total employees and averages
-  const totalEmployees = groups.reduce(
-    (sum: number, org: any) => sum + (org.stats?.totalEmployees || 0),
-    0
-  );
-  
-  const avgEfficiency =
-    groups.reduce(
-      (sum: number, org: any) => sum + (org.stats?.avgWorkEfficiency || 0),
-      0
-    ) / (groups.length || 1);
-  
-  const avgWorkHours =
-    groups.reduce(
-      (sum: number, org: any) => sum + (org.stats?.avgActualWorkHours || 0),
-      0
-    ) / (groups.length || 1);
-  
-  const avgClaimedHours =
-    groups.reduce(
-      (sum: number, org: any) => sum + (org.stats?.avgAttendanceHours || 0),
-      0
-    ) / (groups.length || 1);
+  // Calculate totals and weighted averages based on real man-days (30일 누적)
+  const { startDate, endDate } = get30DayDateRange();
+  let totalEmployees = 0;
+  let avgEfficiency = 0;
+  let avgWorkHours = 0;
+  let avgClaimedHours = 0;
+
+  try {
+    let where = 'dar.analysis_date BETWEEN ? AND ?';
+    const params: any[] = [startDate, endDate];
+
+    if (teamCode && parentOrg) {
+      where += ' AND e.team_name = ?';
+      params.push(parentOrg.orgName);
+    }
+
+    const row = db.prepare(
+      `SELECT 
+         COUNT(DISTINCT dar.employee_id) as unique_employees,
+         COUNT(*) as man_days,
+         SUM(dar.actual_work_hours) as sum_actual,
+         SUM(dar.claimed_work_hours) as sum_claimed
+       FROM daily_analysis_results dar
+       JOIN employees e ON e.employee_id = dar.employee_id
+       WHERE ${where}
+         AND (dar.actual_work_hours > 0 OR dar.claimed_work_hours > 0)`
+    ).get(...params) as any;
+
+    const manDays = row?.man_days || 0;
+    const sumActual = row?.sum_actual || 0;
+    const sumClaimed = row?.sum_claimed || 0;
+    totalEmployees = row?.unique_employees || 0;
+    avgEfficiency = sumClaimed > 0 ? Math.round((sumActual / sumClaimed) * 1000) / 10 : 0;
+    avgWorkHours = manDays > 0 ? Math.round((sumActual / manDays) * 10) / 10 : 0;
+    avgClaimedHours = manDays > 0 ? Math.round((sumClaimed / manDays) * 10) / 10 : 0;
+  } catch (e) {
+    console.error('Failed to compute weighted group summary:', e);
+  }
   
   // Weekly averages (multiply daily by 5)
   const avgWeeklyWorkHours = avgWorkHours * 5;
