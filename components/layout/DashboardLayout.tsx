@@ -18,6 +18,7 @@ interface DashboardLayoutProps {
   selectedMetric?: MetricType;
   onMetricChange?: (metric: MetricType) => void;
   parentOrg?: Organization | null;
+  breadcrumb?: { label: string; href?: string }[];
 }
 
 export function DashboardLayout({ 
@@ -30,25 +31,20 @@ export function DashboardLayout({
   avgWeeklyClaimedHours = 42.5,
   selectedMetric = 'efficiency',
   onMetricChange,
-  parentOrg 
+  parentOrg,
+  breadcrumb
 }: DashboardLayoutProps) {
   // Build breadcrumb items
-  const breadcrumbItems = [{ label: "전체 개요", href: "/" }];
-  
+  const defaultBreadcrumb = [{ label: "센터", href: "/" } as { label: string; href?: string }];
   if (parentOrg) {
     if (parentOrg.orgLevel === 'center') {
-      breadcrumbItems.push({ 
-        label: parentOrg.orgName, 
-        href: `/teams?center=${parentOrg.orgCode}` 
-      });
+      defaultBreadcrumb.push({ label: parentOrg.orgName, href: `/division?center=${parentOrg.orgCode}` });
     } else if (parentOrg.orgLevel === 'division') {
-      // TODO: Add parent center to breadcrumb
-      breadcrumbItems.push({ 
-        label: parentOrg.orgName, 
-        href: `/teams?division=${parentOrg.orgCode}` 
-      });
+      defaultBreadcrumb.push({ label: "담당" });
+      defaultBreadcrumb.push({ label: parentOrg.orgName });
     }
   }
+  const breadcrumbItems = breadcrumb && breadcrumb.length > 0 ? breadcrumb : defaultBreadcrumb;
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
@@ -59,13 +55,6 @@ export function DashboardLayout({
         {/* Title Section */}
         <div className="bg-gradient-to-br from-blue-50 to-white border-b border-gray-200">
           <div className="max-w-[1600px] mx-auto px-6 py-6">
-            {/* Breadcrumb */}
-            {breadcrumbItems.length > 1 && (
-              <div className="mb-4">
-                <Breadcrumb items={breadcrumbItems} />
-              </div>
-            )}
-            
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               조직별 분석 {parentOrg && `- ${parentOrg.orgName}`}
             </h1>
@@ -125,6 +114,13 @@ export function DashboardLayout({
                 </div>
               )}
             </div>
+
+            {/* Breadcrumb under stats cards */}
+            {breadcrumbItems && breadcrumbItems.length > 0 && (
+              <div className="mt-6">
+                <Breadcrumb items={breadcrumbItems} />
+              </div>
+            )}
           </div>
         </div>
 

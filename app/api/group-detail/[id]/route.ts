@@ -10,14 +10,32 @@ export async function GET(
   try {
     // Get group information
     const groupInfo = db.prepare(`
+      WITH team_parent AS (
+        SELECT 
+          t.org_code AS team_code,
+          t.org_name AS team_name,
+          p.org_code AS parent_code,
+          p.org_level AS parent_level,
+          p.parent_org_code AS parent_parent_code
+        FROM organization_master t
+        LEFT JOIN organization_master p ON t.parent_org_code = p.org_code
+      )
       SELECT 
         g.org_code as orgCode,
         g.org_name as orgName,
-        t.org_name as parentTeam,
-        c.org_name as parentCenter
+        tp.team_code as parentTeamCode,
+        tp.team_name as parentTeam,
+        CASE WHEN tp.parent_level = 'division' THEN tp.parent_code ELSE NULL END as parentDivisionCode,
+        CASE WHEN tp.parent_level = 'division' THEN (
+          SELECT org_name FROM organization_master WHERE org_code = tp.parent_code
+        ) ELSE NULL END as parentDivision,
+        CASE WHEN tp.parent_level = 'division' THEN tp.parent_parent_code ELSE tp.parent_code END as parentCenterCode,
+        (
+          SELECT org_name FROM organization_master 
+          WHERE org_code = CASE WHEN tp.parent_level = 'division' THEN tp.parent_parent_code ELSE tp.parent_code END
+        ) as parentCenter
       FROM organization_master g
-      LEFT JOIN organization_master t ON g.parent_org_code = t.org_code
-      LEFT JOIN organization_master c ON t.parent_org_code = c.org_code
+      LEFT JOIN team_parent tp ON g.parent_org_code = tp.team_code
       WHERE g.org_code = ? AND g.org_level = 'group'
     `).get(groupCode) as any;
     

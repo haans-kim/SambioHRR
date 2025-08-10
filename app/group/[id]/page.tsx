@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, Download, Filter, X } from "lucide-react";
+import { useParams } from "next/navigation";
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Filter, X } from "lucide-react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 interface EmployeeData {
   employeeId: string;
@@ -32,7 +33,11 @@ interface GroupDetailData {
     orgCode: string;
     orgName: string;
     parentTeam: string;
+    parentTeamCode?: string;
     parentCenter: string;
+    parentCenterCode?: string;
+    parentDivision?: string | null;
+    parentDivisionCode?: string | null;
   };
   employees: EmployeeData[];
   summary: {
@@ -50,7 +55,6 @@ type SortDirection = 'asc' | 'desc';
 
 export default function GroupDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const groupId = params.id as string;
   
   const [data, setData] = useState<GroupDetailData | null>(null);
@@ -211,6 +215,25 @@ export default function GroupDetailPage() {
     setWorkHoursFilter({ min: 0, max: 24 });
   };
 
+  // Build breadcrumb for DashboardLayout. Keep hook order consistent by declaring before returns
+  const breadcrumb = useMemo(() => {
+    if (!data) {
+      return [{ label: '센터', href: '/' }];
+    }
+    const crumbs: { label: string; href?: string }[] = [{ label: '센터', href: '/' }];
+    if (data.group.parentCenter && data.group.parentCenterCode) {
+      crumbs.push({ label: data.group.parentCenter, href: `/division?center=${data.group.parentCenterCode}` });
+    }
+    if (data.group.parentDivision && data.group.parentDivisionCode) {
+      crumbs.push({ label: data.group.parentDivision, href: `/teams?division=${data.group.parentDivisionCode}` });
+    }
+    if (data.group.parentTeam && data.group.parentTeamCode) {
+      crumbs.push({ label: data.group.parentTeam, href: `/groups?team=${data.group.parentTeamCode}` });
+    }
+    crumbs.push({ label: data.group.orgName });
+    return crumbs;
+  }, [data]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -228,57 +251,53 @@ export default function GroupDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.back()}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{data.group.orgName}</h1>
-                <p className="text-sm text-gray-600">
-                  {data.group.parentCenter} / {data.group.parentTeam}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  분석일자: {data.analysisDate || '최신 데이터'}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-6 text-sm">
-              <div>
-                <span className="text-gray-500">총 인원:</span>
-                <span className="ml-2 font-semibold">{data.summary.totalEmployees}명</span>
-              </div>
-              <div>
-                <span className="text-gray-500">총 Man-day:</span>
-                <span className="ml-2 font-semibold">{data.summary.totalManDays || 0}일</span>
-              </div>
-              <div>
-                <span className="text-gray-500">평균 효율성:</span>
-                <span className="ml-2 font-semibold">{data.summary.avgEfficiency.toFixed(1)}%</span>
-              </div>
-              <div>
-                <span className="text-gray-500">평균 작업시간:</span>
-                <span className="ml-2 font-semibold">{data.summary.avgWorkHours.toFixed(1)}h/일</span>
-              </div>
-              <div>
-                <span className="text-gray-500">평균 근무시간:</span>
-                <span className="ml-2 font-semibold">{data.summary.avgClaimedHours.toFixed(1)}h/일</span>
-              </div>
-            </div>
+    <DashboardLayout
+      totalEmployees={data?.summary.totalEmployees || 0}
+      avgEfficiency={data?.summary.avgEfficiency || 0}
+      avgWorkHours={data?.summary.avgWorkHours || 0}
+      avgClaimedHours={data?.summary.avgClaimedHours || 0}
+      avgWeeklyWorkHours={(data?.summary.avgWorkHours || 0) * 5}
+      avgWeeklyClaimedHours={(data?.summary.avgClaimedHours || 0) * 5}
+      selectedMetric={'efficiency'}
+      breadcrumb={breadcrumb}
+    >
+      {/* 제목/요약 */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{data.group.orgName}</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            {data.group.parentCenter}
+            {data.group.parentDivision ? ` / ${data.group.parentDivision}` : ''}
+            {` / ${data.group.parentTeam}`}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">분석일자: {data.analysisDate || '최신 데이터'}</p>
+        </div>
+        <div className="flex gap-6 text-sm">
+          <div>
+            <span className="text-gray-500">총 인원:</span>
+            <span className="ml-2 font-semibold">{data.summary.totalEmployees}명</span>
+          </div>
+          <div>
+            <span className="text-gray-500">총 Man-day:</span>
+            <span className="ml-2 font-semibold">{data.summary.totalManDays || 0}일</span>
+          </div>
+          <div>
+            <span className="text-gray-500">평균 효율성:</span>
+            <span className="ml-2 font-semibold">{data.summary.avgEfficiency.toFixed(1)}%</span>
+          </div>
+          <div>
+            <span className="text-gray-500">평균 작업시간:</span>
+            <span className="ml-2 font-semibold">{data.summary.avgWorkHours.toFixed(1)}h/일</span>
+          </div>
+          <div>
+            <span className="text-gray-500">평균 근무시간:</span>
+            <span className="ml-2 font-semibold">{data.summary.avgClaimedHours.toFixed(1)}h/일</span>
           </div>
         </div>
       </div>
 
       {/* Employee Table */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+      <div className="bg-white shadow-sm rounded-lg overflow-hidden">
           <div className="px-6 py-4 border-b">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">직원 상세 데이터</h2>
@@ -540,7 +559,6 @@ export default function GroupDetailPage() {
             </table>
           </div>
         </div>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 }

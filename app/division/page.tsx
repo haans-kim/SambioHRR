@@ -24,12 +24,16 @@ export default async function DivisionPage({ searchParams }: DivisionPageProps) 
     redirect('/');
   }
 
-  const divisions = getChildOrganizations(centerCode).filter(
-    org => org.orgLevel === 'division'
-  );
+  const children = getChildOrganizations(centerCode);
+  const divisions = children.filter(org => org.orgLevel === 'division');
 
-  const divisionsWithStats = getOrganizationsWithStats('division')
+  let divisionsWithStats = getOrganizationsWithStats('division')
     .filter(div => div.parentOrgCode === centerCode);
+
+  // People센터처럼 담당이 없는 센터는 팀 페이지로 리다이렉트
+  if (divisions.length === 0) {
+    redirect(`/teams?center=${centerCode}`);
+  }
 
   return (
     <div className="space-y-6">

@@ -5,18 +5,44 @@ import {
   getChildOrganizations
 } from '@/lib/db/queries/organization';
 import { getGroupStats } from '@/lib/db/queries/teamStats';
+import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const teamCode = searchParams.get('team');
+  const cacheKey = `groups:v1:team=${teamCode || ''}`;
+  const cached = getFromCache<any>(cacheKey);
+  if (cached) {
+    return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
+  }
   
   let parentOrg = null;
   let groups = [];
+  const breadcrumb: { label: string; href?: string }[] = [{ label: '센터', href: '/' }];
   
   if (teamCode) {
     // Show groups under a specific team
     parentOrg = getOrganizationById(teamCode);
     groups = getChildOrganizations(teamCode).filter((org: any) => org.orgLevel === 'group');
+
+    // breadcrumb: Center -> (optional) Division -> Team
+    if (parentOrg && parentOrg.parentOrgCode) {
+      const divisionOrCenter = getOrganizationById(parentOrg.parentOrgCode);
+      if (divisionOrCenter) {
+        if (divisionOrCenter.orgLevel === 'division') {
+          const center = divisionOrCenter.parentOrgCode ? getOrganizationById(divisionOrCenter.parentOrgCode) : null;
+          if (center) {
+            breadcrumb.push({ label: center.orgName, href: `/teams?center=${center.orgCode}` });
+          }
+          breadcrumb.push({ label: divisionOrCenter.orgName, href: `/teams?division=${divisionOrCenter.orgCode}` });
+        } else if (divisionOrCenter.orgLevel === 'center') {
+          breadcrumb.push({ label: divisionOrCenter.orgName, href: `/teams?center=${divisionOrCenter.orgCode}` });
+        }
+      }
+    }
+    if (parentOrg) {
+      breadcrumb.push({ label: parentOrg.orgName, href: `/groups?team=${parentOrg.orgCode}` });
+    }
   } else {
     // Default: show all groups
     groups = getOrganizationsWithStats('group');
@@ -140,7 +166,7 @@ export async function GET(request: NextRequest) {
     }
   };
 
-  return NextResponse.json({
+  const payload = {
     groups,
     parentOrg,
     totalEmployees,
@@ -149,6 +175,9 @@ export async function GET(request: NextRequest) {
     avgClaimedHours,
     avgWeeklyWorkHours,
     avgWeeklyClaimedHours,
-    thresholds
-  });
+    thresholds,
+    breadcrumb
+  };
+  setToCache(cacheKey, payload, 180_000);
+  return new NextResponse(JSON.stringify(payload), { headers: buildCacheHeaders(false, 180) });
 }

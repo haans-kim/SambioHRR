@@ -16,6 +16,7 @@ interface GroupData {
   avgClaimedHours: number;
   avgWeeklyWorkHours: number;
   avgWeeklyClaimedHours: number;
+  breadcrumb?: { label: string; href?: string }[];
   thresholds: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
@@ -80,6 +81,7 @@ export default function GroupsPage() {
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
       parentOrg={data.parentOrg}
+      breadcrumb={data.breadcrumb}
     >
       <GroupCards 
         groups={data.groups} 

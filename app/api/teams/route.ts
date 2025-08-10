@@ -5,19 +5,75 @@ import {
   getChildOrganizations
 } from '@/lib/db/queries/organization';
 import { getTeamStats } from '@/lib/db/queries/teamStats';
+import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
+import db from '@/lib/db/client';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
+  const cacheKey = `teams:v1:center=${centerCode || ''}:division=${divisionCode || ''}`;
+  const cached = getFromCache<any>(cacheKey);
+  if (cached) {
+    return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
+  }
   
   let parentOrg = null;
   let teams = [];
+  const breadcrumb: { label: string; href?: string }[] = [
+    { label: '센터', href: '/' }
+  ];
   
   if (divisionCode) {
     // Show teams under a specific division
     parentOrg = getOrganizationById(divisionCode);
     teams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
+    // Fallback: 일부 데이터에 조직마스터 누락 시 통계 테이블 기반으로 보강
+    if (teams.length === 0) {
+      teams = getOrganizationsWithStats('team')
+        .filter((team: any) => team.parentOrgCode === divisionCode);
+    }
+    // Fallback 2: active 플래그 무시하고 하위 팀 조회
+    if (teams.length === 0) {
+      const stmt = db.prepare(`
+        SELECT 
+          org_code as orgCode,
+          org_name as orgName,
+          org_level as orgLevel,
+          parent_org_code as parentOrgCode,
+          display_order as displayOrder,
+          is_active as isActive
+        FROM organization_master
+        WHERE parent_org_code = ? AND org_level = 'team'
+        ORDER BY display_order, org_name
+      `);
+      teams = (stmt.all(divisionCode) as any[]).map(row => ({
+        orgCode: row.orgCode,
+        orgName: row.orgName,
+        orgLevel: row.orgLevel,
+        parentOrgCode: row.parentOrgCode,
+        displayOrder: row.displayOrder,
+        isActive: Boolean(row.isActive),
+        childrenCount: 0,
+        stats: undefined,
+      }));
+    }
+    // Fallback 3: 이 division이 실무적으로 팀을 직접 거느리지 않고 센터 직속일 때
+    if (teams.length === 0 && parentOrg?.parentOrgCode) {
+      teams = getOrganizationsWithStats('team')
+        .filter((team: any) => team.parentOrgCode === parentOrg.parentOrgCode);
+    }
+
+    // breadcrumb: 센터명 -> 담당명
+    if (parentOrg && parentOrg.parentOrgCode) {
+      const center = getOrganizationById(parentOrg.parentOrgCode);
+      if (center) {
+        breadcrumb.push({ label: center.orgName, href: `/division?center=${center.orgCode}` });
+      }
+    }
+    if (parentOrg) {
+      breadcrumb.push({ label: parentOrg.orgName, href: `/teams?division=${parentOrg.orgCode}` });
+    }
   } else if (centerCode) {
     // Show divisions or teams under a specific center
     parentOrg = getOrganizationById(centerCode);
@@ -34,13 +90,18 @@ export async function GET(request: NextRequest) {
       teams = getOrganizationsWithStats('team')
         .filter((team: any) => team.parentOrgCode === centerCode);
     }
+
+    // breadcrumb: 센터명
+    if (parentOrg) {
+      breadcrumb.push({ label: parentOrg.orgName, href: `/division?center=${parentOrg.orgCode}` });
+    }
   } else {
     // Default: show all teams
     teams = getOrganizationsWithStats('team');
   }
   
   // Get aggregated team stats from database
-  const teamStatsMap = getTeamStats(centerCode || undefined);
+  const teamStatsMap = getTeamStats(centerCode || (parentOrg?.orgLevel === 'division' ? parentOrg.parentOrgCode : undefined) || undefined);
   
   // Merge stats with team info
   teams = teams.map((team: any) => {
@@ -157,7 +218,7 @@ export async function GET(request: NextRequest) {
     }
   };
 
-  return NextResponse.json({
+  const payload = {
     teams,
     parentOrg,
     totalEmployees,
@@ -166,6 +227,9 @@ export async function GET(request: NextRequest) {
     avgClaimedHours,
     avgWeeklyWorkHours,
     avgWeeklyClaimedHours,
-    thresholds
-  });
+    thresholds,
+    breadcrumb
+  };
+  setToCache(cacheKey, payload, 180_000);
+  return new NextResponse(JSON.stringify(payload), { headers: buildCacheHeaders(false, 180) });
 }

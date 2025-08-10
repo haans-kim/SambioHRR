@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import { getOrganizationsWithStats } from "@/lib/db/queries/organization";
 import { 
   getOrganizationStats30Days, 
@@ -13,6 +14,14 @@ import {
 
 export async function GET() {
   try {
+    const cacheKey = 'dashboard:v1';
+    const cached = getFromCache<any>(cacheKey);
+    if (cached) {
+      return new NextResponse(JSON.stringify(cached), {
+        headers: buildCacheHeaders(true, 180),
+      });
+    }
+
     const centers = getOrganizationsWithStats('center');
     
     // Get organization-wide statistics for 30 days
@@ -39,7 +48,7 @@ export async function GET() {
     const weeklyWorkThresholds = getMetricThresholdsForGrid('weeklyWorkHours');
     const weeklyClaimedThresholds = getMetricThresholdsForGrid('weeklyClaimedHours');
 
-    return NextResponse.json({
+    const payload = {
       centers,
       totalEmployees,
       avgEfficiency,
@@ -59,6 +68,11 @@ export async function GET() {
         weeklyWorkHours: weeklyWorkThresholds,
         weeklyClaimedHours: weeklyClaimedThresholds
       }
+    };
+
+    setToCache(cacheKey, payload, 180_000); // 3 minutes
+    return new NextResponse(JSON.stringify(payload), {
+      headers: buildCacheHeaders(false, 180),
     });
   } catch (error) {
     console.error('Dashboard API error:', error);

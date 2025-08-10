@@ -16,6 +16,7 @@ interface TeamData {
   avgClaimedHours: number;
   avgWeeklyWorkHours: number;
   avgWeeklyClaimedHours: number;
+  breadcrumb?: { label: string; href?: string }[];
   thresholds: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
@@ -82,6 +83,7 @@ export default function TeamsPage() {
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
       parentOrg={data.parentOrg}
+      breadcrumb={data.breadcrumb}
     >
       <TeamPlantCards 
         teams={data.teams} 

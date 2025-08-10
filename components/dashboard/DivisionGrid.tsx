@@ -23,7 +23,7 @@ export function DivisionGrid({ divisions }: DivisionGridProps) {
           totalEmployees={division.stats?.totalEmployees || 0}
           avgWorkHours={division.stats?.avgActualWorkHours || 0}
           childrenCount={division.childrenCount}
-          onClick={() => router.push(`/team?division=${division.orgCode}`)}
+          onClick={() => router.push(`/teams?division=${division.orgCode}`)}
           size="medium"
         />
       ))}
