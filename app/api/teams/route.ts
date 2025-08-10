@@ -101,24 +101,67 @@ export async function GET(request: NextRequest) {
   }
   
   // Get aggregated team stats from database
-  const teamStatsMap = getTeamStats(centerCode || (parentOrg?.orgLevel === 'division' ? parentOrg.parentOrgCode : undefined) || undefined);
+  const teamStatsMap = getTeamStats(centerCode || undefined);
   
   // Merge stats with team info
   teams = teams.map((team: any) => {
+    // division(담당)은 상단에서 산정한 30일 유니크 인원 등 기존 stats를 유지
+    if (team.orgLevel === 'division') {
+      return team;
+    }
     const stats = teamStatsMap.get(team.orgCode);
     if (stats) {
-      team.stats = stats;
+      team.stats = { ...stats };
     } else {
-      // Fallback for teams without data
       team.stats = {
-        avgWorkEfficiency: 85,
-        avgActualWorkHours: 7,
-        avgAttendanceHours: 9,
-        totalEmployees: 100
+        avgWorkEfficiency: team.stats?.avgWorkEfficiency || 0,
+        avgActualWorkHours: team.stats?.avgActualWorkHours || 0,
+        avgAttendanceHours: team.stats?.avgAttendanceHours || 0,
+        totalEmployees: team.stats?.totalEmployees || 0
       };
     }
     return team;
   });
+
+  // 보강: division(담당) 카드의 통계는 최신일 통계가 없어 0이 될 수 있으므로
+  // 30일 구간의 실제 합계/Man-Day 기반으로 재계산하여 주입
+  try {
+    const { startDate, endDate } = get30DayDateRange();
+    const divisionTeams = teams.filter((t: any) => t.orgLevel === 'division');
+    divisionTeams.forEach((div: any) => {
+      const row = db.prepare(
+        `SELECT 
+           COUNT(DISTINCT dar.employee_id) as unique_employees,
+           COUNT(*) as man_days,
+           SUM(dar.actual_work_hours) as sum_actual,
+           SUM(dar.claimed_work_hours) as sum_claimed
+         FROM daily_analysis_results dar
+         JOIN employees e ON e.employee_id = dar.employee_id
+         WHERE dar.analysis_date BETWEEN ? AND ?
+           AND e.team_name IN (
+             SELECT org_name FROM organization_master
+             WHERE parent_org_code = ? AND org_level = 'team'
+           )`
+      ).get(startDate, endDate, div.orgCode) as any;
+
+      const manDays = row?.man_days || 0;
+      const sumActual = row?.sum_actual || 0;
+      const sumClaimed = row?.sum_claimed || 0;
+      const avgWorkHours = manDays > 0 ? Math.round((sumActual / manDays) * 10) / 10 : 0;
+      const avgClaimedHours = manDays > 0 ? Math.round((sumClaimed / manDays) * 10) / 10 : 0;
+      const avgEfficiency = sumClaimed > 0 ? Math.round((sumActual / sumClaimed) * 1000) / 10 : 0;
+
+      div.stats = {
+        ...(div.stats || {}),
+        avgWorkEfficiency: avgEfficiency,
+        avgActualWorkHours: avgWorkHours,
+        avgAttendanceHours: avgClaimedHours,
+        totalEmployees: div.stats?.totalEmployees || row?.unique_employees || 0
+      };
+    });
+  } catch (e) {
+    console.error('Failed to compute division stats:', e);
+  }
   
   // Calculate totals and weighted averages based on real man-days (30일 누적)
   const { startDate, endDate } = get30DayDateRange();

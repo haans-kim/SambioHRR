@@ -67,7 +67,7 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
       JOIN employees e ON e.employee_id = weekly_totals.employee_id
       ${centerFilter ? "WHERE e.center_name = ?" : ""}
       GROUP BY e.team_name
-    `).all(centerFilter ? centerFilter : undefined) as any[];
+    `).all(...(centerFilter ? [centerFilter] : [])) as any[];
     
     const weeklyDataMap = new Map<string, { avgWeeklyWorkHours: number; avgWeeklyClaimedHours: number }>();
     weeklyData.forEach(row => {
@@ -145,7 +145,7 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
       JOIN employees e ON dar.employee_id = e.employee_id
       ${teamFilter ? "WHERE e.team_name = ?" : ""}
       GROUP BY e.group_name
-    `).all(teamFilter ? teamFilter : undefined) as any[];
+    `).all(...(teamFilter ? [teamFilter] : [])) as any[];
     
     // Get organization_master mapping for proper org_code
     const orgMapping = db.prepare(`
@@ -178,7 +178,7 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
       JOIN employees e ON e.employee_id = weekly_totals.employee_id
       ${teamFilter ? "WHERE e.team_name = ?" : ""}
       GROUP BY e.group_name
-    `).all(teamFilter ? teamFilter : undefined) as any[];
+    `).all(...(teamFilter ? [teamFilter] : [])) as any[];
     
     const weeklyDataMap = new Map<string, { avgWeeklyWorkHours: number; avgWeeklyClaimedHours: number }>();
     weeklyData.forEach(row => {

@@ -168,7 +168,45 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
     groupRows.forEach(r => groupCounts.set(r.name, r.cnt || 0));
   } catch {}
 
-  return results.map(row => ({
+  return results.map(row => {
+    // compute totalEmployees (30-day unique) per org
+    const computedTotal = (() => {
+      if (row.orgLevel === 'center') {
+        return centerCounts.get(row.orgName) || 0;
+      }
+      if (row.orgLevel === 'team') {
+        return teamCounts.get(row.orgName) || 0;
+      }
+      if (row.orgLevel === 'group') {
+        return groupCounts.get(row.orgName) || 0;
+      }
+      if (row.orgLevel === 'division') {
+        try {
+          // 1) 우선 하위 팀들의 30일 유니크 합으로 시도
+          const childTeams = db.prepare(`
+            SELECT org_name as name FROM organization_master
+            WHERE parent_org_code = ? AND org_level = 'team'
+          `).all(row.orgCode) as any[];
+          const sumFromTeams = childTeams.reduce((s, t) => s + (teamCounts.get(t.name) || 0), 0);
+          if (sumFromTeams > 0) return sumFromTeams;
+          // 2) 합산이 0이면 직접 조인 쿼리로 계산(팀명이 조직마스터와 다를 가능성 대비)
+          const r = db.prepare(`
+            SELECT COUNT(DISTINCT dar.employee_id) as cnt
+            FROM daily_analysis_results dar
+            JOIN employees e ON e.employee_id = dar.employee_id
+            WHERE dar.analysis_date BETWEEN ? AND ?
+              AND e.team_name IN (
+                SELECT org_name FROM organization_master
+                WHERE parent_org_code = ? AND org_level = 'team'
+              )
+          `).get(start, end, row.orgCode) as any;
+          return r?.cnt || 0;
+        } catch { return row.totalEmployees || 0; }
+      }
+      return row.totalEmployees || 0;
+    })();
+
+    return ({
     orgCode: row.orgCode,
     orgName: row.orgName,
     orgLevel: row.orgLevel,
@@ -176,47 +214,26 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
     displayOrder: row.displayOrder,
     isActive: Boolean(row.isActive),
     childrenCount: row.childrenCount || 0,
-    stats: row.avgWorkEfficiency ? {
-      id: 0,
-      orgCode: row.orgCode,
-      workDate: new Date(workDate),
-      avgWorkEfficiency: row.avgWorkEfficiency || 0,
-      avgActualWorkHours: row.avgActualWorkHours || 0,
-      avgAttendanceHours: row.avgAttendanceHours || 0,
-      totalEmployees: (() => {
-        // Override counts with 30-day unique counts for consistency
-        if (row.orgLevel === 'center') {
-          return centerCounts.get(row.orgName) || 0;
-        }
-        if (row.orgLevel === 'team') {
-          return teamCounts.get(row.orgName) || 0;
-        }
-        if (row.orgLevel === 'group') {
-          return groupCounts.get(row.orgName) || 0;
-        }
-        if (row.orgLevel === 'division') {
-          // Sum child team unique counts
-          try {
-            const childTeams = db.prepare(`
-              SELECT org_name as name FROM organization_master
-              WHERE parent_org_code = ? AND org_level = 'team'
-            `).all(row.orgCode) as any[];
-            return childTeams.reduce((s, t) => s + (teamCounts.get(t.name) || 0), 0);
-          } catch { return row.totalEmployees || 0; }
-        }
-        return row.totalEmployees || 0;
-      })(),
-      flexibleWorkCount: 0,
-      elasticWorkCount: 0,
-      avgMeetingHours: 0,
-      avgMealHours: 0,
-      avgMovementHours: 0,
-      avgRestHours: 0,
-      avgDataConfidence: 0,
-      stdActualWorkHours: 0,
-      stdWorkEfficiency: 0,
-      minWorkEfficiency: 0,
-      maxWorkEfficiency: 0
-    } : undefined
-  }));
+      stats: {
+        id: 0,
+        orgCode: row.orgCode,
+        workDate: new Date(workDate),
+        avgWorkEfficiency: row.avgWorkEfficiency || 0,
+        avgActualWorkHours: row.avgActualWorkHours || 0,
+        avgAttendanceHours: row.avgAttendanceHours || 0,
+        totalEmployees: computedTotal,
+        flexibleWorkCount: 0,
+        elasticWorkCount: 0,
+        avgMeetingHours: 0,
+        avgMealHours: 0,
+        avgMovementHours: 0,
+        avgRestHours: 0,
+        avgDataConfidence: 0,
+        stdActualWorkHours: 0,
+        stdWorkEfficiency: 0,
+        minWorkEfficiency: 0,
+        maxWorkEfficiency: 0
+      }
+    });
+  });
 }
