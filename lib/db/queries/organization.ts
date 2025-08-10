@@ -124,6 +124,50 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
   
   const results = stmt.all(workDate, level) as any[];
   
+  // Compute 30-day unique employee counts by center/team/group to standardize 'totalEmployees'
+  const centerCounts = new Map<string, number>();
+  const teamCounts = new Map<string, number>();
+  const groupCounts = new Map<string, number>();
+  try {
+    // 30-day window
+    const range = db.prepare(`
+      SELECT date(MAX(analysis_date), '-30 days') as startDate, MAX(analysis_date) as endDate
+      FROM daily_analysis_results
+    `).get() as any;
+    const start = range?.startDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+    const end = range?.endDate || new Date().toISOString().split('T')[0];
+
+    const centerRows = db.prepare(`
+      SELECT e.center_name as name, COUNT(DISTINCT dar.employee_id) as cnt
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.center_name IS NOT NULL
+      GROUP BY e.center_name
+    `).all(start, end) as any[];
+    centerRows.forEach(r => centerCounts.set(r.name, r.cnt || 0));
+
+    const teamRows = db.prepare(`
+      SELECT e.team_name as name, COUNT(DISTINCT dar.employee_id) as cnt
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.team_name IS NOT NULL
+      GROUP BY e.team_name
+    `).all(start, end) as any[];
+    teamRows.forEach(r => teamCounts.set(r.name, r.cnt || 0));
+
+    const groupRows = db.prepare(`
+      SELECT e.group_name as name, COUNT(DISTINCT dar.employee_id) as cnt
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.group_name IS NOT NULL
+      GROUP BY e.group_name
+    `).all(start, end) as any[];
+    groupRows.forEach(r => groupCounts.set(r.name, r.cnt || 0));
+  } catch {}
+
   return results.map(row => ({
     orgCode: row.orgCode,
     orgName: row.orgName,
@@ -139,7 +183,29 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
       avgWorkEfficiency: row.avgWorkEfficiency || 0,
       avgActualWorkHours: row.avgActualWorkHours || 0,
       avgAttendanceHours: row.avgAttendanceHours || 0,
-      totalEmployees: row.totalEmployees || 0,
+      totalEmployees: (() => {
+        // Override counts with 30-day unique counts for consistency
+        if (row.orgLevel === 'center') {
+          return centerCounts.get(row.orgName) || 0;
+        }
+        if (row.orgLevel === 'team') {
+          return teamCounts.get(row.orgName) || 0;
+        }
+        if (row.orgLevel === 'group') {
+          return groupCounts.get(row.orgName) || 0;
+        }
+        if (row.orgLevel === 'division') {
+          // Sum child team unique counts
+          try {
+            const childTeams = db.prepare(`
+              SELECT org_name as name FROM organization_master
+              WHERE parent_org_code = ? AND org_level = 'team'
+            `).all(row.orgCode) as any[];
+            return childTeams.reduce((s, t) => s + (teamCounts.get(t.name) || 0), 0);
+          } catch { return row.totalEmployees || 0; }
+        }
+        return row.totalEmployees || 0;
+      })(),
       flexibleWorkCount: 0,
       elasticWorkCount: 0,
       avgMeetingHours: 0,

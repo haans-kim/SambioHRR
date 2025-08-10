@@ -8,7 +8,6 @@ import { getTeamStats } from '@/lib/db/queries/teamStats';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
 import { get30DayDateRange } from '@/lib/db/queries/analytics';
-import db from '@/lib/db/client';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -83,15 +82,14 @@ export async function GET(request: NextRequest) {
     
     // Check if this center has divisions
     const divisions = children.filter((org: any) => org.orgLevel === 'division');
-    if (divisions.length > 0) {
-      // Show divisions
-      teams = getOrganizationsWithStats('division')
-        .filter((div: any) => div.parentOrgCode === centerCode);
-    } else {
-      // Show teams directly
-      teams = getOrganizationsWithStats('team')
-        .filter((team: any) => team.parentOrgCode === centerCode);
-    }
+    // Always show both: 센터 직속 팀 + 담당 목록
+    const centerTeams = getOrganizationsWithStats('team')
+      .filter((team: any) => team.parentOrgCode === centerCode)
+      .map((t: any) => ({ ...t, orgLevel: 'team' }));
+    const centerDivisions = getOrganizationsWithStats('division')
+      .filter((div: any) => div.parentOrgCode === centerCode)
+      .map((d: any) => ({ ...d, orgLevel: 'division' }));
+    teams = [...centerDivisions, ...centerTeams];
 
     // breadcrumb: 센터명
     if (parentOrg) {

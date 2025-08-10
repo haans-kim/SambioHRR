@@ -19,7 +19,7 @@ export function CenterGrid({ organizations }: CenterGridProps) {
     if (hasDivisions && org.childrenCount && org.childrenCount > 0) {
       router.push(`/division?center=${org.orgCode}`);
     } else {
-      router.push(`/team?center=${org.orgCode}`);
+      router.push(`/teams?center=${org.orgCode}`);
     }
   };
 

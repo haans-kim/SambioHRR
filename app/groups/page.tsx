@@ -30,7 +30,13 @@ export default function GroupsPage() {
   const searchParams = useSearchParams();
   const teamCode = searchParams.get('team');
   
-  const [selectedMetric, setSelectedMetric] = useState<MetricType>('efficiency');
+  const [selectedMetric, setSelectedMetric] = useState<MetricType>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('hrDashboard.selectedMetric') as MetricType | null;
+      if (saved) return saved;
+    }
+    return 'efficiency';
+  });
   const [data, setData] = useState<GroupData | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -31,7 +31,13 @@ export default function TeamsPage() {
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
   
-  const [selectedMetric, setSelectedMetric] = useState<MetricType>('efficiency');
+  const [selectedMetric, setSelectedMetric] = useState<MetricType>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('hrDashboard.selectedMetric') as MetricType | null;
+      if (saved) return saved;
+    }
+    return 'efficiency';
+  });
   const [data, setData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
 

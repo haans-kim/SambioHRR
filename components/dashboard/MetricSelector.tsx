@@ -10,6 +10,17 @@ interface MetricSelectorProps {
 }
 
 export function MetricSelector({ selectedMetric, onMetricChange }: MetricSelectorProps) {
+  // 선택값을 로컬스토리지에 지속
+  // 키: hrDashboard.selectedMetric
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = window.localStorage.getItem('hrDashboard.selectedMetric');
+      if (saved && saved !== selectedMetric) {
+        // 외부에서 state를 관리하므로, 여기서 직접 set은 못함. 호출 측에서 초기값을 저장/복원하도록 권장.
+      }
+    } catch {}
+  }
+
   const metrics = [
     { id: 'weeklyClaimedHours' as MetricType, label: '주간 근무시간' },
     { id: 'weeklyWorkHours' as MetricType, label: '주간 작업추정시간' },
@@ -23,7 +34,10 @@ export function MetricSelector({ selectedMetric, onMetricChange }: MetricSelecto
       {metrics.map((metric) => (
         <button
           key={metric.id}
-          onClick={() => onMetricChange(metric.id)}
+          onClick={() => {
+            try { window.localStorage.setItem('hrDashboard.selectedMetric', metric.id); } catch {}
+            onMetricChange(metric.id);
+          }}
           className={cn(
             "px-4 py-2 text-sm font-medium rounded-md transition-all",
             selectedMetric === metric.id

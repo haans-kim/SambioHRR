@@ -77,6 +77,17 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
       });
     });
     
+    // 30일 유니크 인원으로 totalEmployees 재계산 (팀)
+    const teamUniqueRows = db.prepare(`
+      SELECT e.team_name as name, COUNT(DISTINCT dar.employee_id) as cnt
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
+      GROUP BY e.team_name
+    `).all() as any[];
+    const teamUnique = new Map<string, number>();
+    teamUniqueRows.forEach(r => teamUnique.set(r.name, r.cnt || 0));
+
     // Convert to TeamStats format
     teamSummaries.forEach(summary => {
       // Use org_code from organization_master if available, otherwise use teamId
@@ -90,7 +101,7 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
         avgAttendanceHours: summary.avgWorkHours || 0,  // Using avgWorkHours as attendance hours
         avgWeeklyWorkHours: weeklyStats?.avgWeeklyWorkHours || (summary.avgActualWorkHours * 5) || 0,
         avgWeeklyClaimedHours: weeklyStats?.avgWeeklyClaimedHours || (summary.avgWorkHours * 5) || 0,
-        totalEmployees: summary.analyzedEmployees || 0
+        totalEmployees: teamUnique.get(summary.teamName) || summary.analyzedEmployees || 0
       });
     });
     
@@ -177,6 +188,17 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
       });
     });
     
+    // 30일 유니크 인원으로 totalEmployees 재계산 (그룹)
+    const groupUniqueRows = db.prepare(`
+      SELECT e.group_name as name, COUNT(DISTINCT dar.employee_id) as cnt
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
+      GROUP BY e.group_name
+    `).all() as any[];
+    const groupUnique = new Map<string, number>();
+    groupUniqueRows.forEach(r => groupUnique.set(r.name, r.cnt || 0));
+
     // Convert to TeamStats format
     groupSummaries.forEach(summary => {
       // Use org_code from organization_master if available, otherwise use groupId
@@ -190,7 +212,7 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         avgAttendanceHours: summary.avgActualWorkHours || 0,  // Using actual work hours as attendance hours for now
         avgWeeklyWorkHours: weeklyStats?.avgWeeklyWorkHours || (summary.avgActualWorkHours * 5) || 0,
         avgWeeklyClaimedHours: weeklyStats?.avgWeeklyClaimedHours || (summary.avgActualWorkHours * 5) || 0,
-        totalEmployees: summary.analyzedEmployees || 0
+        totalEmployees: groupUnique.get(summary.groupName) || summary.analyzedEmployees || 0
       });
     });
     

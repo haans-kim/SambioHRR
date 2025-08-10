@@ -38,7 +38,8 @@ export function DashboardLayout({
   const defaultBreadcrumb = [{ label: "센터", href: "/" } as { label: string; href?: string }];
   if (parentOrg) {
     if (parentOrg.orgLevel === 'center') {
-      defaultBreadcrumb.push({ label: parentOrg.orgName, href: `/division?center=${parentOrg.orgCode}` });
+      // 센터 클릭 시 기본 이동: 팀 목록 (센터에 담당이 있어도 우선 팀 페이지로 연결)
+      defaultBreadcrumb.push({ label: parentOrg.orgName, href: `/teams?center=${parentOrg.orgCode}` });
     } else if (parentOrg.orgLevel === 'division') {
       defaultBreadcrumb.push({ label: "담당" });
       defaultBreadcrumb.push({ label: parentOrg.orgName });

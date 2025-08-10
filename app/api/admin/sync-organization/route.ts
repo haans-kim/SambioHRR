@@ -77,6 +77,13 @@ export async function POST(request: NextRequest) {
         const setTeam = new Map<string, { code: string, parent: string }>();
         const setGroup = new Map<string, { code: string, parent: string, name: string }>();
 
+        const isPlaceholder = (s?: string) => {
+          const v = (s || '').toString().trim();
+          if (!v) return true;
+          const lowered = v.toLowerCase();
+          return v === '-' || v === '—' || v === '–' || lowered === 'n/a' || lowered === 'null';
+        };
+
         for (const r of raw) {
           const centerName = (r.center || '').toString().trim();
           if (!centerName) continue;
@@ -93,7 +100,7 @@ export async function POST(request: NextRequest) {
           }
 
           // division (BU)
-          if (buName) {
+          if (buName && !isPlaceholder(buName)) {
             const key = `${centerName}>${buName}`;
             if (!setDivision.has(key)) {
               setDivision.set(key, { code: makeCode('DIV', key), parent: centerCode });
@@ -101,7 +108,7 @@ export async function POST(request: NextRequest) {
           }
 
           // team (담당명과 동일한 팀명은 생성하지 않음 → 중복 방지)
-          if (teamName && teamName !== buName) {
+          if (teamName && !isPlaceholder(teamName) && teamName !== buName && teamName !== centerName) {
             const key = `${centerName}>${buName}>${teamName}`;
             const parentCode = buName ? setDivision.get(`${centerName}>${buName}`)?.code || centerCode : centerCode;
             if (!setTeam.has(key)) {
@@ -110,13 +117,13 @@ export async function POST(request: NextRequest) {
           }
 
           // group (leaf)
-          if (groupName || deptCode) {
+          if ((groupName && !isPlaceholder(groupName)) || deptCode) {
             const key = `${centerName}>${buName}>${teamName}>${groupName || deptCode}`;
             const parentKey = `${centerName}>${buName}>${teamName}`;
             const parentCode = setTeam.get(parentKey)?.code || (buName ? setDivision.get(`${centerName}>${buName}`)?.code : setCenter.get(centerName));
             const code = deptCode ? deptCode : makeCode('GROUP', key);
             // BU명과 동일하거나 팀명과 동일한 그룹명은 생성하지 않음 (중복 방지)
-            if (!setGroup.has(key) && parentCode && groupName !== buName && groupName !== teamName) {
+            if (!setGroup.has(key) && parentCode && groupName !== buName && groupName !== teamName && groupName !== centerName) {
               setGroup.set(key, { code, parent: parentCode, name: groupName || deptCode });
             }
           }

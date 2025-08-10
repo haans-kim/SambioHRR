@@ -23,7 +23,13 @@ export function TeamGrid({ teams }: TeamGridProps) {
           totalEmployees={team.stats?.totalEmployees || 0}
           avgWorkHours={team.stats?.avgActualWorkHours || 0}
           childrenCount={team.childrenCount}
-          onClick={() => router.push(`/group?team=${team.orgCode}`)}
+          onClick={() => {
+            if (team.orgLevel === 'division') {
+              router.push(`/teams?division=${team.orgCode}`);
+            } else {
+              router.push(`/groups?team=${team.orgCode}`);
+            }
+          }}
           size="medium"
         />
       ))}
