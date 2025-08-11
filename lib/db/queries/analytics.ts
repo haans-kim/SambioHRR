@@ -302,25 +302,15 @@ export function getOrganizationWeeklyStats30Days() {
   
   const query = `
     SELECT 
-      COUNT(DISTINCT emp_weekly.employee_id) as totalEmployees,
-      ROUND(AVG(emp_weekly.avgEfficiency), 1) as avgEfficiencyRatio,
-      ROUND(AVG(emp_weekly.weeklyWorkHours), 1) as avgWeeklyWorkHours,
-      ROUND(AVG(emp_weekly.weeklyClaimedHours), 1) as avgWeeklyClaimedHours,
-      ROUND(AVG(emp_weekly.avgConfidence), 1) as avgConfidenceScore
-    FROM (
-      SELECT 
-        dar.employee_id,
-        strftime('%W-%Y', dar.analysis_date) as week,
-        AVG(dar.efficiency_ratio) as avgEfficiency,
-        SUM(dar.actual_work_hours) as weeklyWorkHours,
-        SUM(dar.claimed_work_hours) as weeklyClaimedHours,
-        AVG(dar.confidence_score) as avgConfidence
-      FROM daily_analysis_results dar
-      LEFT JOIN employees e ON e.employee_id = dar.employee_id
-      WHERE dar.analysis_date BETWEEN ? AND ?
-        AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
-      GROUP BY dar.employee_id, strftime('%W-%Y', dar.analysis_date)
-    ) emp_weekly
+      COUNT(DISTINCT dar.employee_id) as totalEmployees,
+      ROUND(AVG(dar.efficiency_ratio), 1) as avgEfficiencyRatio,
+      ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
+      ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+      ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore
+    FROM daily_analysis_results dar
+    LEFT JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
   `;
   
   const stmt = db.prepare(query);
@@ -508,19 +498,12 @@ export function getGradeWeeklyClaimedHoursMatrix30Days() {
     SELECT 
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
-      COUNT(DISTINCT weekly_claimed.employee_id) as employeeCount,
-      ROUND(AVG(weekly_claimed.weeklyTotal), 1) as avgWeeklyClaimedHours
-    FROM (
-      SELECT 
-        employee_id,
-        strftime('%W-%Y', analysis_date) as week,
-        SUM(claimed_work_hours) as weeklyTotal
-      FROM daily_analysis_results
-      WHERE analysis_date BETWEEN ? AND ?
-      GROUP BY employee_id, strftime('%W-%Y', analysis_date)
-    ) weekly_claimed
-    JOIN employees e ON e.employee_id = weekly_claimed.employee_id
-    WHERE e.job_grade IS NOT NULL
+      COUNT(DISTINCT dar.employee_id) as employeeCount,
+      ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
       AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     GROUP BY e.center_name, e.job_grade
@@ -559,19 +542,12 @@ export function getGradeWeeklyWorkHoursMatrix30Days() {
     SELECT 
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
-      COUNT(DISTINCT weekly_work.employee_id) as employeeCount,
-      ROUND(AVG(weekly_work.weeklyTotal), 1) as avgWeeklyWorkHours
-    FROM (
-      SELECT 
-        employee_id,
-        strftime('%W-%Y', analysis_date) as week,
-        SUM(actual_work_hours) as weeklyTotal
-      FROM daily_analysis_results
-      WHERE analysis_date BETWEEN ? AND ?
-      GROUP BY employee_id, strftime('%W-%Y', analysis_date)
-    ) weekly_work
-    JOIN employees e ON e.employee_id = weekly_work.employee_id
-    WHERE e.job_grade IS NOT NULL
+      COUNT(DISTINCT dar.employee_id) as employeeCount,
+      ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
       AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     GROUP BY e.center_name, e.job_grade

@@ -1,5 +1,5 @@
 import db from '../client';
-import { getTeamSummary, getGroupSummary, getLatestAnalysisDate } from './analytics';
+import { getLatestAnalysisDate } from './analytics';
 
 interface TeamStats {
   orgCode: string;
@@ -33,8 +33,20 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
       }
     }
     
-    // Get team summaries using the view (same as center analysis)
-    const teamSummaries = getTeamSummary(centerFilter, undefined, latestDate);
+    // Get team summaries for 30-day period instead of just latest date
+    const teamSummaries = db.prepare(`
+      SELECT 
+        e.team_name as teamName,
+        COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
+        ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgEfficiencyRatio,
+        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
+        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours
+      FROM daily_analysis_results dar
+      JOIN employees e ON dar.employee_id = e.employee_id
+      WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
+      ${centerFilter ? "AND e.center_name = ?" : ""}
+      GROUP BY e.team_name
+    `).all(...(centerFilter ? [centerFilter] : [])) as any[];
     
     // Get organization_master mapping for proper org_code
     const orgMapping = db.prepare(`
@@ -48,34 +60,6 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
       nameToCodeMap.set(org.org_name, org.org_code);
     });
     
-    // Get weekly data from database
-    const weeklyData = db.prepare(`
-      SELECT 
-        e.team_name,
-        AVG(weekly_totals.weekly_work_hours) as avg_weekly_work_hours,
-        AVG(weekly_totals.weekly_claimed_hours) as avg_weekly_claimed_hours
-      FROM (
-        SELECT 
-          dar.employee_id,
-          strftime('%W-%Y', dar.analysis_date) as week,
-          SUM(dar.actual_work_hours) as weekly_work_hours,
-          SUM(dar.claimed_work_hours) as weekly_claimed_hours
-        FROM daily_analysis_results dar
-        WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
-        GROUP BY dar.employee_id, strftime('%W-%Y', dar.analysis_date)
-      ) weekly_totals
-      JOIN employees e ON e.employee_id = weekly_totals.employee_id
-      ${centerFilter ? "WHERE e.center_name = ?" : ""}
-      GROUP BY e.team_name
-    `).all(...(centerFilter ? [centerFilter] : [])) as any[];
-    
-    const weeklyDataMap = new Map<string, { avgWeeklyWorkHours: number; avgWeeklyClaimedHours: number }>();
-    weeklyData.forEach(row => {
-      weeklyDataMap.set(row.team_name, {
-        avgWeeklyWorkHours: row.avg_weekly_work_hours || 0,
-        avgWeeklyClaimedHours: row.avg_weekly_claimed_hours || 0
-      });
-    });
     
     // 30일 유니크 인원으로 totalEmployees 재계산 (팀)
     const teamUniqueRows = db.prepare(`
@@ -92,7 +76,6 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
     teamSummaries.forEach(summary => {
       // Use org_code from organization_master if available, otherwise use teamId
       const orgCode = nameToCodeMap.get(summary.teamName) || summary.teamId;
-      const weeklyStats = weeklyDataMap.get(summary.teamName);
       
       statsMap.set(orgCode, {
         orgCode: orgCode,
@@ -140,7 +123,8 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         e.group_name as groupName,
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
         ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgEfficiencyRatio,
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours
+        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
+        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours
       FROM daily_analysis_results dar
       JOIN employees e ON dar.employee_id = e.employee_id
       ${teamFilter ? "WHERE e.team_name = ?" : ""}
@@ -159,34 +143,6 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
       nameToCodeMap.set(org.org_name, org.org_code);
     });
     
-    // Get weekly data from database
-    const weeklyData = db.prepare(`
-      SELECT 
-        e.group_name,
-        AVG(weekly_totals.weekly_work_hours) as avg_weekly_work_hours,
-        AVG(weekly_totals.weekly_claimed_hours) as avg_weekly_claimed_hours
-      FROM (
-        SELECT 
-          dar.employee_id,
-          strftime('%W-%Y', dar.analysis_date) as week,
-          SUM(dar.actual_work_hours) as weekly_work_hours,
-          SUM(dar.claimed_work_hours) as weekly_claimed_hours
-        FROM daily_analysis_results dar
-        WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
-        GROUP BY dar.employee_id, strftime('%W-%Y', dar.analysis_date)
-      ) weekly_totals
-      JOIN employees e ON e.employee_id = weekly_totals.employee_id
-      ${teamFilter ? "WHERE e.team_name = ?" : ""}
-      GROUP BY e.group_name
-    `).all(...(teamFilter ? [teamFilter] : [])) as any[];
-    
-    const weeklyDataMap = new Map<string, { avgWeeklyWorkHours: number; avgWeeklyClaimedHours: number }>();
-    weeklyData.forEach(row => {
-      weeklyDataMap.set(row.group_name, {
-        avgWeeklyWorkHours: row.avg_weekly_work_hours || 0,
-        avgWeeklyClaimedHours: row.avg_weekly_claimed_hours || 0
-      });
-    });
     
     // 30일 유니크 인원으로 totalEmployees 재계산 (그룹)
     const groupUniqueRows = db.prepare(`
@@ -203,7 +159,6 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
     groupSummaries.forEach(summary => {
       // Use org_code from organization_master if available, otherwise use groupId
       const orgCode = nameToCodeMap.get(summary.groupName) || summary.groupId;
-      const weeklyStats = weeklyDataMap.get(summary.groupName);
       
       statsMap.set(orgCode, {
         orgCode: orgCode,
