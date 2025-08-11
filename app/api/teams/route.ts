@@ -117,6 +117,8 @@ export async function GET(request: NextRequest) {
         avgWorkEfficiency: team.stats?.avgWorkEfficiency || 0,
         avgActualWorkHours: team.stats?.avgActualWorkHours || 0,
         avgAttendanceHours: team.stats?.avgAttendanceHours || 0,
+        avgWeeklyWorkHours: team.stats?.avgWeeklyWorkHours || (team.stats?.avgActualWorkHours * 5) || 0,
+        avgWeeklyClaimedHours: team.stats?.avgWeeklyClaimedHours || (team.stats?.avgAttendanceHours * 5) || 0,
         totalEmployees: team.stats?.totalEmployees || 0
       };
     }
@@ -156,6 +158,8 @@ export async function GET(request: NextRequest) {
         avgWorkEfficiency: avgEfficiency,
         avgActualWorkHours: avgWorkHours,
         avgAttendanceHours: avgClaimedHours,
+        avgWeeklyWorkHours: avgWorkHours * 5,
+        avgWeeklyClaimedHours: avgClaimedHours * 5,
         totalEmployees: div.stats?.totalEmployees || row?.unique_employees || 0
       };
     });

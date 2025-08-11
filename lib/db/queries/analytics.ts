@@ -33,6 +33,7 @@ export interface TeamSummary {
   avgEfficiencyRatio: number;
   avgActualWorkHours: number;
   avgWorkHours: number;
+  avgClaimedHours: number;
   avgMeetingHours: number;
   avgMealHours: number;
 }
@@ -46,6 +47,7 @@ export interface GroupSummary {
   analyzedEmployees: number;
   avgEfficiencyRatio: number;
   avgActualWorkHours: number;
+  avgClaimedHours: number;
 }
 
 export interface GradeDistribution {
@@ -150,6 +152,7 @@ export function getTeamSummary(centerId?: string, teamId?: string, date?: string
       avg_efficiency_ratio as avgEfficiencyRatio,
       avg_actual_work_hours as avgActualWorkHours,
       avg_work_hours as avgWorkHours,
+      avg_claimed_hours as avgClaimedHours,
       avg_meeting_hours as avgMeetingHours,
       avg_meal_hours as avgMealHours
     FROM v_team_daily_summary
@@ -192,7 +195,8 @@ export function getGroupSummary(teamId?: string, groupId?: string, date?: string
       analysis_date as analysisDate,
       analyzed_employees as analyzedEmployees,
       avg_efficiency_ratio as avgEfficiencyRatio,
-      avg_actual_work_hours as avgActualWorkHours
+      avg_actual_work_hours as avgActualWorkHours,
+      avg_claimed_hours as avgClaimedHours
     FROM v_group_daily_summary
     WHERE analysis_date = ?
   `;

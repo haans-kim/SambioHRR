@@ -98,9 +98,9 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
         orgCode: orgCode,
         avgWorkEfficiency: summary.avgEfficiencyRatio || 0,
         avgActualWorkHours: summary.avgActualWorkHours || 0,
-        avgAttendanceHours: summary.avgWorkHours || 0,  // Using avgWorkHours as attendance hours
-        avgWeeklyWorkHours: weeklyStats?.avgWeeklyWorkHours || (summary.avgActualWorkHours * 5) || 0,
-        avgWeeklyClaimedHours: weeklyStats?.avgWeeklyClaimedHours || (summary.avgWorkHours * 5) || 0,
+        avgAttendanceHours: summary.avgClaimedHours || 0,  // Using avgClaimedHours as attendance hours
+        avgWeeklyWorkHours: (summary.avgActualWorkHours * 5) || 0,
+        avgWeeklyClaimedHours: (summary.avgClaimedHours * 5) || 0,
         totalEmployees: teamUnique.get(summary.teamName) || summary.analyzedEmployees || 0
       });
     });
@@ -209,9 +209,9 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         orgCode: orgCode,
         avgWorkEfficiency: summary.avgEfficiencyRatio || 0,
         avgActualWorkHours: summary.avgActualWorkHours || 0,
-        avgAttendanceHours: summary.avgActualWorkHours || 0,  // Using actual work hours as attendance hours for now
-        avgWeeklyWorkHours: weeklyStats?.avgWeeklyWorkHours || (summary.avgActualWorkHours * 5) || 0,
-        avgWeeklyClaimedHours: weeklyStats?.avgWeeklyClaimedHours || (summary.avgActualWorkHours * 5) || 0,
+        avgAttendanceHours: summary.avgClaimedHours || 0,  // Using avgClaimedHours as attendance hours
+        avgWeeklyWorkHours: (summary.avgActualWorkHours * 5) || 0,
+        avgWeeklyClaimedHours: (summary.avgClaimedHours * 5) || 0,
         totalEmployees: groupUnique.get(summary.groupName) || summary.analyzedEmployees || 0
       });
     });

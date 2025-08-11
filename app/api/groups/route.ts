@@ -59,12 +59,14 @@ export async function GET(request: NextRequest) {
     if (stats) {
       group.stats = stats;
     } else {
-      // Fallback for groups without data
+      // No data available for this group
       group.stats = {
-        avgWorkEfficiency: 85,
-        avgActualWorkHours: 7,
-        avgAttendanceHours: 9,
-        totalEmployees: 50
+        avgWorkEfficiency: 0,
+        avgActualWorkHours: 0,
+        avgAttendanceHours: 0,
+        avgWeeklyWorkHours: 0,
+        avgWeeklyClaimedHours: 0,
+        totalEmployees: 0
       };
     }
     return group;
