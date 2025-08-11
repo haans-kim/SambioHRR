@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     if (parentOrg && parentOrg.parentOrgCode) {
       const center = getOrganizationById(parentOrg.parentOrgCode);
       if (center) {
-        breadcrumb.push({ label: center.orgName, href: `/division?center=${center.orgCode}` });
+        breadcrumb.push({ label: center.orgName, href: `/teams?center=${center.orgCode}` });
       }
     }
     if (parentOrg) {
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     // breadcrumb: 센터명
     if (parentOrg) {
-      breadcrumb.push({ label: parentOrg.orgName, href: `/division?center=${parentOrg.orgCode}` });
+      breadcrumb.push({ label: parentOrg.orgName, href: `/teams?center=${parentOrg.orgCode}` });
     }
   } else {
     // Default: show all teams
