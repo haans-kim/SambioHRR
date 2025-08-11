@@ -655,21 +655,14 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
       SELECT 
         e.center_name as centerName,
         'Lv.' || e.job_grade as grade,
-        ROUND(AVG(weekly_data.weeklyTotal), 1) as avgValue
-      FROM (
-        SELECT 
-          employee_id,
-          strftime('%W-%Y', analysis_date) as week,
-          SUM(${column}) as weeklyTotal
-        FROM daily_analysis_results
-        WHERE analysis_date BETWEEN ? AND ?
-          AND ${column} IS NOT NULL
-        GROUP BY employee_id, strftime('%W-%Y', analysis_date)
-      ) weekly_data
-      JOIN employees e ON e.employee_id = weekly_data.employee_id
-      WHERE e.job_grade IS NOT NULL
+        ROUND((SUM(dar.${column}) / COUNT(*)) * 5, 1) as avgValue
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.job_grade IS NOT NULL
         AND e.center_name IS NOT NULL
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.${column} IS NOT NULL
       GROUP BY e.center_name, e.job_grade
       ORDER BY avgValue ASC
     `;
