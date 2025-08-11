@@ -72,6 +72,11 @@ export async function GET(request: NextRequest) {
     return group;
   });
   
+  // Filter out groups with 0 employees when showing all groups
+  if (!teamCode) {
+    groups = groups.filter((group: any) => group.stats?.totalEmployees > 0);
+  }
+  
   // Calculate totals and weighted averages based on real man-days (30일 누적)
   const { startDate, endDate } = get30DayDateRange();
   let totalEmployees = 0;
