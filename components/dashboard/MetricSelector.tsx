@@ -26,7 +26,7 @@ export function MetricSelector({ selectedMetric, onMetricChange }: MetricSelecto
     { id: 'weeklyWorkHours' as MetricType, label: '주간 작업추정시간' },
     { id: 'claimedHours' as MetricType, label: '일간 근무시간' },
     { id: 'workHours' as MetricType, label: '일간 작업추정시간' },
-    { id: 'efficiency' as MetricType, label: '효율성 지표' },
+    { id: 'efficiency' as MetricType, label: '실근무 지표' },
   ];
 
   return (

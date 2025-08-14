@@ -326,7 +326,7 @@ export function CenterLevelGrid({
       <div className="mt-4 p-3 bg-white border border-gray-200 text-gray-900 rounded-lg text-sm max-w-md shadow-sm">
         {selectedMetric === 'efficiency' ? (
           <>
-            <div className="font-semibold text-gray-900">평균 효율성 비율 : {avgEfficiency.toFixed(1)}%</div>
+            <div className="font-semibold text-gray-900">평균 실근무율 : {avgEfficiency.toFixed(1)}%</div>
             <div className="text-xs text-gray-700 mt-1">
               실제 작업시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
             </div>
