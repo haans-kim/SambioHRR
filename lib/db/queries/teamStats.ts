@@ -42,7 +42,7 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours
       FROM daily_analysis_results dar
-      JOIN employees e ON dar.employee_id = e.employee_id
+      JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
       ${centerFilter ? "AND e.center_name = ?" : ""}
       GROUP BY e.team_name
@@ -126,7 +126,7 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours
       FROM daily_analysis_results dar
-      JOIN employees e ON dar.employee_id = e.employee_id
+      JOIN employees e ON e.employee_id = dar.employee_id
       ${teamFilter ? "WHERE e.team_name = ?" : ""}
       GROUP BY e.group_name
     `).all(...(teamFilter ? [teamFilter] : [])) as any[];
