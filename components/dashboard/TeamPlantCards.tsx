@@ -15,12 +15,16 @@ interface TeamPlantCardsProps {
   avgClaimedHours?: number;
   avgWeeklyWorkHours?: number;
   avgWeeklyClaimedHours?: number;
+  avgFocusedWorkHours?: number;
+  avgDataReliability?: number;
   thresholds?: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -37,6 +41,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
   const claimedHours = org.stats?.avgAttendanceHours || 0;
   const weeklyWorkHours = org.stats?.avgWeeklyWorkHours || (workHours * 5);
   const weeklyClaimedHours = org.stats?.avgWeeklyClaimedHours || (claimedHours * 5);
+  const focusedWorkHours = org.stats?.avgFocusedWorkHours || 0;
+  const dataReliability = org.stats?.avgDataReliability || 0;
   const employees = org.stats?.totalEmployees || 0;
 
   const getValue = () => {
@@ -51,6 +57,10 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         return weeklyWorkHours;
       case 'weeklyClaimedHours':
         return weeklyClaimedHours;
+      case 'focusedWorkHours':
+        return focusedWorkHours;
+      case 'dataReliability':
+        return dataReliability;
       default:
         return efficiency;
     }
@@ -65,14 +75,30 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         if (value >= 88.4) return "▲";
         if (value > 73.2) return "●";
         return "▼";
-      } else if (selectedMetric === 'workHours' || selectedMetric === 'weeklyWorkHours') {
+      } else if (selectedMetric === 'workHours') {
         if (value >= 8.0) return "▲";
         if (value >= 6.0) return "●";
         return "▼";
-      } else {
-        // claimedHours or weeklyClaimedHours
+      } else if (selectedMetric === 'claimedHours') {
         if (value >= 9.0) return "▲";
         if (value >= 7.0) return "●";
+        return "▼";
+      } else if (selectedMetric === 'weeklyWorkHours') {
+        if (value >= 45.0) return "▲";
+        if (value >= 35.0) return "●";
+        return "▼";
+      } else if (selectedMetric === 'weeklyClaimedHours') {
+        if (value >= 48.0) return "▲";
+        if (value >= 38.0) return "●";
+        return "▼";
+      } else if (selectedMetric === 'focusedWorkHours') {
+        if (value >= 5.0) return "▲";
+        if (value >= 2.0) return "●";
+        return "▼";
+      } else {
+        // dataReliability
+        if (value >= 85.0) return "▲";
+        if (value >= 70.0) return "●";
         return "▼";
       }
     }
@@ -90,14 +116,30 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         if (value >= 88.4) return "text-blue-600";
         if (value > 73.2) return "text-green-600";
         return "text-red-600";
-      } else if (selectedMetric === 'workHours' || selectedMetric === 'weeklyWorkHours') {
+      } else if (selectedMetric === 'workHours') {
         if (value >= 8.0) return "text-blue-600";
         if (value >= 6.0) return "text-green-600";
         return "text-red-600";
-      } else {
-        // claimedHours or weeklyClaimedHours
+      } else if (selectedMetric === 'claimedHours') {
         if (value >= 9.0) return "text-blue-600";
         if (value >= 7.0) return "text-green-600";
+        return "text-red-600";
+      } else if (selectedMetric === 'weeklyWorkHours') {
+        if (value >= 45.0) return "text-blue-600";
+        if (value >= 35.0) return "text-green-600";
+        return "text-red-600";
+      } else if (selectedMetric === 'weeklyClaimedHours') {
+        if (value >= 48.0) return "text-blue-600";
+        if (value >= 38.0) return "text-green-600";
+        return "text-red-600";
+      } else if (selectedMetric === 'focusedWorkHours') {
+        if (value >= 5.0) return "text-blue-600";
+        if (value >= 2.0) return "text-green-600";
+        return "text-red-600";
+      } else {
+        // dataReliability
+        if (value >= 85.0) return "text-blue-600";
+        if (value >= 70.0) return "text-green-600";
         return "text-red-600";
       }
     }
@@ -115,14 +157,30 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         if (value >= 88.4) return "border-blue-300 bg-blue-50";
         if (value > 73.2) return "border-green-300 bg-green-50";
         return "border-red-300 bg-red-50";
-      } else if (selectedMetric === 'workHours' || selectedMetric === 'weeklyWorkHours') {
+      } else if (selectedMetric === 'workHours') {
         if (value >= 8.0) return "border-blue-300 bg-blue-50";
         if (value >= 6.0) return "border-green-300 bg-green-50";
         return "border-red-300 bg-red-50";
-      } else {
-        // claimedHours or weeklyClaimedHours
+      } else if (selectedMetric === 'claimedHours') {
         if (value >= 9.0) return "border-blue-300 bg-blue-50";
         if (value >= 7.0) return "border-green-300 bg-green-50";
+        return "border-red-300 bg-red-50";
+      } else if (selectedMetric === 'weeklyWorkHours') {
+        if (value >= 45.0) return "border-blue-300 bg-blue-50";
+        if (value >= 35.0) return "border-green-300 bg-green-50";
+        return "border-red-300 bg-red-50";
+      } else if (selectedMetric === 'weeklyClaimedHours') {
+        if (value >= 48.0) return "border-blue-300 bg-blue-50";
+        if (value >= 38.0) return "border-green-300 bg-green-50";
+        return "border-red-300 bg-red-50";
+      } else if (selectedMetric === 'focusedWorkHours') {
+        if (value >= 5.0) return "border-blue-300 bg-blue-50";
+        if (value >= 2.0) return "border-green-300 bg-green-50";
+        return "border-red-300 bg-red-50";
+      } else {
+        // dataReliability
+        if (value >= 85.0) return "border-blue-300 bg-blue-50";
+        if (value >= 70.0) return "border-green-300 bg-green-50";
         return "border-red-300 bg-red-50";
       }
     }
@@ -172,6 +230,10 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         return '주간 작업시간';
       case 'weeklyClaimedHours':
         return '주간 근무시간';
+      case 'focusedWorkHours':
+        return '집중근무시간';
+      case 'dataReliability':
+        return '데이터 신뢰도';
       default:
         return '평균 실근무율';
     }
@@ -235,6 +297,8 @@ export function TeamPlantCards({
   avgClaimedHours = 8.5,
   avgWeeklyWorkHours = 40.0,
   avgWeeklyClaimedHours = 42.5,
+  avgFocusedWorkHours = 4.2,
+  avgDataReliability = 83.6,
   thresholds
 }: TeamPlantCardsProps) {
   const router = useRouter();
@@ -312,14 +376,34 @@ export function TeamPlantCards({
               ▲ 모범사례({thresholds?.weeklyWorkHours?.high}) | ● 양호({thresholds?.weeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyWorkHours?.low})
             </div>
           </>
-        ) : (
+        ) : selectedMetric === 'weeklyClaimedHours' ? (
           <>
             <div className="font-semibold text-gray-900">주간 근무시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
             <div className="text-xs text-gray-700 mt-1">
               주당 신고 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.weeklyClaimedHours?.high}) | ● 양호({thresholds?.weeklyClaimedHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyClaimedHours?.low})
+              ▲ 모범사례({thresholds?.weeklyClaimedHours?.high}) | ● 양호({thresholds?.weeklyClaimedHours?.middle}) | ▼ 관찰협요({thresholds?.weeklyClaimedHours?.low})
+            </div>
+          </>
+        ) : selectedMetric === 'focusedWorkHours' ? (
+          <>
+            <div className="font-semibold text-gray-900">일간 집중근무시간 : {avgFocusedWorkHours.toFixed(1)}h</div>
+            <div className="text-xs text-gray-700 mt-1">
+              집중적으로 업무에 몰입한 시간 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.focusedWorkHours?.high}) | ● 양호({thresholds?.focusedWorkHours?.middle}) | ▼ 관찰필요({thresholds?.focusedWorkHours?.low})
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="font-semibold text-gray-900">데이터 신뢰도 : {avgDataReliability.toFixed(1)}</div>
+            <div className="text-xs text-gray-700 mt-1">
+              데이터 품질 및 정확성 점수 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.dataReliability?.high}) | ● 양호({thresholds?.dataReliability?.middle}) | ▼ 관찰필요({thresholds?.dataReliability?.low})
             </div>
           </>
         )}

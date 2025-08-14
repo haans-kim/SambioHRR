@@ -128,14 +128,18 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
   const centerCounts = new Map<string, number>();
   const teamCounts = new Map<string, number>();
   const groupCounts = new Map<string, number>();
+  
+  // Get 30-day window
+  let range: any;
+  let start: string;
+  let end: string;
   try {
-    // 30-day window
-    const range = db.prepare(`
+    range = db.prepare(`
       SELECT date(MAX(analysis_date), '-30 days') as startDate, MAX(analysis_date) as endDate
       FROM daily_analysis_results
     `).get() as any;
-    const start = range?.startDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
-    const end = range?.endDate || new Date().toISOString().split('T')[0];
+    start = range?.startDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+    end = range?.endDate || new Date().toISOString().split('T')[0];
 
     const centerRows = db.prepare(`
       SELECT e.center_name as name, COUNT(DISTINCT dar.employee_id) as cnt
@@ -166,6 +170,60 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
       GROUP BY e.group_name
     `).all(start, end) as any[];
     groupRows.forEach(r => groupCounts.set(r.name, r.cnt || 0));
+  } catch {
+    start = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+    end = new Date().toISOString().split('T')[0];
+  }
+
+  // Get 30-day statistics for weekly and focused work hours
+
+  const weeklyStats = new Map<string, {avgWeeklyWork: number; avgWeeklyClaimed: number}>();
+  const focusedStats = new Map<string, number>();
+
+  try {
+    // Get weekly work hours by organization
+    const weeklyRows = db.prepare(`
+      SELECT 
+        CASE 
+          WHEN ? = 'center' THEN e.center_name
+          WHEN ? = 'team' THEN e.team_name
+          WHEN ? = 'group' THEN e.group_name
+        END as name,
+        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWork,
+        ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimed
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND CASE 
+          WHEN ? = 'center' THEN e.center_name IS NOT NULL
+          WHEN ? = 'team' THEN e.team_name IS NOT NULL
+          WHEN ? = 'group' THEN e.group_name IS NOT NULL
+        END
+      GROUP BY name
+    `).all(level, level, level, start, end, level, level, level) as any[];
+    weeklyRows.forEach(r => weeklyStats.set(r.name, {avgWeeklyWork: r.avgWeeklyWork || 0, avgWeeklyClaimed: r.avgWeeklyClaimed || 0}));
+
+    // Get focused work hours by organization
+    const focusedRows = db.prepare(`
+      SELECT 
+        CASE 
+          WHEN ? = 'center' THEN e.center_name
+          WHEN ? = 'team' THEN e.team_name
+          WHEN ? = 'group' THEN e.group_name
+        END as name,
+        ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND dar.focused_work_minutes IS NOT NULL
+        AND CASE 
+          WHEN ? = 'center' THEN e.center_name IS NOT NULL
+          WHEN ? = 'team' THEN e.team_name IS NOT NULL
+          WHEN ? = 'group' THEN e.group_name IS NOT NULL
+        END
+      GROUP BY name
+    `).all(level, level, level, start, end, level, level, level) as any[];
+    focusedRows.forEach(r => focusedStats.set(r.name, r.avgFocusedHours || 0));
   } catch {}
 
   return results.map(row => {
@@ -206,6 +264,9 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
       return row.totalEmployees || 0;
     })();
 
+    const weeklyData = weeklyStats.get(row.orgName) || {avgWeeklyWork: 0, avgWeeklyClaimed: 0};
+    const focusedHours = focusedStats.get(row.orgName) || 0;
+
     return ({
     orgCode: row.orgCode,
     orgName: row.orgName,
@@ -232,7 +293,10 @@ export function getOrganizationsWithStats(level: OrgLevel, date?: string): Organ
         stdActualWorkHours: 0,
         stdWorkEfficiency: 0,
         minWorkEfficiency: 0,
-        maxWorkEfficiency: 0
+        maxWorkEfficiency: 0,
+        avgWeeklyWorkHours: weeklyData.avgWeeklyWork,
+        avgWeeklyClaimedHours: weeklyData.avgWeeklyClaimed,
+        avgFocusedWorkHours: focusedHours
       }
     });
   });

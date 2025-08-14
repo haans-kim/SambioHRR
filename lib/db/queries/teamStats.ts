@@ -8,6 +8,8 @@ interface TeamStats {
   avgAttendanceHours: number;
   avgWeeklyWorkHours: number;
   avgWeeklyClaimedHours: number;
+  avgFocusedWorkHours: number;
+  avgDataReliability: number;
   totalEmployees: number;
 }
 
@@ -40,7 +42,9 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
         ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgEfficiencyRatio,
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
-        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours
+        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours,
+        ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours,
+        ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
@@ -84,6 +88,8 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
         avgAttendanceHours: summary.avgClaimedHours || 0,  // Using avgClaimedHours as attendance hours
         avgWeeklyWorkHours: (summary.avgActualWorkHours * 5) || 0,
         avgWeeklyClaimedHours: (summary.avgClaimedHours * 5) || 0,
+        avgFocusedWorkHours: summary.avgFocusedHours || 0,
+        avgDataReliability: summary.avgConfidenceScore || 0,
         totalEmployees: teamUnique.get(summary.teamName) || summary.analyzedEmployees || 0
       });
     });
@@ -124,7 +130,9 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
         ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgEfficiencyRatio,
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
-        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours
+        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours,
+        ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours,
+        ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
       ${teamFilter ? "WHERE e.team_name = ?" : ""}
@@ -167,6 +175,8 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         avgAttendanceHours: summary.avgClaimedHours || 0,  // Using avgClaimedHours as attendance hours
         avgWeeklyWorkHours: (summary.avgActualWorkHours * 5) || 0,
         avgWeeklyClaimedHours: (summary.avgClaimedHours * 5) || 0,
+        avgFocusedWorkHours: summary.avgFocusedHours || 0,
+        avgDataReliability: summary.avgConfidenceScore || 0,
         totalEmployees: groupUnique.get(summary.groupName) || summary.analyzedEmployees || 0
       });
     });

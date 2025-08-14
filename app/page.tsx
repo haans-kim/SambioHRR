@@ -14,17 +14,23 @@ interface DashboardData {
   avgClaimedHours: number;
   avgWeeklyWorkHours: number;
   avgWeeklyClaimedHours: number;
+  avgFocusedWorkHours?: number;
+  avgDataReliability?: number;
   gradeMatrix: any;
   workHoursMatrix: any;
   claimedHoursMatrix: any;
   weeklyWorkHoursMatrix: any;
   weeklyClaimedHoursMatrix: any;
+  focusedWorkHoursMatrix?: any;
+  dataReliabilityMatrix?: any;
   thresholds: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyWorkHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -90,11 +96,15 @@ export default function HomePage() {
         claimedHoursMatrix={data.claimedHoursMatrix}
         weeklyWorkHoursMatrix={data.weeklyWorkHoursMatrix}
         weeklyClaimedHoursMatrix={data.weeklyClaimedHoursMatrix}
+        focusedWorkHoursMatrix={data.focusedWorkHoursMatrix}
+        dataReliabilityMatrix={data.dataReliabilityMatrix}
         avgEfficiency={data.avgEfficiency}
         avgWorkHours={data.avgWorkHours}
         avgClaimedHours={data.avgClaimedHours}
         avgWeeklyWorkHours={data.avgWeeklyWorkHours}
         avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
+        avgFocusedWorkHours={data.avgFocusedWorkHours}
+        avgDataReliability={data.avgDataReliability}
         selectedMetric={selectedMetric}
         thresholds={data.thresholds}
       />

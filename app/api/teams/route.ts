@@ -119,6 +119,8 @@ export async function GET(request: NextRequest) {
         avgAttendanceHours: team.stats?.avgAttendanceHours || 0,
         avgWeeklyWorkHours: team.stats?.avgWeeklyWorkHours || (team.stats?.avgActualWorkHours * 5) || 0,
         avgWeeklyClaimedHours: team.stats?.avgWeeklyClaimedHours || (team.stats?.avgAttendanceHours * 5) || 0,
+        avgFocusedWorkHours: team.stats?.avgFocusedWorkHours || 0,
+        avgDataReliability: team.stats?.avgDataReliability || 0,
         totalEmployees: team.stats?.totalEmployees || 0
       };
     }
@@ -176,6 +178,7 @@ export async function GET(request: NextRequest) {
   let avgEfficiency = 0;
   let avgWorkHours = 0;
   let avgClaimedHours = 0;
+  let avgFocusedWorkHours = 0;
 
   try {
     let where = 'dar.analysis_date BETWEEN ? AND ?';
@@ -223,11 +226,80 @@ export async function GET(request: NextRequest) {
   // Weekly averages (multiply daily by 5)
   const avgWeeklyWorkHours = avgWorkHours * 5;
   const avgWeeklyClaimedHours = avgClaimedHours * 5;
+  
+  // Calculate average focused work hours
+  try {
+    let where = 'dar.analysis_date BETWEEN ? AND ?';
+    const params: any[] = [startDate, endDate];
+
+    if (divisionCode) {
+      const divisionTeams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
+      const teamNames = divisionTeams.map((t: any) => t.orgName).filter(Boolean);
+      if (teamNames.length > 0) {
+        where += ` AND e.team_name IN (${teamNames.map(() => '?').join(',')})`;
+        params.push(...teamNames);
+      } else {
+        where += ' AND 1=0';
+      }
+    } else if (centerCode && parentOrg) {
+      where += ' AND e.center_name = ?';
+      params.push(parentOrg.orgName);
+    }
+
+    const focusedRow = db.prepare(
+      `SELECT 
+         ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours
+       FROM daily_analysis_results dar
+       JOIN employees e ON e.employee_id = dar.employee_id
+       WHERE ${where}
+         AND dar.focused_work_minutes IS NOT NULL`
+    ).get(...params) as any;
+    
+    avgFocusedWorkHours = focusedRow?.avgFocusedHours || 0;
+  } catch (e) {
+    console.error('Failed to compute focused work hours:', e);
+  }
+
+  // Calculate average data reliability
+  let avgDataReliability = 0;
+  try {
+    let where = 'dar.analysis_date BETWEEN ? AND ?';
+    const params: any[] = [startDate, endDate];
+
+    if (divisionCode) {
+      const divisionTeams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
+      const teamNames = divisionTeams.map((t: any) => t.orgName).filter(Boolean);
+      if (teamNames.length > 0) {
+        where += ` AND e.team_name IN (${teamNames.map(() => '?').join(',')})`;
+        params.push(...teamNames);
+      } else {
+        where += ' AND 1=0';
+      }
+    } else if (centerCode && parentOrg) {
+      where += ' AND e.center_name = ?';
+      params.push(parentOrg.orgName);
+    }
+
+    const reliabilityRow = db.prepare(
+      `SELECT 
+         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
+       FROM daily_analysis_results dar
+       JOIN employees e ON e.employee_id = dar.employee_id
+       WHERE ${where}
+         AND dar.confidence_score IS NOT NULL`
+    ).get(...params) as any;
+    
+    avgDataReliability = reliabilityRow?.avgDataReliability || 0;
+  } catch (e) {
+    console.error('Failed to compute data reliability:', e);
+  }
 
   // Calculate thresholds (20th and 80th percentiles)
   const efficiencyValues = teams.map((org: any) => org.stats?.avgWorkEfficiency || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const workHoursValues = teams.map((org: any) => org.stats?.avgActualWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const claimedHoursValues = teams.map((org: any) => org.stats?.avgAttendanceHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
+  const focusedHoursValues = teams.map((org: any) => org.stats?.avgFocusedWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
+  const dataReliabilityValues = teams.map((org: any) => org.stats?.avgDataReliability || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   
   // Ensure we have valid values for thresholds
   if (efficiencyValues.length === 0) {
@@ -238,6 +310,12 @@ export async function GET(request: NextRequest) {
   }
   if (claimedHoursValues.length === 0) {
     claimedHoursValues.push(7.0, 9.0);
+  }
+  if (focusedHoursValues.length === 0) {
+    focusedHoursValues.push(2.0, 5.0);
+  }
+  if (dataReliabilityValues.length === 0) {
+    dataReliabilityValues.push(70.0, 85.0);
   }
   
   const getPercentile = (arr: number[], percentile: number) => {
@@ -291,6 +369,24 @@ export async function GET(request: NextRequest) {
         low: getPercentile(claimedHoursValues, 20) * 5,
         high: getPercentile(claimedHoursValues, 80) * 5
       }
+    },
+    focusedWorkHours: {
+      low: `≤${getPercentile(focusedHoursValues, 20).toFixed(1)}h`,
+      middle: `${getPercentile(focusedHoursValues, 20).toFixed(1)}-${getPercentile(focusedHoursValues, 80).toFixed(1)}h`,
+      high: `≥${getPercentile(focusedHoursValues, 80).toFixed(1)}h`,
+      thresholds: {
+        low: getPercentile(focusedHoursValues, 20),
+        high: getPercentile(focusedHoursValues, 80)
+      }
+    },
+    dataReliability: {
+      low: `<${getPercentile(dataReliabilityValues, 20).toFixed(1)}`,
+      middle: `${getPercentile(dataReliabilityValues, 20).toFixed(1)}-${getPercentile(dataReliabilityValues, 80).toFixed(1)}`,
+      high: `≥${getPercentile(dataReliabilityValues, 80).toFixed(1)}`,
+      thresholds: {
+        low: getPercentile(dataReliabilityValues, 20),
+        high: getPercentile(dataReliabilityValues, 80)
+      }
     }
   };
 
@@ -303,6 +399,8 @@ export async function GET(request: NextRequest) {
     avgClaimedHours,
     avgWeeklyWorkHours,
     avgWeeklyClaimedHours,
+    avgFocusedWorkHours,
+    avgDataReliability,
     thresholds,
     breadcrumb
   };

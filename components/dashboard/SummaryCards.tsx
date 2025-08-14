@@ -12,6 +12,8 @@ interface SummaryCardsProps {
     claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
   immediateAttention?: string[];
   bestPractices?: string[];
@@ -27,10 +29,11 @@ export function SummaryCards({
 }: SummaryCardsProps) {
   
   // 동적 임계값 또는 기본값 사용
-  const currentThresholds = thresholds ? thresholds[selectedMetric] : {
-    high: '',
-    middle: '',
-    low: ''
+  const currentThresholds = thresholds?.[selectedMetric] || {
+    high: '기준값 로딩중',
+    middle: '기준값 로딩중',
+    low: '기준값 로딩중',
+    thresholds: { low: 0, high: 0 }
   };
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">

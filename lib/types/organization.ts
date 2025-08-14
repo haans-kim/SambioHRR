@@ -28,6 +28,9 @@ export interface OrganizationDailyStats {
   stdWorkEfficiency: number;
   minWorkEfficiency: number;
   maxWorkEfficiency: number;
+  avgWeeklyWorkHours?: number;
+  avgWeeklyClaimedHours?: number;
+  avgFocusedWorkHours?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

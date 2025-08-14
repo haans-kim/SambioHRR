@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-export type MetricType = 'efficiency' | 'workHours' | 'claimedHours' | 'weeklyWorkHours' | 'weeklyClaimedHours';
+export type MetricType = 'efficiency' | 'workHours' | 'claimedHours' | 'weeklyWorkHours' | 'weeklyClaimedHours' | 'focusedWorkHours' | 'dataReliability';
 
 interface MetricSelectorProps {
   selectedMetric: MetricType;
@@ -26,7 +26,9 @@ export function MetricSelector({ selectedMetric, onMetricChange }: MetricSelecto
     { id: 'weeklyWorkHours' as MetricType, label: '주간 작업추정시간' },
     { id: 'claimedHours' as MetricType, label: '일간 근무시간' },
     { id: 'workHours' as MetricType, label: '일간 작업추정시간' },
+    { id: 'focusedWorkHours' as MetricType, label: '집중근무시간' },
     { id: 'efficiency' as MetricType, label: '실근무 지표' },
+    { id: 'dataReliability' as MetricType, label: '데이터 신뢰도' },
   ];
 
   return (
