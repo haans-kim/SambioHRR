@@ -171,133 +171,138 @@ export default function EnterpriseView() {
         </div>
         <Card>
           <CardContent className="p-2">
-            <div className="relative h-[400px] bg-gray-50 rounded-lg">
-              <svg className="w-full h-full" viewBox="0 0 800 400">
-                {/* X축 */}
-                <line x1="50" y1="350" x2="750" y2="350" stroke="#374151" strokeWidth="2"/>
-                {/* Y축 */}
-                <line x1="50" y1="50" x2="50" y2="350" stroke="#374151" strokeWidth="2"/>
-                
-                {/* X축 레이블 - 평균 근무시간 */}
-                <text x="400" y="390" textAnchor="middle" className="text-sm font-semibold fill-gray-700">
-                  평균 근무시간 (시간)
-                </text>
-                
-                {/* Y축 레이블 - 변동계수 */}
-                <text x="25" y="200" textAnchor="middle" className="text-sm font-semibold fill-gray-700" transform="rotate(-90 25 200)">
-                  변동계수 (CV%)
-                </text>
-                
-                {/* X축 눈금 및 라벨 */}
-                {[6, 7, 8, 9, 10].map((hour) => {
-                  const xPos = 50 + ((hour - 6) / 4) * 700;
-                  return (
-                    <g key={hour}>
-                      <line x1={xPos} y1="345" x2={xPos} y2="355" stroke="#374151" strokeWidth="1"/>
-                      <text x={xPos} y="370" textAnchor="middle" className="text-xs fill-gray-600">
-                        {hour}h
-                      </text>
-                    </g>
-                  );
-                })}
-                
-                {/* Y축 눈금 및 라벨 */}
-                {[15, 20, 25, 30].map((cv) => {
-                  const yPos = 350 - ((cv - 15) / 15) * 300;
-                  return (
-                    <g key={cv}>
-                      <line x1="45" y1={yPos} x2="55" y2={yPos} stroke="#374151" strokeWidth="1"/>
-                      <text x="35" y={yPos + 5} textAnchor="end" className="text-xs fill-gray-600">
-                        {cv}%
-                      </text>
-                    </g>
-                  );
-                })}
-                
-                {/* 그리드 라인 */}
-                {[6, 7, 8, 9, 10].map((hour) => {
-                  const xPos = 50 + ((hour - 6) / 4) * 700;
-                  return (
-                    <line key={`grid-x-${hour}`} x1={xPos} y1="50" y2="350" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="2 2"/>
-                  );
-                })}
-                
-                {[15, 20, 25, 30].map((cv) => {
-                  const yPos = 350 - ((cv - 15) / 15) * 300;
-                  return (
-                    <line key={`grid-y-${cv}`} x1="50" y1={yPos} x2="750" y2={yPos} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="2 2"/>
-                  );
-                })}
-                
-                {/* 버블 */}
-                {teamDistribution.slice(0, 10).map((team, index) => {
-                  // 평균 근무시간에 따른 X 위치 (6-10시간 스케일)
-                  const xPosition = 50 + ((team.avg_work_hours - 6) / 4) * 700;
+            <div className="relative h-[600px] bg-gray-50 rounded-lg">
+              <svg className="w-full h-full" viewBox="0 0 1200 600">
+                {(() => {
+                  // 실제 데이터 범위 계산
+                  const data = teamDistribution.slice(0, 10);
+                  const minHours = Math.min(...data.map(t => t.avg_work_hours));
+                  const maxHours = Math.max(...data.map(t => t.avg_work_hours));
+                  const minCV = Math.min(...data.map(t => t.cv_percentage));
+                  const maxCV = Math.max(...data.map(t => t.cv_percentage));
                   
-                  // CV 값에 따른 Y 위치 (15-30% 스케일)
-                  const yPosition = 350 - ((team.cv_percentage - 15) / 15) * 300;
+                  // 축 범위 설정 (X: 7.5-10h, Y: 12-28%)
+                  const xMin = 7.5;
+                  const xMax = 10;
+                  const yMin = 12;
+                  const yMax = 28;
                   
-                  // 버블 크기: 인원수에 따라 조정 (훨씬 더 크게)
-                  const radius = Math.min(Math.max(Math.sqrt(team.headcount) * 12, 50), 100); // 최소 50, 최대 100
+                  // X축 눈금 생성 (0.5 간격)
+                  const xTicks = [];
+                  for (let i = xMin; i <= xMax; i += 0.5) {
+                    xTicks.push(i);
+                  }
                   
-                  // 색상 설정
-                  const color = index < 3 ? '#ef4444' :     // 상위 3개 빨강
-                               index < 7 ? '#eab308' :      // 중간 4개 노랑
-                               '#22c55e';                    // 하위 3개 초록
+                  // Y축 눈금 생성 (2% 간격)
+                  const yTicks = [];
+                  for (let i = yMin; i <= yMax; i += 2) {
+                    yTicks.push(i);
+                  }
                   
                   return (
-                    <g key={team.team_id}>
-                      <circle
-                        cx={xPosition}
-                        cy={yPosition}
-                        r={radius}
-                        fill={color}
-                        fillOpacity="0.5"
-                        stroke={color}
-                        strokeWidth="3"
-                        className="hover:fillOpacity-80 transition-all cursor-pointer"
-                      />
-                      <text
-                        x={xPosition}
-                        y={yPosition - 10}
-                        textAnchor="middle"
-                        className="text-2xl font-bold fill-black pointer-events-none"
-                      >
-                        #{index + 1}
+                    <>
+                      {/* X축 */}
+                      <line x1="80" y1="530" x2="1150" y2="530" stroke="#374151" strokeWidth="2"/>
+                      {/* Y축 */}
+                      <line x1="80" y1="50" x2="80" y2="530" stroke="#374151" strokeWidth="2"/>
+                      
+                      {/* X축 레이블 - 평균 근무시간 */}
+                      <text x="600" y="570" textAnchor="middle" className="text-lg font-semibold fill-gray-700">
+                        평균 근무시간 (시간)
                       </text>
-                      <text
-                        x={xPosition}
-                        y={yPosition + 15}
-                        textAnchor="middle"
-                        className="text-base font-semibold fill-black pointer-events-none"
-                      >
-                        {team.team_name.length > 12 ? team.team_name.substring(0, 12) + '...' : team.team_name}
+                      
+                      {/* Y축 레이블 - 변동계수 */}
+                      <text x="40" y="300" textAnchor="middle" className="text-lg font-semibold fill-gray-700" transform="rotate(-90 40 300)">
+                        변동계수 (CV%)
                       </text>
-                      {/* 팀명 툴팁 표시 */}
-                      <title>{team.team_name}&#10;CV: {team.cv_percentage}%&#10;인원: {team.headcount}명&#10;평균: {team.avg_work_hours}시간</title>
-                    </g>
+                      
+                      {/* X축 눈금 및 라벨 */}
+                      {xTicks.map((hour) => {
+                        const xPos = 80 + ((hour - xMin) / (xMax - xMin)) * 1070;
+                        return (
+                          <g key={hour}>
+                            <line x1={xPos} y1="525" x2={xPos} y2="535" stroke="#374151" strokeWidth="1"/>
+                            <text x={xPos} y="555" textAnchor="middle" className="text-sm fill-gray-600">
+                              {hour}h
+                            </text>
+                            <line x1={xPos} y1="50" y2="530" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="2 2"/>
+                          </g>
+                        );
+                      })}
+                      
+                      {/* Y축 눈금 및 라벨 */}
+                      {yTicks.map((cv) => {
+                        const yPos = 530 - ((cv - yMin) / (yMax - yMin)) * 480;
+                        return (
+                          <g key={cv}>
+                            <line x1="75" y1={yPos} x2="85" y2={yPos} stroke="#374151" strokeWidth="1"/>
+                            <text x="65" y={yPos + 5} textAnchor="end" className="text-sm fill-gray-600">
+                              {cv}%
+                            </text>
+                            <line x1="80" y1={yPos} x2="1150" y2={yPos} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="2 2"/>
+                          </g>
+                        );
+                      })}
+                      
+                      {/* 버블 */}
+                      {data.map((team, index) => {
+                        // X축 위치 (실제 데이터 범위에 맞춤)
+                        const xPosition = 80 + ((team.avg_work_hours - xMin) / (xMax - xMin)) * 1070;
+                        
+                        // Y축 위치 (실제 데이터 범위에 맞춤, CV가 높을수록 위로)
+                        const yPosition = 530 - ((team.cv_percentage - yMin) / (yMax - yMin)) * 480;
+                        
+                        // 겹침 방지를 위한 더 큰 오프셋
+                        const offsetX = (index % 3 - 1) * 40; // -40, 0, 40 반복
+                        const offsetY = (Math.floor(index / 3) % 2 - 0.5) * 30; // -15, 15 반복
+                        const adjustedX = xPosition + offsetX;
+                        const adjustedY = yPosition + offsetY;
+                        
+                        // 버블 크기: 인원수에 따라 조정 (조금 작게)
+                        const radius = Math.min(Math.max(Math.sqrt(team.headcount) * 6, 30), 50); // 최소 30, 최대 50
+                        
+                        // 색상 설정
+                        const color = index < 3 ? '#ef4444' :     // 상위 3개 빨강
+                                     index < 7 ? '#eab308' :      // 중간 4개 노랑
+                                     '#22c55e';                    // 하위 3개 초록
+                        
+                        return (
+                          <g key={team.team_id}>
+                            <circle
+                              cx={adjustedX}
+                              cy={adjustedY}
+                              r={radius}
+                              fill={color}
+                              fillOpacity="0.5"
+                              stroke={color}
+                              strokeWidth="3"
+                              className="hover:fillOpacity-80 transition-all cursor-pointer"
+                            />
+                            <text
+                              x={adjustedX}
+                              y={adjustedY - 10}
+                              textAnchor="middle"
+                              className="text-2xl font-bold fill-black pointer-events-none"
+                            >
+                              #{index + 1}
+                            </text>
+                            <text
+                              x={adjustedX}
+                              y={adjustedY + 15}
+                              textAnchor="middle"
+                              className="text-base font-semibold fill-black pointer-events-none"
+                            >
+                              {team.team_name}
+                            </text>
+                            {/* 팀명 툴팁 표시 */}
+                            <title>{team.team_name}&#10;CV: {team.cv_percentage}%&#10;인원: {team.headcount}명&#10;평균: {team.avg_work_hours}시간</title>
+                          </g>
+                        );
+                      })}
+                    </>
                   );
-                })}
+                })()}
               </svg>
-              
-              {/* 범례 */}
-              <div className="absolute bottom-4 right-4 bg-white p-3 rounded shadow-sm">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full opacity-60"></div>
-                    <span className="text-xs">불균형 (CV≥25%)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full opacity-60"></div>
-                    <span className="text-xs">보통 (15%≤CV&lt;25%)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full opacity-60"></div>
-                    <span className="text-xs">균형 (CV&lt;15%)</span>
-                  </div>
-                </div>
-              </div>
-              
             </div>
           </CardContent>
         </Card>
