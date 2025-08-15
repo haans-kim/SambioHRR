@@ -171,13 +171,13 @@ export default function EnterpriseView() {
         </div>
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
           {teamDistribution.slice(0, 24).map((team, index) => (
-            <Card key={team.team_id} className={`relative hover:shadow-md transition-shadow min-h-[200px] ${
-              team.balance_status === 'imbalanced' ? 'bg-red-50 border-red-200' :
-              team.balance_status === 'moderate' ? 'bg-yellow-50 border-yellow-200' :
-              'bg-green-50 border-green-200'
+            <Card key={team.team_id} className={`relative hover:shadow-md transition-shadow min-h-[160px] border-2 ${
+              team.balance_status === 'imbalanced' ? 'bg-red-50 border-red-400' :
+              team.balance_status === 'moderate' ? 'bg-yellow-50 border-yellow-400' :
+              'bg-green-50 border-green-400'
             }`}>
               <CardContent className="p-0 h-full flex flex-col">
-                <div className="text-right px-2 pt-1">
+                <div className="text-right px-2">
                   <span className="text-xs font-medium text-gray-500">#{index + 1}</span>
                 </div>
                 <div className="px-2">
@@ -188,19 +188,19 @@ export default function EnterpriseView() {
                 
                 <div className="flex-1 flex flex-col justify-center">
                   <div className="text-center">
-                    <div className={`text-3xl font-bold ${getBalanceColor(team.balance_status)}`}>
+                    <div className={`text-2xl font-bold ${getBalanceColor(team.balance_status)}`}>
                       {team.cv_percentage}%
                     </div>
                     <div className="text-xs text-gray-600">변동계수</div>
                   </div>
                 </div>
 
-                <div className="border-t pt-2 px-2 pb-2 space-y-1">
-                  <div className="flex justify-between text-sm">
+                <div className="border-t pt-1 px-2 pb-1 space-y-0.5">
+                  <div className="flex justify-between text-base">
                     <span className="text-gray-500">인원</span>
                     <span className="font-medium">{team.headcount}명</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-base">
                     <span className="text-gray-500">평균</span>
                     <span className="font-medium">{team.avg_work_hours}h</span>
                   </div>
