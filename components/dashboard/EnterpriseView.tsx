@@ -308,6 +308,7 @@ export default function EnterpriseView() {
         </Card>
       </div>
 
+
       {/* 팀별 업무 균형도 */}
       <div className="space-y-4">
         <div>

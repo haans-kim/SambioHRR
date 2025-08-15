@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CenterLevelGrid } from "@/components/dashboard/CenterLevelGrid";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
+import { FocusedWorkTable } from "@/components/dashboard/FocusedWorkTable";
 import { MetricType } from "@/components/dashboard/MetricSelector";
 
 interface DashboardData {
@@ -109,6 +110,7 @@ export default function HomePage() {
         thresholds={data.thresholds}
       />
       <SummaryCards selectedMetric={selectedMetric} thresholds={data.thresholds} />
+      <FocusedWorkTable visible={selectedMetric === 'focusedWorkHours'} />
     </DashboardLayout>
   );
 }
