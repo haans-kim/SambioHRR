@@ -19,8 +19,7 @@ export function FocusedWorkTable({ visible }: FocusedWorkTableProps) {
     { name: '오퍼레이션센터', count: 9342, avg: 2.13, std: 1.53, min: 0.50, max: 13.68, work: 10.01, confidence: 79.2, ratio: 22.8 },
     { name: '경영지원센터', count: 1161, avg: 1.93, std: 1.25, min: 0.50, max: 10.25, work: 9.16, confidence: 80.9, ratio: 22.1 },
     { name: '바이오연구소', count: 331, avg: 1.84, std: 1.34, min: 0.50, max: 8.30, work: 8.71, confidence: 69.1, ratio: 22.1 },
-    { name: '영업센터', count: 417, avg: 1.73, std: 1.22, min: 0.50, max: 9.22, work: 8.92, confidence: 72.9, ratio: 20.1 },
-    { name: '경영진단팀', count: 14, avg: 1.72, std: 1.02, min: 0.73, max: 4.27, work: 8.97, confidence: 69.4, ratio: 20.2 }
+    { name: '영업센터', count: 417, avg: 1.73, std: 1.22, min: 0.50, max: 9.22, work: 8.92, confidence: 72.9, ratio: 20.1 }
   ];
 
   return (
