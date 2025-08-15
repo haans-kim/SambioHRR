@@ -11,7 +11,7 @@ export function Sidebar() {
     { 
       name: "전체 개요", 
       href: "/", 
-      description: "조직 전체 현황"
+      description: "센터별 현황"
     },
     { 
       name: "팀별 분석", 
@@ -22,6 +22,16 @@ export function Sidebar() {
       name: "그룹별 분석", 
       href: "/groups", 
       description: "그룹 단위 분석"
+    },
+    { 
+      name: "업무 불균형", 
+      href: "/enterprise", 
+      description: "팀별 편차 모니터링"
+    },
+    { 
+      name: "통계 분석", 
+      href: "/statistics", 
+      description: "표준편차 분석"
     },
   ];
 
