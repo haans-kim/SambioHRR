@@ -131,7 +131,7 @@ export default function EnterpriseView() {
       {/* AI 인사이트 섹션 */}
       <div className="space-y-4">
         <h2 className="text-3xl font-bold">실시간 인사이트</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {insights.map((insight, index) => (
             <Alert key={index} className={`border-l-4 ${
               insight.severity === 'critical' ? 'border-red-500' :
@@ -143,9 +143,9 @@ export default function EnterpriseView() {
                 <div className={`p-3 rounded-full ${getSeverityColor(insight.severity)} text-white flex-shrink-0`}>
                   {React.cloneElement(getInsightIcon(insight.type), { className: 'h-7 w-7' })}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <AlertTitle className="text-2xl font-bold mb-3 whitespace-nowrap overflow-hidden text-ellipsis">{insight.title}</AlertTitle>
-                  <AlertDescription className="text-lg text-gray-700 whitespace-nowrap overflow-hidden">
+                <div className="flex-1">
+                  <AlertTitle className="text-2xl font-bold mb-3 whitespace-nowrap">{insight.title}</AlertTitle>
+                  <AlertDescription className="text-lg text-gray-700 whitespace-nowrap">
                     {insight.description}
                   </AlertDescription>
                   {insight.affectedCount > 0 && (
@@ -153,7 +153,7 @@ export default function EnterpriseView() {
                       영향: {insight.affectedCount}명
                     </Badge>
                   )}
-                  <p className="text-lg font-semibold text-blue-600 mt-4 whitespace-nowrap overflow-hidden">
+                  <p className="text-lg font-semibold text-blue-600 mt-4 whitespace-nowrap">
                     💡 {insight.recommendation}
                   </p>
                 </div>
@@ -169,21 +169,25 @@ export default function EnterpriseView() {
           <h2 className="text-3xl font-bold">팀별 업무 균형도 분석</h2>
           <p className="text-lg text-gray-600 mt-2">변동계수(CV)가 높은 상위 24개 팀 - 업무 재분배 필요</p>
         </div>
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
           {teamDistribution.slice(0, 24).map((team, index) => (
             <Card key={team.team_id} className={`relative hover:shadow-md transition-shadow min-h-[200px] ${
               team.balance_status === 'imbalanced' ? 'bg-red-50 border-red-200' :
               team.balance_status === 'moderate' ? 'bg-yellow-50 border-yellow-200' :
               'bg-green-50 border-green-200'
             }`}>
-              <CardContent className="p-3 h-full flex flex-col">
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-sm whitespace-nowrap overflow-hidden text-ellipsis flex-1 mr-1">{team.team_name}</h3>
-                    <span className="text-xs font-medium text-gray-500 flex-shrink-0">#{index + 1}</span>
-                  </div>
-                  
-                  <div className="text-center my-3">
+              <CardContent className="p-0 h-full flex flex-col">
+                <div className="text-right px-2 pt-1">
+                  <span className="text-xs font-medium text-gray-500">#{index + 1}</span>
+                </div>
+                <div className="px-2">
+                  <h3 className="font-semibold text-sm">{team.team_name}</h3>
+                </div>
+                
+                <div className="h-4"></div>
+                
+                <div className="flex-1 flex flex-col justify-center">
+                  <div className="text-center">
                     <div className={`text-3xl font-bold ${getBalanceColor(team.balance_status)}`}>
                       {team.cv_percentage}%
                     </div>
@@ -191,12 +195,12 @@ export default function EnterpriseView() {
                   </div>
                 </div>
 
-                <div className="border-t pt-2 space-y-1">
-                  <div className="flex justify-between text-xs">
+                <div className="border-t pt-2 px-2 pb-2 space-y-1">
+                  <div className="flex justify-between text-sm">
                     <span className="text-gray-500">인원</span>
                     <span className="font-medium">{team.headcount}명</span>
                   </div>
-                  <div className="flex justify-between text-xs">
+                  <div className="flex justify-between text-sm">
                     <span className="text-gray-500">평균</span>
                     <span className="font-medium">{team.avg_work_hours}h</span>
                   </div>
