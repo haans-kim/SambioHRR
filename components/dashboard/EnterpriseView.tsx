@@ -163,6 +163,146 @@ export default function EnterpriseView() {
         </div>
       </div>
 
+      {/* 상위 10개 팀 버블 차트 */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-3xl font-bold">업무 불균형 상위 10개 팀</h2>
+          <p className="text-lg text-gray-600 mt-2">버블 크기: 인원수 | 색상: 위험도</p>
+        </div>
+        <Card>
+          <CardContent className="p-2">
+            <div className="relative h-[400px] bg-gray-50 rounded-lg">
+              <svg className="w-full h-full" viewBox="0 0 800 400">
+                {/* X축 */}
+                <line x1="50" y1="350" x2="750" y2="350" stroke="#374151" strokeWidth="2"/>
+                {/* Y축 */}
+                <line x1="50" y1="50" x2="50" y2="350" stroke="#374151" strokeWidth="2"/>
+                
+                {/* X축 레이블 - 평균 근무시간 */}
+                <text x="400" y="390" textAnchor="middle" className="text-sm font-semibold fill-gray-700">
+                  평균 근무시간 (시간)
+                </text>
+                
+                {/* Y축 레이블 - 변동계수 */}
+                <text x="25" y="200" textAnchor="middle" className="text-sm font-semibold fill-gray-700" transform="rotate(-90 25 200)">
+                  변동계수 (CV%)
+                </text>
+                
+                {/* X축 눈금 및 라벨 */}
+                {[6, 7, 8, 9, 10].map((hour) => {
+                  const xPos = 50 + ((hour - 6) / 4) * 700;
+                  return (
+                    <g key={hour}>
+                      <line x1={xPos} y1="345" x2={xPos} y2="355" stroke="#374151" strokeWidth="1"/>
+                      <text x={xPos} y="370" textAnchor="middle" className="text-xs fill-gray-600">
+                        {hour}h
+                      </text>
+                    </g>
+                  );
+                })}
+                
+                {/* Y축 눈금 및 라벨 */}
+                {[15, 20, 25, 30].map((cv) => {
+                  const yPos = 350 - ((cv - 15) / 15) * 300;
+                  return (
+                    <g key={cv}>
+                      <line x1="45" y1={yPos} x2="55" y2={yPos} stroke="#374151" strokeWidth="1"/>
+                      <text x="35" y={yPos + 5} textAnchor="end" className="text-xs fill-gray-600">
+                        {cv}%
+                      </text>
+                    </g>
+                  );
+                })}
+                
+                {/* 그리드 라인 */}
+                {[6, 7, 8, 9, 10].map((hour) => {
+                  const xPos = 50 + ((hour - 6) / 4) * 700;
+                  return (
+                    <line key={`grid-x-${hour}`} x1={xPos} y1="50" y2="350" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="2 2"/>
+                  );
+                })}
+                
+                {[15, 20, 25, 30].map((cv) => {
+                  const yPos = 350 - ((cv - 15) / 15) * 300;
+                  return (
+                    <line key={`grid-y-${cv}`} x1="50" y1={yPos} x2="750" y2={yPos} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="2 2"/>
+                  );
+                })}
+                
+                {/* 버블 */}
+                {teamDistribution.slice(0, 10).map((team, index) => {
+                  // 평균 근무시간에 따른 X 위치 (6-10시간 스케일)
+                  const xPosition = 50 + ((team.avg_work_hours - 6) / 4) * 700;
+                  
+                  // CV 값에 따른 Y 위치 (15-30% 스케일)
+                  const yPosition = 350 - ((team.cv_percentage - 15) / 15) * 300;
+                  
+                  // 버블 크기: 인원수에 따라 조정 (훨씬 더 크게)
+                  const radius = Math.min(Math.max(Math.sqrt(team.headcount) * 12, 50), 100); // 최소 50, 최대 100
+                  
+                  // 색상 설정
+                  const color = index < 3 ? '#ef4444' :     // 상위 3개 빨강
+                               index < 7 ? '#eab308' :      // 중간 4개 노랑
+                               '#22c55e';                    // 하위 3개 초록
+                  
+                  return (
+                    <g key={team.team_id}>
+                      <circle
+                        cx={xPosition}
+                        cy={yPosition}
+                        r={radius}
+                        fill={color}
+                        fillOpacity="0.5"
+                        stroke={color}
+                        strokeWidth="3"
+                        className="hover:fillOpacity-80 transition-all cursor-pointer"
+                      />
+                      <text
+                        x={xPosition}
+                        y={yPosition - 10}
+                        textAnchor="middle"
+                        className="text-2xl font-bold fill-black pointer-events-none"
+                      >
+                        #{index + 1}
+                      </text>
+                      <text
+                        x={xPosition}
+                        y={yPosition + 15}
+                        textAnchor="middle"
+                        className="text-base font-semibold fill-black pointer-events-none"
+                      >
+                        {team.team_name.length > 12 ? team.team_name.substring(0, 12) + '...' : team.team_name}
+                      </text>
+                      {/* 팀명 툴팁 표시 */}
+                      <title>{team.team_name}&#10;CV: {team.cv_percentage}%&#10;인원: {team.headcount}명&#10;평균: {team.avg_work_hours}시간</title>
+                    </g>
+                  );
+                })}
+              </svg>
+              
+              {/* 범례 */}
+              <div className="absolute bottom-4 right-4 bg-white p-3 rounded shadow-sm">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full opacity-60"></div>
+                    <span className="text-xs">불균형 (CV≥25%)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full opacity-60"></div>
+                    <span className="text-xs">보통 (15%≤CV&lt;25%)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full opacity-60"></div>
+                    <span className="text-xs">균형 (CV&lt;15%)</span>
+                  </div>
+                </div>
+              </div>
+              
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* 팀별 업무 균형도 */}
       <div className="space-y-4">
         <div>
@@ -170,12 +310,14 @@ export default function EnterpriseView() {
           <p className="text-lg text-gray-600 mt-2">변동계수(CV)가 높은 상위 24개 팀 - 업무 재분배 필요</p>
         </div>
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
-          {teamDistribution.slice(0, 24).map((team, index) => (
-            <Card key={team.team_id} className={`relative hover:shadow-md transition-shadow min-h-[160px] border-2 ${
-              team.balance_status === 'imbalanced' ? 'bg-red-50 border-red-400' :
-              team.balance_status === 'moderate' ? 'bg-yellow-50 border-yellow-400' :
-              'bg-green-50 border-green-400'
-            }`}>
+          {teamDistribution.slice(0, 24).map((team, index) => {
+            // 상위 20% (0-4번째) = 빨간색, 하위 20% (20-23번째) = 초록색, 나머지 = 노란색
+            const colorClass = index < 5 ? 'bg-red-50 border-red-400' :
+                              index >= 20 ? 'bg-green-50 border-green-400' :
+                              'bg-yellow-50 border-yellow-400';
+            
+            return (
+            <Card key={team.team_id} className={`relative hover:shadow-md transition-shadow min-h-[160px] border-2 ${colorClass}`}>
               <CardContent className="p-0 h-full flex flex-col">
                 <div className="text-right px-2">
                   <span className="text-xs font-medium text-gray-500">#{index + 1}</span>
@@ -207,7 +349,8 @@ export default function EnterpriseView() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
