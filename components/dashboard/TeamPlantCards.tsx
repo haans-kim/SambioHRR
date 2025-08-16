@@ -67,6 +67,9 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
   };
 
   const value = getValue();
+  
+  // Debug logging
+  console.log('Team:', org.orgName, 'Metric:', selectedMetric, 'Value:', value, 'Thresholds:', thresholds);
 
   const getStatusIcon = (value: number) => {
     if (!thresholds) {
@@ -84,8 +87,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         if (value >= 7.0) return "●";
         return "▼";
       } else if (selectedMetric === 'weeklyWorkHours') {
-        if (value >= 45.0) return "▲";
-        if (value >= 35.0) return "●";
+        if (value >= 48.0) return "▲";
+        if (value > 42.5) return "●";
         return "▼";
       } else if (selectedMetric === 'weeklyClaimedHours') {
         if (value >= 48.0) return "▲";
@@ -103,10 +106,11 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
       }
     }
     
-    // Use dynamic thresholds
+    // Use dynamic thresholds - 상위 20% (high) 이상은 ▲, 하위 20% (low) 이하는 ▼
+    // 3개 이하 팀일 때는 정확히 최대/최소값만 구분
     if (value >= thresholds.high) return "▲";
-    if (value > thresholds.low) return "●";
-    return "▼";
+    if (value <= thresholds.low) return "▼";
+    return "●";
   };
 
   const getIconColor = (value: number) => {
@@ -125,8 +129,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         if (value >= 7.0) return "text-green-600";
         return "text-red-600";
       } else if (selectedMetric === 'weeklyWorkHours') {
-        if (value >= 45.0) return "text-blue-600";
-        if (value >= 35.0) return "text-green-600";
+        if (value >= 48.0) return "text-blue-600";
+        if (value > 42.5) return "text-green-600";
         return "text-red-600";
       } else if (selectedMetric === 'weeklyClaimedHours') {
         if (value >= 48.0) return "text-blue-600";
@@ -144,51 +148,51 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
       }
     }
     
-    // Use dynamic thresholds
+    // Use dynamic thresholds - 상위 20% (high) 이상은 파란색, 하위 20% (low) 이하는 빨간색
     if (value >= thresholds.high) return "text-blue-600";
-    if (value > thresholds.low) return "text-green-600";
-    return "text-red-600";
+    if (value <= thresholds.low) return "text-red-600";
+    return "text-green-600";
   };
 
   const getCardStyle = (value: number) => {
     if (!thresholds) {
       // Fallback based on metric type
       if (selectedMetric === 'efficiency') {
-        if (value >= 88.4) return "border-blue-300 bg-blue-50";
-        if (value > 73.2) return "border-green-300 bg-green-50";
-        return "border-red-300 bg-red-50";
+        if (value >= 88.4) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value > 73.2) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
+        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
       } else if (selectedMetric === 'workHours') {
-        if (value >= 8.0) return "border-blue-300 bg-blue-50";
-        if (value >= 6.0) return "border-green-300 bg-green-50";
-        return "border-red-300 bg-red-50";
+        if (value >= 8.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 6.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
+        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
       } else if (selectedMetric === 'claimedHours') {
-        if (value >= 9.0) return "border-blue-300 bg-blue-50";
-        if (value >= 7.0) return "border-green-300 bg-green-50";
-        return "border-red-300 bg-red-50";
+        if (value >= 9.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 7.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
+        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
       } else if (selectedMetric === 'weeklyWorkHours') {
-        if (value >= 45.0) return "border-blue-300 bg-blue-50";
-        if (value >= 35.0) return "border-green-300 bg-green-50";
-        return "border-red-300 bg-red-50";
+        if (value >= 48.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value > 42.5) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
+        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
       } else if (selectedMetric === 'weeklyClaimedHours') {
-        if (value >= 48.0) return "border-blue-300 bg-blue-50";
-        if (value >= 38.0) return "border-green-300 bg-green-50";
-        return "border-red-300 bg-red-50";
+        if (value >= 48.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 38.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
+        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
       } else if (selectedMetric === 'focusedWorkHours') {
-        if (value >= 5.0) return "border-blue-300 bg-blue-50";
-        if (value >= 2.0) return "border-green-300 bg-green-50";
-        return "border-red-300 bg-red-50";
+        if (value >= 5.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 2.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
+        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
       } else {
         // dataReliability
-        if (value >= 85.0) return "border-blue-300 bg-blue-50";
-        if (value >= 70.0) return "border-green-300 bg-green-50";
-        return "border-red-300 bg-red-50";
+        if (value >= 85.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 70.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
+        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
       }
     }
     
-    // Use dynamic thresholds
-    if (value >= thresholds.high) return "border-blue-300 bg-blue-50";
-    if (value > thresholds.low) return "border-green-300 bg-green-50";
-    return "border-red-300 bg-red-50";
+    // Use dynamic thresholds - 상위 20% (high) 이상은 파란색, 하위 20% (low) 이하는 빨간색
+    if (value >= thresholds.high) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+    if (value <= thresholds.low) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+    return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
   };
 
   const getProgressColor = (value: number) => {
@@ -242,7 +246,7 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
   return (
     <div 
       className={cn(
-        "p-4 rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer h-[140px]",
+        "p-4 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer h-[140px]",
         getCardStyle(value)
       )}
       onClick={onClick}

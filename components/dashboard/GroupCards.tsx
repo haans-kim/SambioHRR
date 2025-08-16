@@ -105,10 +105,10 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
       }
     }
     
-    // Use dynamic thresholds
+    // Use dynamic thresholds - 상위 20% (high) 이상은 ▲, 하위 20% (low) 이하는 ▼
     if (value >= thresholds.high) return "▲";
-    if (value > thresholds.low) return "●";
-    return "▼";
+    if (value <= thresholds.low) return "▼";
+    return "●";
   };
 
   const getIconColor = (value: number) => {
@@ -146,10 +146,10 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
       }
     }
     
-    // Use dynamic thresholds
+    // Use dynamic thresholds - 상위 20% (high) 이상은 파란색, 하위 20% (low) 이하는 빨간색
     if (value >= thresholds.high) return "text-blue-600";
-    if (value > thresholds.low) return "text-green-600";
-    return "text-red-600";
+    if (value <= thresholds.low) return "text-red-600";
+    return "text-green-600";
   };
 
   const getCardStyle = (value: number) => {
@@ -187,10 +187,10 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
       }
     }
     
-    // Use dynamic thresholds
+    // Use dynamic thresholds - 상위 20% (high) 이상은 파란색, 하위 20% (low) 이하는 빨간색
     if (value >= thresholds.high) return "border-blue-300 bg-blue-50";
-    if (value > thresholds.low) return "border-green-300 bg-green-50";
-    return "border-red-300 bg-red-50";
+    if (value <= thresholds.low) return "border-red-300 bg-red-50";
+    return "border-green-300 bg-green-50";
   };
 
   const getProgressColor = (value: number) => {

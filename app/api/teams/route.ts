@@ -157,10 +157,12 @@ export async function GET(request: NextRequest) {
   const avgWeeklyWorkHours = avgWorkHours * 5;
   const avgWeeklyClaimedHours = avgClaimedHours * 5;
   
-  // Calculate thresholds (20th and 80th percentiles) - 현재 레벨의 조직들을 기준으로 계산
+  // Calculate thresholds (20th and 80th percentiles) - 현재 화면에 표시되는 조직들을 기준으로 계산
   const efficiencyValues = teams.map((org: any) => org.stats?.avgWorkEfficiency || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const workHoursValues = teams.map((org: any) => org.stats?.avgActualWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const claimedHoursValues = teams.map((org: any) => org.stats?.avgAttendanceHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
+  const weeklyWorkHoursValues = teams.map((org: any) => org.stats?.avgWeeklyWorkHours || (org.stats?.avgActualWorkHours || 0) * 5).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
+  const weeklyClaimedHoursValues = teams.map((org: any) => org.stats?.avgWeeklyClaimedHours || (org.stats?.avgAttendanceHours || 0) * 5).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const focusedHoursValues = teams.map((org: any) => org.stats?.avgFocusedWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const dataReliabilityValues = teams.map((org: any) => org.stats?.avgDataReliability || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   
@@ -183,6 +185,15 @@ export async function GET(request: NextRequest) {
   
   const getPercentile = (arr: number[], percentile: number) => {
     if (arr.length === 0) return 0;
+    
+    // 3개 이하일 때 특별 처리
+    if (arr.length <= 3) {
+      if (percentile <= 20) return arr[0]; // 최소값
+      if (percentile >= 80) return arr[arr.length - 1]; // 최대값
+      return arr[Math.floor(arr.length / 2)]; // 중간값
+    }
+    
+    // 일반적인 백분위수 계산
     const index = Math.ceil((percentile / 100) * arr.length) - 1;
     return arr[Math.max(0, Math.min(index, arr.length - 1))];
   };
@@ -219,24 +230,24 @@ export async function GET(request: NextRequest) {
       thresholds: { low: getPercentile(claimedHoursValues, 20), high: getPercentile(claimedHoursValues, 80) }
     },
     weeklyWorkHours: {
-      low: `≤${getPercentile(workHoursValues, 20) * 5}h`,
-      lowValue: getPercentile(workHoursValues, 20) * 5,
-      middle: `${(getPercentile(workHoursValues, 20) * 5).toFixed(0)}-${(getPercentile(workHoursValues, 80) * 5).toFixed(0)}h`,
-      midLow: getPercentile(workHoursValues, 20) * 5,
-      midHigh: getPercentile(workHoursValues, 80) * 5,
-      high: `≥${(getPercentile(workHoursValues, 80) * 5).toFixed(0)}h`,
-      highValue: getPercentile(workHoursValues, 80) * 5,
-      thresholds: { low: getPercentile(workHoursValues, 20) * 5, high: getPercentile(workHoursValues, 80) * 5 }
+      low: `≤${getPercentile(weeklyWorkHoursValues, 20).toFixed(0)}h`,
+      lowValue: getPercentile(weeklyWorkHoursValues, 20),
+      middle: `${getPercentile(weeklyWorkHoursValues, 20).toFixed(0)}-${getPercentile(weeklyWorkHoursValues, 80).toFixed(0)}h`,
+      midLow: getPercentile(weeklyWorkHoursValues, 20),
+      midHigh: getPercentile(weeklyWorkHoursValues, 80),
+      high: `≥${getPercentile(weeklyWorkHoursValues, 80).toFixed(0)}h`,
+      highValue: getPercentile(weeklyWorkHoursValues, 80),
+      thresholds: { low: getPercentile(weeklyWorkHoursValues, 20), high: getPercentile(weeklyWorkHoursValues, 80) }
     },
     weeklyClaimedHours: {
-      low: `≤${(getPercentile(claimedHoursValues, 20) * 5).toFixed(0)}h`,
-      lowValue: getPercentile(claimedHoursValues, 20) * 5,
-      middle: `${(getPercentile(claimedHoursValues, 20) * 5).toFixed(0)}-${(getPercentile(claimedHoursValues, 80) * 5).toFixed(0)}h`,
-      midLow: getPercentile(claimedHoursValues, 20) * 5,
-      midHigh: getPercentile(claimedHoursValues, 80) * 5,
-      high: `≥${(getPercentile(claimedHoursValues, 80) * 5).toFixed(0)}h`,
-      highValue: getPercentile(claimedHoursValues, 80) * 5,
-      thresholds: { low: getPercentile(claimedHoursValues, 20) * 5, high: getPercentile(claimedHoursValues, 80) * 5 }
+      low: `≤${getPercentile(weeklyClaimedHoursValues, 20).toFixed(0)}h`,
+      lowValue: getPercentile(weeklyClaimedHoursValues, 20),
+      middle: `${getPercentile(weeklyClaimedHoursValues, 20).toFixed(0)}-${getPercentile(weeklyClaimedHoursValues, 80).toFixed(0)}h`,
+      midLow: getPercentile(weeklyClaimedHoursValues, 20),
+      midHigh: getPercentile(weeklyClaimedHoursValues, 80),
+      high: `≥${getPercentile(weeklyClaimedHoursValues, 80).toFixed(0)}h`,
+      highValue: getPercentile(weeklyClaimedHoursValues, 80),
+      thresholds: { low: getPercentile(weeklyClaimedHoursValues, 20), high: getPercentile(weeklyClaimedHoursValues, 80) }
     },
     focusedWorkHours: {
       low: `≤${getPercentile(focusedHoursValues, 20).toFixed(1)}h`,

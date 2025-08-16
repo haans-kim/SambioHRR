@@ -109,10 +109,10 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
       }
     }
     
-    // Use dynamic thresholds
+    // Use dynamic thresholds - 상위 20% (high) 이상은 ▲, 하위 20% (low) 이하는 ▼
     if (value >= thresholds.high) return "▲"; // 상위 20% 모범사례 - 파란 삼각형
-    if (value > thresholds.low) return "●"; // 중간 60% 양호 - 초록 원
-    return "▼"; // 하위 20% 관찰 주시 필요 - 빨간 역삼각형
+    if (value <= thresholds.low) return "▼"; // 하위 20% 관찰 주시 필요 - 빨간 역삼각형
+    return "●"; // 중간 60% 양호 - 초록 원
   };
 
   const getIconColor = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
@@ -152,8 +152,8 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
     
     // Use dynamic thresholds
     if (value >= thresholds.high) return "text-blue-600"; // 모범사례
-    if (value > thresholds.low) return "text-green-600"; // 양호
-    return "text-red-600"; // 관찰 주시 필요
+    if (value <= thresholds.low) return "text-red-600"; // 관찰 주시 필요
+    return "text-green-600"; // 양호
   };
 
   const getIconStyle = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
@@ -224,8 +224,8 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
     
     // Use dynamic thresholds
     if (value >= thresholds.high) return "border-blue-200 bg-blue-50"; // 모범사례
-    if (value > thresholds.low) return "border-green-200 bg-green-50"; // 양호
-    return "border-red-200 bg-red-50"; // 관찰 주시 필요
+    if (value <= thresholds.low) return "border-red-200 bg-red-50"; // 관찰 주시 필요
+    return "border-green-200 bg-green-50"; // 양호
   };
 
   const formatValue = (value: number, metricType: MetricType) => {

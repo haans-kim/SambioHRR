@@ -160,6 +160,15 @@ export async function GET(request: NextRequest) {
   
   const getPercentile = (arr: number[], percentile: number) => {
     if (arr.length === 0) return 0;
+    
+    // 3개 이하일 때 특별 처리
+    if (arr.length <= 3) {
+      if (percentile <= 20) return arr[0]; // 최소값
+      if (percentile >= 80) return arr[arr.length - 1]; // 최대값
+      return arr[Math.floor(arr.length / 2)]; // 중간값
+    }
+    
+    // 일반적인 백분위수 계산
     const index = Math.ceil((percentile / 100) * arr.length) - 1;
     return arr[Math.max(0, Math.min(index, arr.length - 1))];
   };
