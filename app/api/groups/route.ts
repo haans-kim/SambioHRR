@@ -91,6 +91,8 @@ export async function GET(request: NextRequest) {
   let avgEfficiency = 0;
   let avgWorkHours = 0;
   let avgClaimedHours = 0;
+  let avgFocusedWorkHours = 0;
+  let avgDataReliability = 0;
 
   try {
     let where = 'dar.analysis_date BETWEEN ? AND ?';
@@ -106,7 +108,9 @@ export async function GET(request: NextRequest) {
          COUNT(DISTINCT dar.employee_id) as unique_employees,
          COUNT(*) as man_days,
          SUM(dar.actual_work_hours) as sum_actual,
-         SUM(dar.claimed_work_hours) as sum_claimed
+         SUM(dar.claimed_work_hours) as sum_claimed,
+         AVG(dar.focused_work_minutes / 60.0) as avg_focused_hours,
+         AVG(dar.confidence_score) as avg_confidence
        FROM daily_analysis_results dar
        JOIN employees e ON e.employee_id = dar.employee_id
        WHERE ${where}
@@ -120,6 +124,8 @@ export async function GET(request: NextRequest) {
     avgEfficiency = sumClaimed > 0 ? Math.round((sumActual / sumClaimed) * 1000) / 10 : 0;
     avgWorkHours = manDays > 0 ? Math.round((sumActual / manDays) * 10) / 10 : 0;
     avgClaimedHours = manDays > 0 ? Math.round((sumClaimed / manDays) * 10) / 10 : 0;
+    avgFocusedWorkHours = row?.avg_focused_hours ? Math.round(row.avg_focused_hours * 10) / 10 : 0;
+    avgDataReliability = row?.avg_confidence ? Math.round(row.avg_confidence * 10) / 10 : 0;
   } catch (e) {
     console.error('Failed to compute weighted group summary:', e);
   }
@@ -132,6 +138,8 @@ export async function GET(request: NextRequest) {
   const efficiencyValues = groups.map((org: any) => org.stats?.avgWorkEfficiency || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const workHoursValues = groups.map((org: any) => org.stats?.avgActualWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const claimedHoursValues = groups.map((org: any) => org.stats?.avgAttendanceHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
+  const focusedWorkHoursValues = groups.map((org: any) => org.stats?.avgFocusedWorkHours || 0).filter((v: number) => v >= 0).sort((a: number, b: number) => a - b);
+  const dataReliabilityValues = groups.map((org: any) => org.stats?.avgDataReliability || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   
   // Ensure we have valid values for thresholds
   if (efficiencyValues.length === 0) {
@@ -142,6 +150,12 @@ export async function GET(request: NextRequest) {
   }
   if (claimedHoursValues.length === 0) {
     claimedHoursValues.push(7.0, 9.0);
+  }
+  if (focusedWorkHoursValues.length === 0) {
+    focusedWorkHoursValues.push(0.2, 1.0);
+  }
+  if (dataReliabilityValues.length === 0) {
+    dataReliabilityValues.push(50.0, 80.0);
   }
   
   const getPercentile = (arr: number[], percentile: number) => {
@@ -195,6 +209,24 @@ export async function GET(request: NextRequest) {
         low: getPercentile(claimedHoursValues, 20) * 5,
         high: getPercentile(claimedHoursValues, 80) * 5
       }
+    },
+    focusedWorkHours: {
+      low: `≤${getPercentile(focusedWorkHoursValues, 20).toFixed(1)}h`,
+      middle: `${getPercentile(focusedWorkHoursValues, 20).toFixed(1)}-${getPercentile(focusedWorkHoursValues, 80).toFixed(1)}h`,
+      high: `≥${getPercentile(focusedWorkHoursValues, 80).toFixed(1)}h`,
+      thresholds: {
+        low: getPercentile(focusedWorkHoursValues, 20),
+        high: getPercentile(focusedWorkHoursValues, 80)
+      }
+    },
+    dataReliability: {
+      low: `≤${getPercentile(dataReliabilityValues, 20).toFixed(1)}%`,
+      middle: `${getPercentile(dataReliabilityValues, 20).toFixed(1)}-${getPercentile(dataReliabilityValues, 80).toFixed(1)}%`,
+      high: `≥${getPercentile(dataReliabilityValues, 80).toFixed(1)}%`,
+      thresholds: {
+        low: getPercentile(dataReliabilityValues, 20),
+        high: getPercentile(dataReliabilityValues, 80)
+      }
     }
   };
 
@@ -207,6 +239,8 @@ export async function GET(request: NextRequest) {
     avgClaimedHours,
     avgWeeklyWorkHours,
     avgWeeklyClaimedHours,
+    avgFocusedWorkHours,
+    avgDataReliability,
     thresholds,
     breadcrumb
   };

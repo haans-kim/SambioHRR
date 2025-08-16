@@ -15,6 +15,8 @@ interface DashboardLayoutProps {
   avgClaimedHours?: number;
   avgWeeklyWorkHours?: number;
   avgWeeklyClaimedHours?: number;
+  avgFocusedWorkHours?: number;
+  avgDataReliability?: number;
   selectedMetric?: MetricType;
   onMetricChange?: (metric: MetricType) => void;
   parentOrg?: Organization | null;
@@ -29,6 +31,8 @@ export function DashboardLayout({
   avgClaimedHours = 8.5,
   avgWeeklyWorkHours = 40.0,
   avgWeeklyClaimedHours = 42.5,
+  avgFocusedWorkHours = 4.2,
+  avgDataReliability = 65.0,
   selectedMetric = 'efficiency',
   onMetricChange,
   parentOrg,
@@ -85,11 +89,15 @@ export function DashboardLayout({
                           ? avgClaimedHours
                           : selectedMetric === 'weeklyWorkHours'
                           ? avgWeeklyWorkHours
-                          : avgWeeklyClaimedHours
+                          : selectedMetric === 'weeklyClaimedHours'
+                          ? avgWeeklyClaimedHours
+                          : selectedMetric === 'focusedWorkHours'
+                          ? avgFocusedWorkHours
+                          : avgDataReliability
                       } 
                       decimalPlaces={1} 
                     />
-                    {selectedMetric === 'efficiency' ? '%' : 'h'}
+                    {selectedMetric === 'efficiency' || selectedMetric === 'dataReliability' ? '%' : 'h'}
                   </div>
                   <div className="text-sm text-gray-600 mt-1">
                     {selectedMetric === 'efficiency' 
@@ -100,7 +108,11 @@ export function DashboardLayout({
                       ? '일간 근무시간'
                       : selectedMetric === 'weeklyWorkHours'
                       ? '주간 작업추정시간'
-                      : '주간 근무시간'}
+                      : selectedMetric === 'weeklyClaimedHours'
+                      ? '주간 근무시간'
+                      : selectedMetric === 'focusedWorkHours'
+                      ? '집중근무시간'
+                      : '데이터 신뢰도'}
                   </div>
                 </div>
               </div>

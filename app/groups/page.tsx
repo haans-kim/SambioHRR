@@ -16,6 +16,8 @@ interface GroupData {
   avgClaimedHours: number;
   avgWeeklyWorkHours: number;
   avgWeeklyClaimedHours: number;
+  avgFocusedWorkHours: number;
+  avgDataReliability: number;
   breadcrumb?: { label: string; href?: string }[];
   thresholds: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
@@ -23,6 +25,8 @@ interface GroupData {
     claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyWorkHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    focusedWorkHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    dataReliability: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -84,6 +88,8 @@ export default function GroupsPage() {
       avgClaimedHours={data.avgClaimedHours}
       avgWeeklyWorkHours={data.avgWeeklyWorkHours}
       avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
+      avgFocusedWorkHours={data.avgFocusedWorkHours}
+      avgDataReliability={data.avgDataReliability}
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
       parentOrg={data.parentOrg}
@@ -98,6 +104,8 @@ export default function GroupsPage() {
         avgClaimedHours={data.avgClaimedHours}
         avgWeeklyWorkHours={data.avgWeeklyWorkHours}
         avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
+        avgFocusedWorkHours={data.avgFocusedWorkHours}
+        avgDataReliability={data.avgDataReliability}
         thresholds={data.thresholds}
       />
       <SummaryCards selectedMetric={selectedMetric} thresholds={data.thresholds} />

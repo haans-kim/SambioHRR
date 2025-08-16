@@ -16,6 +16,7 @@ interface GroupCardsProps {
   avgWeeklyWorkHours?: number;
   avgWeeklyClaimedHours?: number;
   avgFocusedWorkHours?: number;
+  avgDataReliability?: number;
   thresholds?: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
@@ -23,6 +24,7 @@ interface GroupCardsProps {
     weeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -40,6 +42,7 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
   const weeklyWorkHours = org.stats?.avgWeeklyWorkHours || (workHours * 5);
   const weeklyClaimedHours = org.stats?.avgWeeklyClaimedHours || (claimedHours * 5);
   const focusedWorkHours = org.stats?.avgFocusedWorkHours || 0;
+  const dataReliability = org.stats?.avgDataReliability || 0;
   const employees = org.stats?.totalEmployees || 0;
 
   const getValue = () => {
@@ -56,6 +59,8 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         return weeklyClaimedHours;
       case 'focusedWorkHours':
         return focusedWorkHours;
+      case 'dataReliability':
+        return dataReliability;
       default:
         return efficiency;
     }
@@ -86,10 +91,14 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         if (value >= 48.0) return "▲";
         if (value >= 38.0) return "●";
         return "▼";
-      } else {
-        // focusedWorkHours
+      } else if (selectedMetric === 'focusedWorkHours') {
         if (value >= 5.0) return "▲";
         if (value >= 2.0) return "●";
+        return "▼";
+      } else {
+        // dataReliability
+        if (value >= 80.0) return "▲";
+        if (value >= 50.0) return "●";
         return "▼";
       }
     }
@@ -123,10 +132,14 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         if (value >= 48.0) return "text-blue-600";
         if (value >= 38.0) return "text-green-600";
         return "text-red-600";
-      } else {
-        // focusedWorkHours
+      } else if (selectedMetric === 'focusedWorkHours') {
         if (value >= 5.0) return "text-blue-600";
         if (value >= 2.0) return "text-green-600";
+        return "text-red-600";
+      } else {
+        // dataReliability
+        if (value >= 80.0) return "text-blue-600";
+        if (value >= 50.0) return "text-green-600";
         return "text-red-600";
       }
     }
@@ -160,10 +173,14 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         if (value >= 48.0) return "border-blue-300 bg-blue-50";
         if (value >= 38.0) return "border-green-300 bg-green-50";
         return "border-red-300 bg-red-50";
-      } else {
-        // focusedWorkHours
+      } else if (selectedMetric === 'focusedWorkHours') {
         if (value >= 5.0) return "border-blue-300 bg-blue-50";
         if (value >= 2.0) return "border-green-300 bg-green-50";
+        return "border-red-300 bg-red-50";
+      } else {
+        // dataReliability
+        if (value >= 80.0) return "border-blue-300 bg-blue-50";
+        if (value >= 50.0) return "border-green-300 bg-green-50";
         return "border-red-300 bg-red-50";
       }
     }
@@ -194,7 +211,7 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
   };
 
   const formatValue = (value: number, metric: MetricType) => {
-    if (metric === 'efficiency') {
+    if (metric === 'efficiency' || metric === 'dataReliability') {
       return `${value.toFixed(1)}%`;
     } else {
       return `${value.toFixed(1)}`;
@@ -215,6 +232,8 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         return '주간 근무시간';
       case 'focusedWorkHours':
         return '집중근무시간';
+      case 'dataReliability':
+        return '데이터 신뢰도';
       default:
         return '평균 실근무율';
     }
@@ -258,7 +277,7 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
             <div 
               className="h-full rounded-full transition-all duration-1000 ease-out"
               style={{
-                width: selectedMetric === 'efficiency' ? `${value}%` : `${Math.min(value * 10, 100)}%`,
+                width: selectedMetric === 'efficiency' || selectedMetric === 'dataReliability' ? `${value}%` : `${Math.min(value * 10, 100)}%`,
                 backgroundColor: getProgressColor(value)
               }}
             />
@@ -279,6 +298,7 @@ export function GroupCards({
   avgWeeklyWorkHours = 40.0,
   avgWeeklyClaimedHours = 42.5,
   avgFocusedWorkHours = 4.2,
+  avgDataReliability = 65.0,
   thresholds
 }: GroupCardsProps) {
   const router = useRouter();
@@ -361,7 +381,7 @@ export function GroupCards({
               ▲ 모범사례({thresholds?.weeklyClaimedHours?.high}) | ● 양호({thresholds?.weeklyClaimedHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyClaimedHours?.low})
             </div>
           </>
-        ) : (
+        ) : selectedMetric === 'focusedWorkHours' ? (
           <>
             <div className="font-semibold text-gray-900">일간 집중근무시간 : {avgFocusedWorkHours.toFixed(1)}h</div>
             <div className="text-xs text-gray-700 mt-1">
@@ -369,6 +389,16 @@ export function GroupCards({
             </div>
             <div className="text-xs text-gray-700 mt-1">
               ▲ 모범사례({thresholds?.focusedWorkHours?.high}) | ● 양호({thresholds?.focusedWorkHours?.middle}) | ▼ 관찰필요({thresholds?.focusedWorkHours?.low})
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="font-semibold text-gray-900">데이터 신뢰도 : {avgDataReliability.toFixed(1)}%</div>
+            <div className="text-xs text-gray-700 mt-1">
+              데이터 신뢰도 점수 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.dataReliability?.high}) | ● 양호({thresholds?.dataReliability?.middle}) | ▼ 관찰필요({thresholds?.dataReliability?.low})
             </div>
           </>
         )}
