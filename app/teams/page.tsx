@@ -10,13 +10,16 @@ import { useSearchParams } from "next/navigation";
 interface TeamData {
   teams: any[];
   parentOrg: any;
-  totalEmployees: number;
-  avgEfficiency: number;
-  avgWorkHours: number;
-  avgClaimedHours: number;
-  avgWeeklyWorkHours: number;
-  avgWeeklyClaimedHours: number;
-  avgFocusedWorkHours?: number;
+  summary: {
+    totalEmployees: number;
+    avgEfficiency: number;
+    avgWorkHours: number;
+    avgClaimedHours: number;
+    avgWeeklyWorkHours: number;
+    avgWeeklyClaimedHours: number;
+    avgFocusedWorkHours: number;
+    avgDataReliability: number;
+  };
   breadcrumb?: { label: string; href?: string }[];
   thresholds: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
@@ -25,6 +28,7 @@ interface TeamData {
     weeklyWorkHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -82,12 +86,14 @@ export default function TeamsPage() {
 
   return (
     <DashboardLayout 
-      totalEmployees={data.totalEmployees}
-      avgEfficiency={data.avgEfficiency}
-      avgWorkHours={data.avgWorkHours}
-      avgClaimedHours={data.avgClaimedHours}
-      avgWeeklyWorkHours={data.avgWeeklyWorkHours}
-      avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
+      totalEmployees={data.summary?.totalEmployees || 0}
+      avgEfficiency={data.summary?.avgEfficiency || 0}
+      avgWorkHours={data.summary?.avgWorkHours || 0}
+      avgClaimedHours={data.summary?.avgClaimedHours || 0}
+      avgWeeklyWorkHours={data.summary?.avgWeeklyWorkHours || 0}
+      avgWeeklyClaimedHours={data.summary?.avgWeeklyClaimedHours || 0}
+      avgFocusedWorkHours={data.summary?.avgFocusedWorkHours || 0}
+      avgDataReliability={data.summary?.avgDataReliability || 0}
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
       parentOrg={data.parentOrg}
@@ -97,13 +103,13 @@ export default function TeamsPage() {
         teams={data.teams} 
         parentOrg={data.parentOrg}
         selectedMetric={selectedMetric}
-        avgEfficiency={data.avgEfficiency}
-        avgWorkHours={data.avgWorkHours}
-        avgClaimedHours={data.avgClaimedHours}
-        avgWeeklyWorkHours={data.avgWeeklyWorkHours}
-        avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
-        avgFocusedWorkHours={data.avgFocusedWorkHours}
-        avgDataReliability={data.avgDataReliability}
+        avgEfficiency={data.summary?.avgEfficiency || 0}
+        avgWorkHours={data.summary?.avgWorkHours || 0}
+        avgClaimedHours={data.summary?.avgClaimedHours || 0}
+        avgWeeklyWorkHours={data.summary?.avgWeeklyWorkHours || 0}
+        avgWeeklyClaimedHours={data.summary?.avgWeeklyClaimedHours || 0}
+        avgFocusedWorkHours={data.summary?.avgFocusedWorkHours || 0}
+        avgDataReliability={data.summary?.avgDataReliability || 0}
         thresholds={data.thresholds}
       />
       <SummaryCards selectedMetric={selectedMetric} thresholds={data.thresholds} />

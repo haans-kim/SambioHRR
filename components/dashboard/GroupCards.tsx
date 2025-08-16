@@ -5,6 +5,7 @@ import { NumberTicker } from "@/components/ui/number-ticker";
 import { cn } from "@/lib/utils";
 import { MetricType } from "./MetricSelector";
 import { useRouter } from "next/navigation";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface GroupCardsProps {
   groups: OrganizationWithStats[];
@@ -36,6 +37,7 @@ interface GroupCardProps {
 }
 
 function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps) {
+  const { isDevMode } = useDevMode();
   const efficiency = org.stats?.avgWorkEfficiency || 0;
   const workHours = org.stats?.avgActualWorkHours || 0;
   const claimedHours = org.stats?.avgAttendanceHours || 0;
@@ -242,10 +244,11 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
   return (
     <div 
       className={cn(
-        "p-4 rounded-lg border shadow-sm hover:shadow-md transition-all h-[140px]",
-        getCardStyle(value)
+        "p-4 rounded-lg border shadow-sm transition-all h-[140px]",
+        getCardStyle(value),
+        isDevMode ? "hover:shadow-md cursor-pointer" : "cursor-default"
       )}
-      onClick={onClick}
+      onClick={isDevMode ? onClick : undefined}
     >
       <div className="flex flex-col h-full">
         <h3 className="text-sm font-semibold text-gray-900 mb-2 truncate">{org.orgName}</h3>
@@ -302,13 +305,17 @@ export function GroupCards({
   thresholds
 }: GroupCardsProps) {
   const router = useRouter();
+  const { isDevMode } = useDevMode();
   
   const getCurrentThresholds = () => {
     return thresholds?.[selectedMetric]?.thresholds;
   };
   
   const handleGroupClick = (groupCode: string) => {
-    router.push(`/group/${groupCode}`);
+    // Only navigate to detail page in dev mode
+    if (isDevMode) {
+      router.push(`/group/${groupCode}`);
+    }
   };
 
   return (

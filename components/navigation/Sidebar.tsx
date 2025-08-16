@@ -3,9 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { isDevMode, setDevMode } = useDevMode();
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [password, setPassword] = useState("");
 
   const menuItems = [
     { 
@@ -74,12 +79,102 @@ export function Sidebar() {
       </nav>
 
       {/* Footer Info */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50">
-        <div className="text-sm text-gray-500">
-          <div>데이터 기준: 2025.06.01~30</div>
-          <div className="mt-1">30일 집계 분석</div>
+      <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-gray-50">
+        {/* Developer Mode Toggle */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">개발자 모드</span>
+            <button
+              onClick={() => {
+                if (isDevMode) {
+                  // Turn off dev mode
+                  setDevMode(false);
+                } else {
+                  // Show password dialog to turn on
+                  setShowPasswordDialog(true);
+                  setPassword("");
+                }
+              }}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                isDevMode ? "bg-blue-600" : "bg-gray-300"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                  isDevMode ? "translate-x-6" : "translate-x-1"
+                )}
+              />
+            </button>
+          </div>
+        </div>
+        
+        <div className="p-4">
+          <div className="text-sm text-gray-500">
+            <div>데이터 기준: 2025.06.01~30</div>
+            <div className="mt-1">30일 집계 분석</div>
+          </div>
         </div>
       </div>
+
+      {/* Password Dialog */}
+      {showPasswordDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-80">
+            <h3 className="text-lg font-semibold mb-4">개발자 모드 활성화</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              개발자 모드를 활성화하려면 패스워드를 입력하세요.
+            </p>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (password === "0000") {
+                    setDevMode(true);
+                    setShowPasswordDialog(false);
+                    setPassword("");
+                  } else {
+                    alert("패스워드가 일치하지 않습니다.");
+                    setPassword("");
+                  }
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="패스워드 입력"
+              autoFocus
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  if (password === "0000") {
+                    setDevMode(true);
+                    setShowPasswordDialog(false);
+                    setPassword("");
+                  } else {
+                    alert("패스워드가 일치하지 않습니다.");
+                    setPassword("");
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                확인
+              </button>
+              <button
+                onClick={() => {
+                  setShowPasswordDialog(false);
+                  setPassword("");
+                }}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
