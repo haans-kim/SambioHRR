@@ -4,16 +4,29 @@ import {
   getOrganizationById,
   getChildOrganizations
 } from '@/lib/db/queries/organization';
-import { getTeamStats } from '@/lib/db/queries/teamStats';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
-import { get30DayDateRange } from '@/lib/db/queries/analytics';
+
+// Helper function to get 30-day date range
+function get30DayDateRange(): { startDate: string; endDate: string } {
+  const result = db.prepare(`
+    SELECT 
+      date(MAX(analysis_date), '-30 days') as startDate, 
+      MAX(analysis_date) as endDate 
+    FROM daily_analysis_results
+  `).get() as any;
+  
+  return {
+    startDate: result?.startDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0],
+    endDate: result?.endDate || new Date().toISOString().split('T')[0]
+  };
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
-  const cacheKey = `teams:v1:center=${centerCode || ''}:division=${divisionCode || ''}`;
+  const cacheKey = `teams:v2:center=${centerCode || ''}:division=${divisionCode || ''}`;
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
@@ -29,42 +42,26 @@ export async function GET(request: NextRequest) {
     // Show teams under a specific division
     parentOrg = getOrganizationById(divisionCode);
     teams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
-    // Fallback: 일부 데이터에 조직마스터 누락 시 통계 테이블 기반으로 보강
-    if (teams.length === 0) {
-      teams = getOrganizationsWithStats('team')
-        .filter((team: any) => team.parentOrgCode === divisionCode);
-    }
-    // Fallback 2: active 플래그 무시하고 하위 팀 조회
-    if (teams.length === 0) {
-      const stmt = db.prepare(`
-        SELECT 
-          org_code as orgCode,
-          org_name as orgName,
-          org_level as orgLevel,
-          parent_org_code as parentOrgCode,
-          display_order as displayOrder,
-          is_active as isActive
-        FROM organization_master
-        WHERE parent_org_code = ? AND org_level = 'team'
-        ORDER BY display_order, org_name
-      `);
-      teams = (stmt.all(divisionCode) as any[]).map(row => ({
-        orgCode: row.orgCode,
-        orgName: row.orgName,
-        orgLevel: row.orgLevel,
-        parentOrgCode: row.parentOrgCode,
-        displayOrder: row.displayOrder,
-        isActive: Boolean(row.isActive),
-        childrenCount: 0,
-        stats: undefined,
-      }));
-    }
-    // Fallback 3: 이 division이 실무적으로 팀을 직접 거느리지 않고 센터 직속일 때
-    if (teams.length === 0 && parentOrg?.parentOrgCode) {
-      teams = getOrganizationsWithStats('team')
-        .filter((team: any) => team.parentOrgCode === parentOrg.parentOrgCode);
-    }
-
+    
+    // 통합 함수로 팀 통계 가져오기
+    const teamsWithStats = getOrganizationsWithStats('team');
+    teams = teams.map((team: any) => {
+      const statsData = teamsWithStats.find(t => t.orgCode === team.orgCode);
+      return {
+        ...team,
+        stats: statsData?.stats || {
+          avgWorkEfficiency: 0,
+          avgActualWorkHours: 0,
+          avgAttendanceHours: 0,
+          avgWeeklyWorkHours: 0,
+          avgWeeklyClaimedHours: 0,
+          avgFocusedWorkHours: 0,
+          avgDataReliability: 0,
+          totalEmployees: 0
+        }
+      };
+    });
+    
     // breadcrumb: 센터명 -> 담당명
     if (parentOrg && parentOrg.parentOrgCode) {
       const center = getOrganizationById(parentOrg.parentOrgCode);
@@ -80,17 +77,13 @@ export async function GET(request: NextRequest) {
     parentOrg = getOrganizationById(centerCode);
     const children = getChildOrganizations(centerCode);
     
-    // Check if this center has divisions
-    const divisions = children.filter((org: any) => org.orgLevel === 'division');
-    // Always show both: 센터 직속 팀 + 담당 목록
+    // 센터 직속 팀과 담당 모두 표시
     const centerTeams = getOrganizationsWithStats('team')
-      .filter((team: any) => team.parentOrgCode === centerCode)
-      .map((t: any) => ({ ...t, orgLevel: 'team' }));
+      .filter((team: any) => team.parentOrgCode === centerCode);
     const centerDivisions = getOrganizationsWithStats('division')
-      .filter((div: any) => div.parentOrgCode === centerCode)
-      .map((d: any) => ({ ...d, orgLevel: 'division' }));
+      .filter((div: any) => div.parentOrgCode === centerCode);
     teams = [...centerDivisions, ...centerTeams];
-
+    
     // breadcrumb: 센터명
     if (parentOrg) {
       breadcrumb.push({ label: parentOrg.orgName, href: `/teams?center=${parentOrg.orgCode}` });
@@ -100,90 +93,22 @@ export async function GET(request: NextRequest) {
     teams = getOrganizationsWithStats('team');
   }
   
-  // Get aggregated team stats from database
-  const teamStatsMap = getTeamStats(centerCode || undefined);
-  
-  // Merge stats with team info
-  teams = teams.map((team: any) => {
-    // division(담당)은 상단에서 산정한 30일 유니크 인원 등 기존 stats를 유지
-    if (team.orgLevel === 'division') {
-      return team;
-    }
-    const stats = teamStatsMap.get(team.orgCode);
-    if (stats) {
-      team.stats = { ...stats };
-    } else {
-      team.stats = {
-        avgWorkEfficiency: team.stats?.avgWorkEfficiency || 0,
-        avgActualWorkHours: team.stats?.avgActualWorkHours || 0,
-        avgAttendanceHours: team.stats?.avgAttendanceHours || 0,
-        avgWeeklyWorkHours: team.stats?.avgWeeklyWorkHours || (team.stats?.avgActualWorkHours * 5) || 0,
-        avgWeeklyClaimedHours: team.stats?.avgWeeklyClaimedHours || (team.stats?.avgAttendanceHours * 5) || 0,
-        avgFocusedWorkHours: team.stats?.avgFocusedWorkHours || 0,
-        avgDataReliability: team.stats?.avgDataReliability || 0,
-        totalEmployees: team.stats?.totalEmployees || 0
-      };
-    }
-    return team;
-  });
-
-  // 보강: division(담당) 카드의 통계는 최신일 통계가 없어 0이 될 수 있으므로
-  // 30일 구간의 실제 합계/Man-Day 기반으로 재계산하여 주입
-  try {
-    const { startDate, endDate } = get30DayDateRange();
-    const divisionTeams = teams.filter((t: any) => t.orgLevel === 'division');
-    divisionTeams.forEach((div: any) => {
-      const row = db.prepare(
-        `SELECT 
-           COUNT(DISTINCT dar.employee_id) as unique_employees,
-           COUNT(*) as man_days,
-           SUM(dar.actual_work_hours) as sum_actual,
-           SUM(dar.claimed_work_hours) as sum_claimed
-         FROM daily_analysis_results dar
-         JOIN employees e ON e.employee_id = dar.employee_id
-         WHERE dar.analysis_date BETWEEN ? AND ?
-           AND e.team_name IN (
-             SELECT org_name FROM organization_master
-             WHERE parent_org_code = ? AND org_level = 'team'
-           )`
-      ).get(startDate, endDate, div.orgCode) as any;
-
-      const manDays = row?.man_days || 0;
-      const sumActual = row?.sum_actual || 0;
-      const sumClaimed = row?.sum_claimed || 0;
-      const avgWorkHours = manDays > 0 ? Math.round((sumActual / manDays) * 10) / 10 : 0;
-      const avgClaimedHours = manDays > 0 ? Math.round((sumClaimed / manDays) * 10) / 10 : 0;
-      const avgEfficiency = sumClaimed > 0 ? Math.round((sumActual / sumClaimed) * 1000) / 10 : 0;
-
-      div.stats = {
-        ...(div.stats || {}),
-        avgWorkEfficiency: avgEfficiency,
-        avgActualWorkHours: avgWorkHours,
-        avgAttendanceHours: avgClaimedHours,
-        avgWeeklyWorkHours: avgWorkHours * 5,
-        avgWeeklyClaimedHours: avgClaimedHours * 5,
-        totalEmployees: div.stats?.totalEmployees || row?.unique_employees || 0
-      };
-    });
-  } catch (e) {
-    console.error('Failed to compute division stats:', e);
-  }
-  
   // Filter out teams with 0 employees
   teams = teams.filter((team: any) => team.stats?.totalEmployees > 0);
   
-  // Calculate totals and weighted averages based on real man-days (30일 누적)
+  // Calculate totals and weighted averages based on 30-day data
   const { startDate, endDate } = get30DayDateRange();
   let totalEmployees = 0;
   let avgEfficiency = 0;
   let avgWorkHours = 0;
   let avgClaimedHours = 0;
   let avgFocusedWorkHours = 0;
-
+  let avgDataReliability = 0;
+  
   try {
     let where = 'dar.analysis_date BETWEEN ? AND ?';
     const params: any[] = [startDate, endDate];
-
+    
     if (divisionCode) {
       // Filter by teams under division
       const divisionTeams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
@@ -192,108 +117,46 @@ export async function GET(request: NextRequest) {
         where += ` AND e.team_name IN (${teamNames.map(() => '?').join(',')})`;
         params.push(...teamNames);
       } else {
-        // No teams found; return zeros
-        where += ' AND 1=0';
+        // Division에 직접 속한 직원도 포함
+        where += ' AND (e.team_name = ? OR e.team_name IN (SELECT org_name FROM organization_master WHERE parent_org_code = ?))';
+        params.push(parentOrg?.orgName, divisionCode);
       }
     } else if (centerCode && parentOrg) {
       where += ' AND e.center_name = ?';
       params.push(parentOrg.orgName);
     }
-
-    const row = db.prepare(
-      `SELECT 
-         COUNT(DISTINCT dar.employee_id) as unique_employees,
-         COUNT(*) as man_days,
-         SUM(dar.actual_work_hours) as sum_actual,
-         SUM(dar.claimed_work_hours) as sum_claimed
-       FROM daily_analysis_results dar
-       JOIN employees e ON e.employee_id = dar.employee_id
-       WHERE ${where}
-         AND (dar.actual_work_hours > 0 OR dar.claimed_work_hours > 0)`
-    ).get(...params) as any;
-
-    const manDays = row?.man_days || 0;
-    const sumActual = row?.sum_actual || 0;
-    const sumClaimed = row?.sum_claimed || 0;
-    totalEmployees = row?.unique_employees || 0;
+    
+    const summary = db.prepare(`
+      SELECT 
+        COUNT(DISTINCT dar.employee_id) as unique_employees,
+        COUNT(*) as man_days,
+        SUM(dar.actual_work_hours) as sum_actual,
+        SUM(dar.claimed_work_hours) as sum_claimed,
+        ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours,
+        ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE ${where}
+        AND (dar.actual_work_hours > 0 OR dar.claimed_work_hours > 0)
+    `).get(...params) as any;
+    
+    const manDays = summary?.man_days || 0;
+    const sumActual = summary?.sum_actual || 0;
+    const sumClaimed = summary?.sum_claimed || 0;
+    totalEmployees = summary?.unique_employees || 0;
     avgEfficiency = sumClaimed > 0 ? Math.round((sumActual / sumClaimed) * 1000) / 10 : 0;
     avgWorkHours = manDays > 0 ? Math.round((sumActual / manDays) * 10) / 10 : 0;
     avgClaimedHours = manDays > 0 ? Math.round((sumClaimed / manDays) * 10) / 10 : 0;
+    avgFocusedWorkHours = summary?.avgFocusedHours || 0;
+    avgDataReliability = summary?.avgDataReliability || 0;
   } catch (e) {
     console.error('Failed to compute weighted team summary:', e);
   }
   
-  // Weekly averages (multiply daily by 5)
+  // Weekly averages
   const avgWeeklyWorkHours = avgWorkHours * 5;
   const avgWeeklyClaimedHours = avgClaimedHours * 5;
   
-  // Calculate average focused work hours
-  try {
-    let where = 'dar.analysis_date BETWEEN ? AND ?';
-    const params: any[] = [startDate, endDate];
-
-    if (divisionCode) {
-      const divisionTeams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
-      const teamNames = divisionTeams.map((t: any) => t.orgName).filter(Boolean);
-      if (teamNames.length > 0) {
-        where += ` AND e.team_name IN (${teamNames.map(() => '?').join(',')})`;
-        params.push(...teamNames);
-      } else {
-        where += ' AND 1=0';
-      }
-    } else if (centerCode && parentOrg) {
-      where += ' AND e.center_name = ?';
-      params.push(parentOrg.orgName);
-    }
-
-    const focusedRow = db.prepare(
-      `SELECT 
-         ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours
-       FROM daily_analysis_results dar
-       JOIN employees e ON e.employee_id = dar.employee_id
-       WHERE ${where}
-         AND dar.focused_work_minutes IS NOT NULL`
-    ).get(...params) as any;
-    
-    avgFocusedWorkHours = focusedRow?.avgFocusedHours || 0;
-  } catch (e) {
-    console.error('Failed to compute focused work hours:', e);
-  }
-
-  // Calculate average data reliability
-  let avgDataReliability = 0;
-  try {
-    let where = 'dar.analysis_date BETWEEN ? AND ?';
-    const params: any[] = [startDate, endDate];
-
-    if (divisionCode) {
-      const divisionTeams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
-      const teamNames = divisionTeams.map((t: any) => t.orgName).filter(Boolean);
-      if (teamNames.length > 0) {
-        where += ` AND e.team_name IN (${teamNames.map(() => '?').join(',')})`;
-        params.push(...teamNames);
-      } else {
-        where += ' AND 1=0';
-      }
-    } else if (centerCode && parentOrg) {
-      where += ' AND e.center_name = ?';
-      params.push(parentOrg.orgName);
-    }
-
-    const reliabilityRow = db.prepare(
-      `SELECT 
-         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
-       FROM daily_analysis_results dar
-       JOIN employees e ON e.employee_id = dar.employee_id
-       WHERE ${where}
-         AND dar.confidence_score IS NOT NULL`
-    ).get(...params) as any;
-    
-    avgDataReliability = reliabilityRow?.avgDataReliability || 0;
-  } catch (e) {
-    console.error('Failed to compute data reliability:', e);
-  }
-
   // Calculate thresholds (20th and 80th percentiles)
   const efficiencyValues = teams.map((org: any) => org.stats?.avgWorkEfficiency || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const workHoursValues = teams.map((org: any) => org.stats?.avgActualWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
@@ -323,87 +186,97 @@ export async function GET(request: NextRequest) {
     const index = Math.ceil((percentile / 100) * arr.length) - 1;
     return arr[Math.max(0, Math.min(index, arr.length - 1))];
   };
-
+  
   const thresholds = {
     efficiency: {
       low: `≤${getPercentile(efficiencyValues, 20).toFixed(1)}%`,
-      middle: `${getPercentile(efficiencyValues, 20).toFixed(1)}-${getPercentile(efficiencyValues, 80).toFixed(1)}%`,
+      lowValue: getPercentile(efficiencyValues, 20),
+      mid: `${getPercentile(efficiencyValues, 20).toFixed(1)}-${getPercentile(efficiencyValues, 80).toFixed(1)}%`,
+      midLow: getPercentile(efficiencyValues, 20),
+      midHigh: getPercentile(efficiencyValues, 80),
       high: `≥${getPercentile(efficiencyValues, 80).toFixed(1)}%`,
-      thresholds: {
-        low: getPercentile(efficiencyValues, 20),
-        high: getPercentile(efficiencyValues, 80)
-      }
+      highValue: getPercentile(efficiencyValues, 80),
+      thresholds: { low: getPercentile(efficiencyValues, 20), high: getPercentile(efficiencyValues, 80) }
     },
     workHours: {
       low: `≤${getPercentile(workHoursValues, 20).toFixed(1)}h`,
-      middle: `${getPercentile(workHoursValues, 20).toFixed(1)}-${getPercentile(workHoursValues, 80).toFixed(1)}h`,
+      lowValue: getPercentile(workHoursValues, 20),
+      mid: `${getPercentile(workHoursValues, 20).toFixed(1)}-${getPercentile(workHoursValues, 80).toFixed(1)}h`,
+      midLow: getPercentile(workHoursValues, 20),
+      midHigh: getPercentile(workHoursValues, 80),
       high: `≥${getPercentile(workHoursValues, 80).toFixed(1)}h`,
-      thresholds: {
-        low: getPercentile(workHoursValues, 20),
-        high: getPercentile(workHoursValues, 80)
-      }
+      highValue: getPercentile(workHoursValues, 80),
+      thresholds: { low: getPercentile(workHoursValues, 20), high: getPercentile(workHoursValues, 80) }
     },
     claimedHours: {
       low: `≤${getPercentile(claimedHoursValues, 20).toFixed(1)}h`,
-      middle: `${getPercentile(claimedHoursValues, 20).toFixed(1)}-${getPercentile(claimedHoursValues, 80).toFixed(1)}h`,
+      lowValue: getPercentile(claimedHoursValues, 20),
+      mid: `${getPercentile(claimedHoursValues, 20).toFixed(1)}-${getPercentile(claimedHoursValues, 80).toFixed(1)}h`,
+      midLow: getPercentile(claimedHoursValues, 20),
+      midHigh: getPercentile(claimedHoursValues, 80),
       high: `≥${getPercentile(claimedHoursValues, 80).toFixed(1)}h`,
-      thresholds: {
-        low: getPercentile(claimedHoursValues, 20),
-        high: getPercentile(claimedHoursValues, 80)
-      }
+      highValue: getPercentile(claimedHoursValues, 80),
+      thresholds: { low: getPercentile(claimedHoursValues, 20), high: getPercentile(claimedHoursValues, 80) }
     },
     weeklyWorkHours: {
-      low: `≤${(getPercentile(workHoursValues, 20) * 5).toFixed(1)}h`,
-      middle: `${(getPercentile(workHoursValues, 20) * 5).toFixed(1)}-${(getPercentile(workHoursValues, 80) * 5).toFixed(1)}h`,
-      high: `≥${(getPercentile(workHoursValues, 80) * 5).toFixed(1)}h`,
-      thresholds: {
-        low: getPercentile(workHoursValues, 20) * 5,
-        high: getPercentile(workHoursValues, 80) * 5
-      }
+      low: `≤${getPercentile(workHoursValues, 20) * 5}h`,
+      lowValue: getPercentile(workHoursValues, 20) * 5,
+      mid: `${(getPercentile(workHoursValues, 20) * 5).toFixed(0)}-${(getPercentile(workHoursValues, 80) * 5).toFixed(0)}h`,
+      midLow: getPercentile(workHoursValues, 20) * 5,
+      midHigh: getPercentile(workHoursValues, 80) * 5,
+      high: `≥${(getPercentile(workHoursValues, 80) * 5).toFixed(0)}h`,
+      highValue: getPercentile(workHoursValues, 80) * 5,
+      thresholds: { low: getPercentile(workHoursValues, 20) * 5, high: getPercentile(workHoursValues, 80) * 5 }
     },
     weeklyClaimedHours: {
-      low: `≤${(getPercentile(claimedHoursValues, 20) * 5).toFixed(1)}h`,
-      middle: `${(getPercentile(claimedHoursValues, 20) * 5).toFixed(1)}-${(getPercentile(claimedHoursValues, 80) * 5).toFixed(1)}h`,
-      high: `≥${(getPercentile(claimedHoursValues, 80) * 5).toFixed(1)}h`,
-      thresholds: {
-        low: getPercentile(claimedHoursValues, 20) * 5,
-        high: getPercentile(claimedHoursValues, 80) * 5
-      }
+      low: `≤${(getPercentile(claimedHoursValues, 20) * 5).toFixed(0)}h`,
+      lowValue: getPercentile(claimedHoursValues, 20) * 5,
+      mid: `${(getPercentile(claimedHoursValues, 20) * 5).toFixed(0)}-${(getPercentile(claimedHoursValues, 80) * 5).toFixed(0)}h`,
+      midLow: getPercentile(claimedHoursValues, 20) * 5,
+      midHigh: getPercentile(claimedHoursValues, 80) * 5,
+      high: `≥${(getPercentile(claimedHoursValues, 80) * 5).toFixed(0)}h`,
+      highValue: getPercentile(claimedHoursValues, 80) * 5,
+      thresholds: { low: getPercentile(claimedHoursValues, 20) * 5, high: getPercentile(claimedHoursValues, 80) * 5 }
     },
     focusedWorkHours: {
       low: `≤${getPercentile(focusedHoursValues, 20).toFixed(1)}h`,
-      middle: `${getPercentile(focusedHoursValues, 20).toFixed(1)}-${getPercentile(focusedHoursValues, 80).toFixed(1)}h`,
+      lowValue: getPercentile(focusedHoursValues, 20),
+      mid: `${getPercentile(focusedHoursValues, 20).toFixed(1)}-${getPercentile(focusedHoursValues, 80).toFixed(1)}h`,
+      midLow: getPercentile(focusedHoursValues, 20),
+      midHigh: getPercentile(focusedHoursValues, 80),
       high: `≥${getPercentile(focusedHoursValues, 80).toFixed(1)}h`,
-      thresholds: {
-        low: getPercentile(focusedHoursValues, 20),
-        high: getPercentile(focusedHoursValues, 80)
-      }
+      highValue: getPercentile(focusedHoursValues, 80),
+      thresholds: { low: getPercentile(focusedHoursValues, 20), high: getPercentile(focusedHoursValues, 80) }
     },
     dataReliability: {
-      low: `<${getPercentile(dataReliabilityValues, 20).toFixed(1)}`,
-      middle: `${getPercentile(dataReliabilityValues, 20).toFixed(1)}-${getPercentile(dataReliabilityValues, 80).toFixed(1)}`,
-      high: `≥${getPercentile(dataReliabilityValues, 80).toFixed(1)}`,
-      thresholds: {
-        low: getPercentile(dataReliabilityValues, 20),
-        high: getPercentile(dataReliabilityValues, 80)
-      }
+      low: `≤${getPercentile(dataReliabilityValues, 20).toFixed(0)}%`,
+      lowValue: getPercentile(dataReliabilityValues, 20),
+      mid: `${getPercentile(dataReliabilityValues, 20).toFixed(0)}-${getPercentile(dataReliabilityValues, 80).toFixed(0)}%`,
+      midLow: getPercentile(dataReliabilityValues, 20),
+      midHigh: getPercentile(dataReliabilityValues, 80),
+      high: `≥${getPercentile(dataReliabilityValues, 80).toFixed(0)}%`,
+      highValue: getPercentile(dataReliabilityValues, 80),
+      thresholds: { low: getPercentile(dataReliabilityValues, 20), high: getPercentile(dataReliabilityValues, 80) }
     }
   };
-
-  const payload = {
+  
+  const response = {
     teams,
     parentOrg,
-    totalEmployees,
-    avgEfficiency,
-    avgWorkHours,
-    avgClaimedHours,
-    avgWeeklyWorkHours,
-    avgWeeklyClaimedHours,
-    avgFocusedWorkHours,
-    avgDataReliability,
-    thresholds,
-    breadcrumb
+    breadcrumb,
+    summary: {
+      totalEmployees,
+      avgEfficiency,
+      avgWorkHours,
+      avgClaimedHours,
+      avgWeeklyWorkHours,
+      avgWeeklyClaimedHours,
+      avgFocusedWorkHours,
+      avgDataReliability,
+    },
+    thresholds
   };
-  setToCache(cacheKey, payload, 180_000);
-  return new NextResponse(JSON.stringify(payload), { headers: buildCacheHeaders(false, 180) });
+  
+  setToCache(cacheKey, response, 180);
+  return new NextResponse(JSON.stringify(response), { headers: buildCacheHeaders(false, 180) });
 }

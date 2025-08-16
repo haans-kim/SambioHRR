@@ -323,49 +323,49 @@ export function CenterLevelGrid({
                     } else if (center.stats?.avgWorkEfficiency) {
                       value = center.stats.avgWorkEfficiency;
                     } else {
-                      value = Math.floor(Math.random() * 30) + 75;
+                      value = 0; // 데이터 없음을 명확히 표시
                     }
                   } else if (selectedMetric === 'workHours') {
                     // Use work hours data from workHoursMatrix
                     if (workHoursMatrix?.matrix[level]?.[center.orgName]) {
                       value = workHoursMatrix.matrix[level][center.orgName];
                     } else {
-                      value = Math.floor(Math.random() * 3) + 7; // 7-10 hours range
+                      value = 0; // 데이터 없음을 명확히 표시
                     }
                   } else if (selectedMetric === 'claimedHours') {
                     // Use claimed hours data from claimedHoursMatrix
                     if (claimedHoursMatrix?.matrix[level]?.[center.orgName]) {
                       value = claimedHoursMatrix.matrix[level][center.orgName];
                     } else {
-                      value = Math.floor(Math.random() * 3) + 8; // 8-11 hours range
+                      value = 0; // 데이터 없음을 명확히 표시
                     }
                   } else if (selectedMetric === 'weeklyWorkHours') {
                     // Use weekly work hours data
                     if (weeklyWorkHoursMatrix?.matrix[level]?.[center.orgName]) {
                       value = weeklyWorkHoursMatrix.matrix[level][center.orgName];
                     } else {
-                      value = Math.floor(Math.random() * 10) + 35; // 35-45 hours range
+                      value = 0; // 데이터 없음을 명확히 표시
                     }
                   } else if (selectedMetric === 'weeklyClaimedHours') {
                     // Use weekly claimed hours data
                     if (weeklyClaimedHoursMatrix?.matrix[level]?.[center.orgName]) {
                       value = weeklyClaimedHoursMatrix.matrix[level][center.orgName];
                     } else {
-                      value = Math.floor(Math.random() * 10) + 40; // 40-50 hours range
+                      value = 0; // 데이터 없음을 명확히 표시
                     }
                   } else if (selectedMetric === 'focusedWorkHours') {
                     // Use focused work hours data
                     if (focusedWorkHoursMatrix?.matrix[level]?.[center.orgName]) {
                       value = focusedWorkHoursMatrix.matrix[level][center.orgName];
                     } else {
-                      value = Math.floor(Math.random() * 4) + 2; // 2-6 hours range
+                      value = 0; // 데이터 없음을 명확히 표시
                     }
                   } else {
                     // Use data reliability data
                     if (dataReliabilityMatrix?.matrix[level]?.[center.orgName]) {
                       value = dataReliabilityMatrix.matrix[level][center.orgName];
                     } else {
-                      value = Math.floor(Math.random() * 20) + 70; // 70-90 range
+                      value = 0; // 데이터 없음을 명확히 표시
                     }
                   }
                   
