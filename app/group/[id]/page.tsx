@@ -64,7 +64,7 @@ export default function GroupDetailPage() {
   const [filterText, setFilterText] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
-  const [efficiencyFilter, setEfficiencyFilter] = useState<{ min: number; max: number }>({ min: 0, max: 100 });
+  const [efficiencyFilter, setEfficiencyFilter] = useState<{ min: number; max: number }>({ min: 0, max: 200 });
   const [workHoursFilter, setWorkHoursFilter] = useState<{ min: number; max: number }>({ min: 0, max: 24 });
 
   useEffect(() => {
@@ -348,7 +348,7 @@ export default function GroupDetailPage() {
                       <input
                         type="number"
                         min="0"
-                        max="100"
+                        max="200"
                         value={efficiencyFilter.min}
                         onChange={(e) => setEfficiencyFilter({ ...efficiencyFilter, min: Number(e.target.value) })}
                         className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
@@ -358,7 +358,7 @@ export default function GroupDetailPage() {
                       <input
                         type="number"
                         min="0"
-                        max="100"
+                        max="200"
                         value={efficiencyFilter.max}
                         onChange={(e) => setEfficiencyFilter({ ...efficiencyFilter, max: Number(e.target.value) })}
                         className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"

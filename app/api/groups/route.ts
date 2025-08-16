@@ -12,7 +12,7 @@ import { get30DayDateRange } from '@/lib/db/queries/analytics';
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const teamCode = searchParams.get('team');
-  const cacheKey = `groups:v1:team=${teamCode || ''}`;
+  const cacheKey = `groups:v5:team=${teamCode || ''}`; // v5로 변경하여 캐시 무효화
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
@@ -25,7 +25,12 @@ export async function GET(request: NextRequest) {
   if (teamCode) {
     // Show groups under a specific team
     parentOrg = getOrganizationById(teamCode);
-    groups = getChildOrganizations(teamCode).filter((org: any) => org.orgLevel === 'group');
+    const allChildren = getChildOrganizations(teamCode);
+    console.log('Team Code:', teamCode);
+    console.log('Parent Org:', parentOrg);
+    console.log('All Children:', allChildren);
+    groups = allChildren.filter((org: any) => org.orgLevel === 'group');
+    console.log('Filtered Groups:', groups);
 
     // breadcrumb: Center -> (optional) Division -> Team
     if (parentOrg && parentOrg.parentOrgCode) {
@@ -52,10 +57,13 @@ export async function GET(request: NextRequest) {
   
   // Get aggregated group stats from database
   const groupStatsMap = getGroupStats(teamCode || undefined);
+  console.log('GroupStatsMap size:', groupStatsMap.size);
+  console.log('GroupStatsMap keys:', Array.from(groupStatsMap.keys()));
   
   // Merge stats with group info
   groups = groups.map((group: any) => {
     const stats = groupStatsMap.get(group.orgCode);
+    console.log(`Looking for ${group.orgCode} (${group.orgName}), found:`, stats?.totalEmployees || 0);
     if (stats) {
       group.stats = stats;
     } else {
@@ -73,7 +81,9 @@ export async function GET(request: NextRequest) {
   });
   
   // Filter out groups with 0 employees
+  console.log('Groups before filtering:', groups.length, groups.map(g => ({name: g.orgName, employees: g.stats?.totalEmployees})));
   groups = groups.filter((group: any) => group.stats?.totalEmployees > 0);
+  console.log('Groups after filtering:', groups.length);
   
   // Calculate totals and weighted averages based on real man-days (30일 누적)
   const { startDate, endDate } = get30DayDateRange();

@@ -35,7 +35,7 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
       }
     }
     
-    // Get team summaries for 30-day period instead of just latest date
+    // Get team summaries for 30-day period
     const teamSummaries = db.prepare(`
       SELECT 
         e.team_name as teamName,
@@ -123,7 +123,7 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
       }
     }
     
-    // Get group summaries for entire period instead of just latest date
+    // Get group summaries for 30-day period
     const groupSummaries = db.prepare(`
       SELECT 
         e.group_name as groupName,
@@ -135,16 +135,27 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
-      ${teamFilter ? "WHERE e.team_name = ?" : ""}
+      WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
+      ${teamFilter ? "AND e.team_name = ?" : ""}
       GROUP BY e.group_name
     `).all(...(teamFilter ? [teamFilter] : [])) as any[];
     
     // Get organization_master mapping for proper org_code
-    const orgMapping = db.prepare(`
-      SELECT org_code, org_name 
-      FROM organization_master 
-      WHERE org_level = 'group'
-    `).all() as any[];
+    // If teamCode is provided, only get groups under that team
+    let orgMapping: any[];
+    if (teamCode && teamCode.startsWith('TEAM_')) {
+      orgMapping = db.prepare(`
+        SELECT org_code, org_name 
+        FROM organization_master 
+        WHERE org_level = 'group' AND parent_org_code = ?
+      `).all(teamCode) as any[];
+    } else {
+      orgMapping = db.prepare(`
+        SELECT org_code, org_name 
+        FROM organization_master 
+        WHERE org_level = 'group'
+      `).all() as any[];
+    }
     
     const nameToCodeMap = new Map<string, string>();
     orgMapping.forEach(org => {
@@ -165,8 +176,12 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
 
     // Convert to TeamStats format
     groupSummaries.forEach(summary => {
-      // Use org_code from organization_master if available, otherwise use groupId
-      const orgCode = nameToCodeMap.get(summary.groupName) || summary.groupId;
+      // Use org_code from organization_master if available
+      const orgCode = nameToCodeMap.get(summary.groupName);
+      if (!orgCode) {
+        console.log(`Warning: No org_code found for group: ${summary.groupName}`);
+        return; // Skip this group if no org_code found
+      }
       
       statsMap.set(orgCode, {
         orgCode: orgCode,
