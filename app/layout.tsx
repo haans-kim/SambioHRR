@@ -4,6 +4,8 @@ import "./globals.css";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { DevModeProvider } from "@/contexts/DevModeContext";
 
+export const dynamic = 'force-dynamic';
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {

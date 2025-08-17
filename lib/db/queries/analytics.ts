@@ -950,7 +950,7 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
 }
 
 // Get metric thresholds based on actual data percentiles
-export function getMetricThresholds(metricType: 'efficiency' | 'workHours' | 'claimedHours') {
+export function getMetricThresholds(metricType: 'efficiency' | 'workHours' | 'claimedHours' | 'weeklyWorkHours' | 'weeklyClaimedHours') {
   const { startDate, endDate } = get30DayDateRange();
   
   let column = '';

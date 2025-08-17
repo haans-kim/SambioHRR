@@ -51,7 +51,9 @@ export function getWorkTimeStatistics(
   dateRange?: { start: string; end: string }
 ): WorkTimeStatistics[] {
   const dates = dateRange || getDateRange();
-  const dateFilter = `AND d.analysis_date BETWEEN '${dates.min_date || dates.start}' AND '${dates.max_date || dates.end}'`;
+  const startDate = 'start' in dates ? dates.start : dates.min_date;
+  const endDate = 'end' in dates ? dates.end : dates.max_date;
+  const dateFilter = `AND d.analysis_date BETWEEN '${startDate}' AND '${endDate}'`;
 
   let orgColumn = '';
   let parentFilter = '';

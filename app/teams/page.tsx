@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
+export const dynamic = 'force-dynamic';
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { TeamPlantCards } from "@/components/dashboard/TeamPlantCards";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";

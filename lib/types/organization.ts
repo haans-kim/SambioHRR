@@ -31,6 +31,7 @@ export interface OrganizationDailyStats {
   avgWeeklyWorkHours?: number;
   avgWeeklyClaimedHours?: number;
   avgFocusedWorkHours?: number;
+  avgDataReliability?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
