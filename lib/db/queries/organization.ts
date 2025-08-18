@@ -97,6 +97,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     const teamStats = db.prepare(`
       SELECT 
         e.team_name as orgName,
+        e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
         COUNT(*) as manDays,
         ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgWorkEfficiency,
@@ -110,7 +111,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.team_name IS NOT NULL
-      GROUP BY e.team_name
+      GROUP BY e.team_name, e.center_name
     `).all(startDate, endDate) as any[];
     
     teamStats.forEach(stat => {
@@ -175,7 +176,8 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         avgWeeklyWorkHours: stats.avgWeeklyWorkHours || 0,
         avgWeeklyClaimedHours: stats.avgWeeklyClaimedHours || 0,
         avgFocusedWorkHours: stats.avgFocusedWorkHours || 0,
-        avgDataReliability: stats.avgDataReliability || 0
+        avgDataReliability: stats.avgDataReliability || 0,
+        centerName: stats.centerName || null
       }
     };
   });

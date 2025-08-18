@@ -320,22 +320,136 @@ export function TeamPlantCards({
     return thresholds?.[selectedMetric]?.thresholds;
   };
 
+  // parentOrg가 있으면 기존 방식대로, 없으면 센터별로 그룹화
+  const groupedTeams = teams.reduce((acc, team) => {
+    if (parentOrg) {
+      // 기존 방식: 전체 팀을 하나의 그룹으로
+      if (!acc['전체']) {
+        acc['전체'] = [];
+      }
+      acc['전체'].push(team);
+    } else {
+      // 팀별분석 페이지: 센터별로 그룹화
+      const centerName = team.stats?.centerName || '미분류';
+      if (!acc[centerName]) {
+        acc[centerName] = [];
+      }
+      acc[centerName].push(team);
+    }
+    return acc;
+  }, {} as Record<string, OrganizationWithStats[]>);
+
+  // 각 센터별 팀들을 정렬하고 상위/중위/하위로 분류
+  const categorizeTeams = (teams: OrganizationWithStats[]) => {
+    const sortedTeams = [...teams].sort((a, b) => {
+      const valueA = getValue(a);
+      const valueB = getValue(b);
+      return valueB - valueA; // 내림차순 정렬
+    });
+    
+    const total = sortedTeams.length;
+    const topCount = Math.ceil(total * 0.2); // 상위 20%
+    const bottomCount = Math.ceil(total * 0.2); // 하위 20%
+    
+    const top = sortedTeams.slice(0, topCount);
+    const middle = sortedTeams.slice(topCount, total - bottomCount);
+    const bottom = sortedTeams.slice(total - bottomCount);
+    
+    return { top, middle, bottom };
+  };
+
+  // 팀의 값을 가져오는 헬퍼 함수
+  const getValue = (team: OrganizationWithStats) => {
+    switch (selectedMetric) {
+      case 'efficiency':
+        return team.stats?.avgWorkEfficiency || 0;
+      case 'workHours':
+        return team.stats?.avgActualWorkHours || 0;
+      case 'claimedHours':
+        return team.stats?.avgAttendanceHours || 0;
+      case 'weeklyWorkHours':
+        return team.stats?.avgWeeklyWorkHours || 0;
+      case 'weeklyClaimedHours':
+        return team.stats?.avgWeeklyClaimedHours || 0;
+      case 'focusedWorkHours':
+        return team.stats?.avgFocusedWorkHours || 0;
+      case 'dataReliability':
+        return team.stats?.avgDataReliability || 0;
+      default:
+        return team.stats?.avgWorkEfficiency || 0;
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg border-2 border-gray-300 shadow-lg p-6">
       <h2 className="text-lg font-semibold mb-4">
-        {parentOrg ? `${parentOrg.orgName} 현황` : 'DS담당 현황'}
+        {parentOrg ? `${parentOrg.orgName} 현황` : '전체 팀 현황'}
       </h2>
       
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        {teams.map((team) => (
-          <PlantCard
-            key={team.orgCode}
-            org={team}
-            selectedMetric={selectedMetric}
-            thresholds={getCurrentThresholds()}
-            onClick={() => handleCardClick(team)}
-          />
-        ))}
+      <div className="space-y-6">
+        {Object.entries(groupedTeams).map(([center, centerTeams]) => {
+          const { top, middle, bottom } = categorizeTeams(centerTeams);
+          
+          return (
+            <div key={center} className="border rounded-lg p-4 bg-gray-50">
+              <h3 className="text-base font-semibold mb-3 text-gray-900">{center}</h3>
+              
+              {/* 상위 20% */}
+              {top.length > 0 && (
+                <div className="mb-3">
+                  <h4 className="text-sm font-medium text-blue-600 mb-2">상위 20% (모범사례)</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                    {top.map((team) => (
+                      <PlantCard
+                        key={team.orgCode}
+                        org={team}
+                        selectedMetric={selectedMetric}
+                        thresholds={getCurrentThresholds()}
+                        onClick={() => handleCardClick(team)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* 중위 60% */}
+              {middle.length > 0 && (
+                <div className="mb-3">
+                  <h4 className="text-sm font-medium text-green-600 mb-2">중위 60% (양호)</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                    {middle.map((team) => (
+                      <PlantCard
+                        key={team.orgCode}
+                        org={team}
+                        selectedMetric={selectedMetric}
+                        thresholds={getCurrentThresholds()}
+                        onClick={() => handleCardClick(team)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* 하위 20% */}
+              {bottom.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-red-600 mb-2">하위 20% (관찰필요)</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                    {bottom.map((team) => (
+                      <PlantCard
+                        key={team.orgCode}
+                        org={team}
+                        selectedMetric={selectedMetric}
+                        thresholds={getCurrentThresholds()}
+                        onClick={() => handleCardClick(team)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Tooltip for information */}
@@ -352,7 +466,7 @@ export function TeamPlantCards({
           </>
         ) : selectedMetric === 'workHours' ? (
           <>
-            <div className="font-semibold text-gray-900">일간 작업추정시간 : {avgWorkHours.toFixed(1)}h</div>
+            <div className="font-semibold text-gray-900">일간 근무추정시간 : {avgWorkHours.toFixed(1)}h</div>
             <div className="text-xs text-gray-700 mt-1">
               실제 근무시간 평균 | 30일 평균 데이터
             </div>
@@ -372,7 +486,7 @@ export function TeamPlantCards({
           </>
         ) : selectedMetric === 'weeklyWorkHours' ? (
           <>
-            <div className="font-semibold text-gray-900">주간 작업추정시간 : {avgWeeklyWorkHours.toFixed(1)}h</div>
+            <div className="font-semibold text-gray-900">주간 근무추정시간 : {avgWeeklyWorkHours.toFixed(1)}h</div>
             <div className="text-xs text-gray-700 mt-1">
               주당 실제 근무시간 평균 | 30일 평균 데이터
             </div>
@@ -387,7 +501,7 @@ export function TeamPlantCards({
               주당 신고 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.weeklyClaimedHours?.high}) | ● 양호({thresholds?.weeklyClaimedHours?.middle}) | ▼ 관찰협요({thresholds?.weeklyClaimedHours?.low})
+              ▲ 모범사례({thresholds?.weeklyClaimedHours?.high}) | ● 양호({thresholds?.weeklyClaimedHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyClaimedHours?.low})
             </div>
           </>
         ) : selectedMetric === 'focusedWorkHours' ? (

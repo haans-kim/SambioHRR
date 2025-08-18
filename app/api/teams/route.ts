@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
-  const cacheKey = `teams:v2:center=${centerCode || ''}:division=${divisionCode || ''}`;
+  const cacheKey = `teams:v3:center=${centerCode || ''}:division=${divisionCode || ''}`;
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
