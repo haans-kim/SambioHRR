@@ -32,12 +32,7 @@ export function Sidebar() {
       name: "업무 불균형", 
       href: "/enterprise", 
       description: "팀별 편차 모니터링"
-    },
-    { 
-      name: "통계 분석", 
-      href: "/statistics", 
-      description: "표준편차 분석"
-    },
+    }
   ];
 
   return (

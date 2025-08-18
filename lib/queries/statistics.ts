@@ -109,10 +109,18 @@ export function getWorkTimeStatistics(
     std_calc AS (
       SELECT 
         org_id,
-        SQRT(AVG(squared_diff)) as std_dev,
-        COUNT(CASE WHEN ABS(avg_minutes - mean_work_time) > 2 * SQRT(AVG(squared_diff)) THEN 1 END) as outlier_count
+        SQRT(AVG(squared_diff)) as std_dev
       FROM deviations
       GROUP BY org_id
+    ),
+    outlier_calc AS (
+      SELECT 
+        d.org_id,
+        COUNT(*) as outlier_count
+      FROM deviations d
+      JOIN std_calc sc ON d.org_id = sc.org_id
+      WHERE ABS(d.avg_minutes - d.mean_work_time) > 2 * sc.std_dev
+      GROUP BY d.org_id
     ),
     percentiles AS (
       SELECT 
@@ -134,7 +142,7 @@ export function getWorkTimeStatistics(
       MAX(CASE WHEN p.quartile = 2 THEN p.avg_minutes END) as median,
       MAX(CASE WHEN p.quartile = 3 THEN p.avg_minutes END) as q3,
       os.employee_count,
-      COALESCE(sc.outlier_count, 0) as outlier_count,
+      COALESCE(oc.outlier_count, 0) as outlier_count,
       CASE 
         WHEN (sc.std_dev / NULLIF(os.mean_work_time, 0)) * 100 < 15 THEN 'safe'
         WHEN (sc.std_dev / NULLIF(os.mean_work_time, 0)) * 100 < 25 THEN 'warning'
@@ -142,9 +150,10 @@ export function getWorkTimeStatistics(
       END as risk_level
     FROM org_stats os
     LEFT JOIN std_calc sc ON os.org_id = sc.org_id
+    LEFT JOIN outlier_calc oc ON os.org_id = oc.org_id
     LEFT JOIN percentiles p ON os.org_id = p.org_id
     WHERE os.org_id IS NOT NULL
-    GROUP BY os.org_id, os.org_name, os.mean_work_time, sc.std_dev, os.min_time, os.max_time, os.employee_count, sc.outlier_count
+    GROUP BY os.org_id, os.org_name, os.mean_work_time, sc.std_dev, os.min_time, os.max_time, os.employee_count, oc.outlier_count
     ORDER BY variance_coefficient DESC;
   `;
 

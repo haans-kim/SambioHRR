@@ -1046,3 +1046,34 @@ export function getMetricThresholds(metricType: 'efficiency' | 'workHours' | 'cl
     };
   }
 }
+
+// Get focused work table data for all centers
+export function getFocusedWorkTableData() {
+  const { startDate, endDate } = get30DayDateRange();
+  
+  const stmt = db.prepare(`
+    SELECT 
+      e.center_name as center,
+      COUNT(DISTINCT dar.employee_id) as employees,
+      ROUND(AVG(dar.focused_work_minutes / 60.0), 2) as avgFocusedWorkHours,
+      ROUND(
+        SQRT(
+          AVG((dar.focused_work_minutes / 60.0) * (dar.focused_work_minutes / 60.0)) - 
+          (AVG(dar.focused_work_minutes / 60.0) * AVG(dar.focused_work_minutes / 60.0))
+        ), 2
+      ) as stdDev,
+      ROUND(AVG(dar.actual_work_hours), 2) as avgWorkHours,
+      ROUND(AVG(dar.efficiency_ratio), 1) as efficiency,
+      ROUND((AVG(dar.focused_work_minutes / 60.0) / AVG(dar.actual_work_hours)) * 100, 1) as focusedRatio
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND dar.focused_work_minutes >= 30  -- At least 30 minutes
+      AND e.center_name IS NOT NULL
+    GROUP BY e.center_name
+    HAVING COUNT(DISTINCT dar.employee_id) > 0
+    ORDER BY avgFocusedWorkHours DESC
+  `);
+  
+  return stmt.all(startDate, endDate) as any[];
+}

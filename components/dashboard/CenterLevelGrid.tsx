@@ -387,8 +387,10 @@ export function CenterLevelGrid({
         </table>
       </div>
 
-      {/* Tooltip for information */}
-      <div className="mt-4 p-3 bg-white border border-gray-200 text-gray-900 rounded-lg text-sm max-w-md shadow-sm">
+      {/* Information section */}
+      <div className={`mt-4 ${selectedMetric === 'dataReliability' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}`}>
+        {/* Summary box */}
+        <div className="p-3 bg-white border border-gray-200 text-gray-900 rounded-lg text-sm shadow-sm">
         {selectedMetric === 'efficiency' ? (
           <>
             <div className="font-semibold text-gray-900">평균 실근무율 : {avgEfficiency.toFixed(1)}%</div>
@@ -459,6 +461,32 @@ export function CenterLevelGrid({
               ▲ 모범사례({thresholds?.dataReliability?.high}) | ● 양호({thresholds?.dataReliability?.middle}) | ▼ 관찰필요({thresholds?.dataReliability?.low})
             </div>
           </>
+        )}
+        </div>
+        
+        {/* Data reliability metric explanation - only show when dataReliability is selected */}
+        {selectedMetric === 'dataReliability' && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium text-gray-800 text-sm mb-2">신뢰도 증가 요인</h4>
+                <ul className="space-y-1">
+                  <li className="text-sm text-gray-700">• 장비 사용 기록 비율 높은 경우 : <span className="text-blue-600 font-medium">+30점</span></li>
+                  <li className="text-sm text-gray-700">• 이벤트 빈도 높은 경우 : <span className="text-blue-600 font-medium">+20점</span></li>
+                  <li className="text-sm text-gray-700">• 태그 간격 일정한 경우 : <span className="text-blue-600 font-medium">+10점</span></li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-gray-800 text-sm mb-2">신뢰도 감소 요인</h4>
+                <ul className="space-y-1">
+                  <li className="text-sm text-gray-700">• 불확실한 이벤트 많은 경우 : <span className="text-red-600 font-medium">-20점</span></li>
+                  <li className="text-sm text-gray-700">• 2시간 이상 공백 발생한 경우 : <span className="text-red-600 font-medium">-10점</span></li>
+                  <li className="text-sm text-gray-700">• 이동 추정시간 많음 : <span className="text-red-600 font-medium">-5점~-15점</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

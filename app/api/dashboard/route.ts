@@ -13,7 +13,8 @@ import {
   getGradeWeeklyClaimedHoursMatrix30Days,
   getGradeFocusedWorkHoursMatrix30Days,
   getGradeDataReliabilityMatrix30Days,
-  getMetricThresholdsForGrid 
+  getMetricThresholdsForGrid,
+  getFocusedWorkTableData
 } from "@/lib/db/queries/analytics";
 
 export async function GET() {
@@ -59,6 +60,9 @@ export async function GET() {
     const weeklyClaimedThresholds = getMetricThresholdsForGrid('weeklyClaimedHours');
     const focusedWorkThresholds = getMetricThresholdsForGrid('focusedWorkHours');
     const dataReliabilityThresholds = getMetricThresholdsForGrid('dataReliability');
+    
+    // Get focused work table data
+    const focusedWorkTable = getFocusedWorkTableData();
 
     const payload = {
       centers,
@@ -77,6 +81,7 @@ export async function GET() {
       weeklyClaimedHoursMatrix,
       focusedWorkHoursMatrix,
       dataReliabilityMatrix,
+      focusedWorkTable,
       thresholds: {
         efficiency: efficiencyThresholds,
         workHours: workHoursThresholds,

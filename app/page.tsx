@@ -5,6 +5,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CenterLevelGrid } from "@/components/dashboard/CenterLevelGrid";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { FocusedWorkTable } from "@/components/dashboard/FocusedWorkTable";
+import { FocusedWorkChart } from "@/components/dashboard/FocusedWorkChart";
 import { MetricType } from "@/components/dashboard/MetricSelector";
 
 interface DashboardData {
@@ -90,6 +91,10 @@ export default function HomePage() {
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
     >
+      <FocusedWorkTable visible={selectedMetric === 'focusedWorkHours'} />
+      {selectedMetric === 'focusedWorkHours' && <div className="mb-6" />}
+      <FocusedWorkChart visible={selectedMetric === 'focusedWorkHours'} />
+      {selectedMetric === 'focusedWorkHours' && <div className="mb-8" />}
       <CenterLevelGrid 
         organizations={data.centers} 
         gradeMatrix={data.gradeMatrix}
@@ -110,7 +115,6 @@ export default function HomePage() {
         thresholds={data.thresholds}
       />
       <SummaryCards selectedMetric={selectedMetric} thresholds={data.thresholds} />
-      <FocusedWorkTable visible={selectedMetric === 'focusedWorkHours'} />
     </DashboardLayout>
   );
 }

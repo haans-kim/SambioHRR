@@ -36,12 +36,6 @@ export default function MainNav() {
       label: '전사 대시보드',
       icon: LayoutDashboard,
       description: '5,000명 전체 현황'
-    },
-    {
-      href: '/statistics',
-      label: '표준편차 분석',
-      icon: BarChart3,
-      description: '업무 균형도 분석'
     }
   ];
 
