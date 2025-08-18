@@ -383,8 +383,10 @@ export function CenterLevelGrid({
                     const reliability = dataReliabilityMatrix?.matrix[level]?.[center.orgName] || 0;
                     
                     if (weeklyHours > 0 && reliability > 0) {
-                      // AI adjustment factor 계산 (92-100% 범위)
-                      const adjustmentFactor = 0.92 + (reliability / 100) * 0.08;
+                      // AI adjustment factor 계산 - 시그모이드 함수 사용
+                      const normalized = reliability / 100;
+                      const sigmoid = 1 / (1 + Math.exp(-12 * (normalized - 0.65)));
+                      const adjustmentFactor = 0.92 + (sigmoid * 0.08);
                       value = weeklyHours * adjustmentFactor;
                       
                       // 디버깅용 로그
