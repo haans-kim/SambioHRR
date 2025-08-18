@@ -32,6 +32,16 @@ export function Sidebar() {
       name: "근무 불균형", 
       href: "/enterprise", 
       description: "팀별 편차 모니터링"
+    },
+    { 
+      name: "Insight#1", 
+      href: "/insight1", 
+      description: "인건비·근무시간 분석"
+    },
+    { 
+      name: "Insight#2", 
+      href: "/insight2", 
+      description: "버블차트 분석"
     }
   ];
 
