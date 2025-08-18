@@ -29,7 +29,7 @@ export function Sidebar() {
       description: "그룹 단위 분석"
     },
     { 
-      name: "업무 불균형", 
+      name: "근무 불균형", 
       href: "/enterprise", 
       description: "팀별 편차 모니터링"
     }

@@ -69,7 +69,7 @@ export function MetricCard({
 
         <div className="space-y-3 flex-1">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-600 dark:text-neutral-400">실근무</span>
+            <span className="text-sm text-neutral-600 dark:text-neutral-400">효율성</span>
             <NumberTicker
               value={efficiency}
               suffix="%"

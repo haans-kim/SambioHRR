@@ -44,7 +44,7 @@ function getDateRange(): { min_date: string; max_date: string } {
   };
 }
 
-// 조직별 실근무시간 표준편차 계산
+// 조직별 근무시간 표준편차 계산
 export function getWorkTimeStatistics(
   orgLevel: 'center' | 'team' | 'group',
   parentId?: string,
@@ -198,7 +198,7 @@ export function getOrganizationInsights(): OrganizationInsight[] {
     });
   }
 
-  // 2. 팀별 업무 불균형 감지
+  // 2. 팀별 근무 불균형 감지
   const imbalanceQuery = `
     WITH team_variance AS (
       SELECT 
@@ -223,10 +223,10 @@ export function getOrganizationInsights(): OrganizationInsight[] {
     insights.push({
       type: 'imbalance',
       severity: imbalanceResult.team_count > 10 ? 'high' : 'medium',
-      title: '팀 내 업무 불균형',
-      description: `${imbalanceResult.team_count}개 팀에서 심각한 업무 편차 발생`,
+      title: '팀 내 근무 불균형',
+      description: `${imbalanceResult.team_count}개 팀에서 심각한 근무 편차 발생`,
       affectedCount: imbalanceResult.team_count,
-      recommendation: '팀 내 업무 분배 현황 점검 필요'
+      recommendation: '팀 내 근무 분배 현황 점검 필요'
     });
   }
 

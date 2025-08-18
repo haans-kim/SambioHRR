@@ -23,9 +23,9 @@ interface SummaryCardsProps {
 export function SummaryCards({
   selectedMetric = 'efficiency',
   thresholds,
-  immediateAttention = ["실각한 과로 상태입니다. 업무량 재분배 및 인력 충원이 시급합니다."],
+  immediateAttention = ["심각한 과로 상태입니다. 업무량 재분배 및 인력 충원이 시급합니다."],
   bestPractices = ["최적 범위의 근무율과 높은 효율성을 보이는 조직/직급입니다."],
-  improvementTargets = ["Lv.4 직급의 실근무율이 낮습니다. [의사결정 프로세스 개선] 및 [관리 업무 간소화]가 필요합니다."]
+  improvementTargets = ["Lv.4 직급의 효율성이 낮습니다. [의사결정 프로세스 개선] 및 [관리 업무 간소화]가 필요합니다."]
 }: SummaryCardsProps) {
   
   // 동적 임계값 또는 기본값 사용

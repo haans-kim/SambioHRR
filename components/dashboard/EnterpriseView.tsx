@@ -118,7 +118,7 @@ export default function EnterpriseView() {
       {/* 헤더 섹션 */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">업무 불균형 - 전사 대시보드</h1>
+          <h1 className="text-3xl font-bold">근무 불균형 - 전사 대시보드</h1>
           <p className="text-gray-600 mt-1">5,000명 조직 실시간 모니터링</p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2">
@@ -150,7 +150,7 @@ export default function EnterpriseView() {
                   </AlertDescription>
                   {insight.affectedCount > 0 && (
                     <Badge variant="secondary" className="mt-3 text-base px-4 py-2 inline-block">
-                      영향: {insight.affectedCount}명
+                      영향: {insight.affectedCount}{insight.type === 'imbalance' ? '개팀' : '명'}
                     </Badge>
                   )}
                   <p className="text-lg font-semibold text-blue-600 mt-4 whitespace-nowrap">
@@ -166,7 +166,7 @@ export default function EnterpriseView() {
       {/* 상위 10개 팀 버블 차트 */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-3xl font-bold">업무 불균형 상위 10개 팀</h2>
+          <h2 className="text-3xl font-bold">근무 불균형 상위 10개 팀</h2>
           <p className="text-lg text-gray-600 mt-2">버블 크기: 인원수 | 색상: 위험도</p>
         </div>
         <Card>
@@ -312,8 +312,8 @@ export default function EnterpriseView() {
       {/* 팀별 업무 균형도 */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-3xl font-bold">팀별 업무 균형도 분석</h2>
-          <p className="text-lg text-gray-600 mt-2">변동계수(CV)가 높은 상위 24개 팀 - 업무 재분배 필요</p>
+          <h2 className="text-3xl font-bold">팀별 근무 균형도 분석</h2>
+          <p className="text-lg text-gray-600 mt-2">변동계수(CV)가 높은 상위 24개 팀 - 근무 재분배 필요</p>
         </div>
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
           {teamDistribution.slice(0, 24).map((team, index) => {

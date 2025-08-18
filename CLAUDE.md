@@ -38,8 +38,8 @@ Note: The database currently uses 3 levels (center/team/group) where "담당" ap
 
 ## Core Metrics
 - **근태기록시간** (Clock-in/out time)
-- **실제 작업시간** (Actual work time)
-- **작업시간 추정률** (Work time efficiency ratio)
+- **실제 근무시간** (Actual work time)
+- **근무시간 추정률** (Work time efficiency ratio)
 - **회의시간** (Meeting time)
 - **식사시간** (Meal time)
 - **이동시간** (Travel time)

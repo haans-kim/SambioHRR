@@ -397,9 +397,9 @@ export function CenterLevelGrid({
         <div className="p-3 bg-white border border-gray-200 text-gray-900 rounded-lg text-sm shadow-sm">
         {selectedMetric === 'efficiency' ? (
           <>
-            <div className="font-semibold text-gray-900">평균 실근무율 : {avgEfficiency.toFixed(1)}%</div>
+            <div className="font-semibold text-gray-900">평균 효율성 : {avgEfficiency.toFixed(1)}%</div>
             <div className="text-xs text-gray-700 mt-1">
-              실제 작업시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
+              실제 근무시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
               ▲ 모범사례({thresholds?.efficiency?.high}) | ● 양호({thresholds?.efficiency?.middle}) | ▼ 관찰필요({thresholds?.efficiency?.low})
@@ -407,9 +407,9 @@ export function CenterLevelGrid({
           </>
         ) : selectedMetric === 'workHours' ? (
           <>
-            <div className="font-semibold text-gray-900">일간 작업추정시간 : {avgWorkHours.toFixed(1)}h</div>
+            <div className="font-semibold text-gray-900">일간 근무추정시간 : {avgWorkHours.toFixed(1)}h</div>
             <div className="text-xs text-gray-700 mt-1">
-              실제 작업시간 평균 | 30일 평균 데이터
+              실제 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
               ▲ 모범사례({thresholds?.workHours?.high}) | ● 양호({thresholds?.workHours?.middle}) | ▼ 관찰필요({thresholds?.workHours?.low})
@@ -427,9 +427,9 @@ export function CenterLevelGrid({
           </>
         ) : selectedMetric === 'weeklyWorkHours' ? (
           <>
-            <div className="font-semibold text-gray-900">주간 작업추정시간 : {avgWeeklyWorkHours.toFixed(1)}h</div>
+            <div className="font-semibold text-gray-900">주간 근무추정시간 : {avgWeeklyWorkHours.toFixed(1)}h</div>
             <div className="text-xs text-gray-700 mt-1">
-              주당 실제 작업시간 평균 | 30일 평균 데이터
+              주당 실제 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
               ▲ 모범사례({thresholds?.weeklyWorkHours?.high}) | ● 양호({thresholds?.weeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyWorkHours?.low})
