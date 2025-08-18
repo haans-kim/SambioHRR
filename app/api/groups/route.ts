@@ -8,11 +8,12 @@ import { getGroupStats } from '@/lib/db/queries/teamStats';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
 import { get30DayDateRange } from '@/lib/db/queries/analytics';
+import { calculateAdjustedWorkHours, calculateAIAdjustmentFactor } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const teamCode = searchParams.get('team');
-  const cacheKey = `groups:v7:team=${teamCode || ''}`; // v7으로 변경하여 캐시 무효화
+  const cacheKey = `groups:v8:team=${teamCode || ''}`; // v8으로 변경하여 캐시 무효화
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
@@ -133,11 +134,16 @@ export async function GET(request: NextRequest) {
   // Weekly averages (multiply daily by 5)
   const avgWeeklyWorkHours = avgWorkHours * 5;
   const avgWeeklyClaimedHours = avgClaimedHours * 5;
+  const avgAdjustedWeeklyWorkHours = avgWeeklyWorkHours && avgDataReliability 
+    ? calculateAdjustedWorkHours(avgWeeklyWorkHours, avgDataReliability)
+    : 0;
+  
 
   // Calculate thresholds (20th and 80th percentiles)
   const efficiencyValues = groups.map((org: any) => org.stats?.avgWorkEfficiency || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const workHoursValues = groups.map((org: any) => org.stats?.avgActualWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const claimedHoursValues = groups.map((org: any) => org.stats?.avgAttendanceHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
+  const adjustedWeeklyWorkHoursValues = groups.map((org: any) => org.stats?.avgAdjustedWeeklyWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const focusedWorkHoursValues = groups.map((org: any) => org.stats?.avgFocusedWorkHours || 0).filter((v: number) => v >= 0).sort((a: number, b: number) => a - b);
   const dataReliabilityValues = groups.map((org: any) => org.stats?.avgDataReliability || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   
@@ -156,6 +162,9 @@ export async function GET(request: NextRequest) {
   }
   if (dataReliabilityValues.length === 0) {
     dataReliabilityValues.push(50.0, 80.0);
+  }
+  if (adjustedWeeklyWorkHoursValues.length === 0) {
+    adjustedWeeklyWorkHoursValues.push(35.0, 45.0);
   }
   
   const getPercentile = (arr: number[], percentile: number) => {
@@ -236,6 +245,15 @@ export async function GET(request: NextRequest) {
         low: getPercentile(dataReliabilityValues, 20),
         high: getPercentile(dataReliabilityValues, 80)
       }
+    },
+    adjustedWeeklyWorkHours: {
+      low: `≤${getPercentile(adjustedWeeklyWorkHoursValues, 20).toFixed(0)}h`,
+      middle: `${getPercentile(adjustedWeeklyWorkHoursValues, 20).toFixed(0)}-${getPercentile(adjustedWeeklyWorkHoursValues, 80).toFixed(0)}h`,
+      high: `≥${getPercentile(adjustedWeeklyWorkHoursValues, 80).toFixed(0)}h`,
+      thresholds: {
+        low: getPercentile(adjustedWeeklyWorkHoursValues, 20),
+        high: getPercentile(adjustedWeeklyWorkHoursValues, 80)
+      }
     }
   };
 
@@ -248,6 +266,7 @@ export async function GET(request: NextRequest) {
     avgClaimedHours,
     avgWeeklyWorkHours,
     avgWeeklyClaimedHours,
+    avgAdjustedWeeklyWorkHours,
     avgFocusedWorkHours,
     avgDataReliability,
     thresholds,

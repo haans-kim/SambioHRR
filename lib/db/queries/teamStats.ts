@@ -1,5 +1,6 @@
 import db from '../client';
 import { getLatestAnalysisDate } from './analytics';
+import { calculateAdjustedWorkHours } from '@/lib/utils';
 
 interface TeamStats {
   orgCode: string;
@@ -12,6 +13,7 @@ interface TeamStats {
   avgDataReliability: number;
   totalEmployees: number;
   centerName?: string;
+  avgAdjustedWeeklyWorkHours?: number;
 }
 
 // Get aggregated stats for teams under a center
@@ -82,16 +84,22 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
       // Use org_code from organization_master if available, otherwise use teamId
       const orgCode = nameToCodeMap.get(summary.teamName) || summary.teamId;
       
+      const weeklyWorkHours = (summary.avgActualWorkHours * 5) || 0;
+      const dataReliability = summary.avgConfidenceScore || 0;
+      
       statsMap.set(orgCode, {
         orgCode: orgCode,
         avgWorkEfficiency: summary.avgEfficiencyRatio || 0,
         avgActualWorkHours: summary.avgActualWorkHours || 0,
         avgAttendanceHours: summary.avgClaimedHours || 0,  // Using avgClaimedHours as attendance hours
-        avgWeeklyWorkHours: (summary.avgActualWorkHours * 5) || 0,
+        avgWeeklyWorkHours: weeklyWorkHours,
         avgWeeklyClaimedHours: (summary.avgClaimedHours * 5) || 0,
         avgFocusedWorkHours: summary.avgFocusedHours || 0,
-        avgDataReliability: summary.avgConfidenceScore || 0,
-        totalEmployees: teamUnique.get(summary.teamName) || summary.analyzedEmployees || 0
+        avgDataReliability: dataReliability,
+        totalEmployees: teamUnique.get(summary.teamName) || summary.analyzedEmployees || 0,
+        avgAdjustedWeeklyWorkHours: weeklyWorkHours && dataReliability 
+          ? calculateAdjustedWorkHours(weeklyWorkHours, dataReliability)
+          : 0
       });
     });
     
@@ -185,17 +193,23 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         return; // Skip this group if no org_code found
       }
       
+      const weeklyWorkHours = (summary.avgActualWorkHours * 5) || 0;
+      const dataReliability = summary.avgConfidenceScore || 0;
+      
       statsMap.set(orgCode, {
         orgCode: orgCode,
         avgWorkEfficiency: summary.avgEfficiencyRatio || 0,
         avgActualWorkHours: summary.avgActualWorkHours || 0,
         avgAttendanceHours: summary.avgClaimedHours || 0,  // Using avgClaimedHours as attendance hours
-        avgWeeklyWorkHours: (summary.avgActualWorkHours * 5) || 0,
+        avgWeeklyWorkHours: weeklyWorkHours,
         avgWeeklyClaimedHours: (summary.avgClaimedHours * 5) || 0,
         avgFocusedWorkHours: summary.avgFocusedHours || 0,
-        avgDataReliability: summary.avgConfidenceScore || 0,
+        avgDataReliability: dataReliability,
         totalEmployees: groupUnique.get(summary.groupName) || summary.analyzedEmployees || 0,
-        centerName: summary.centerName || null
+        centerName: summary.centerName || null,
+        avgAdjustedWeeklyWorkHours: weeklyWorkHours && dataReliability 
+          ? calculateAdjustedWorkHours(weeklyWorkHours, dataReliability)
+          : 0
       });
     });
     

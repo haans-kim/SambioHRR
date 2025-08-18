@@ -757,7 +757,7 @@ export function getOrganizationDataReliabilityStats30Days() {
 }
 
 // Get metric thresholds based on grid matrix data (center-grade averages)
-export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours' | 'claimedHours' | 'weeklyWorkHours' | 'weeklyClaimedHours' | 'focusedWorkHours' | 'dataReliability') {
+export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours' | 'claimedHours' | 'weeklyWorkHours' | 'weeklyClaimedHours' | 'focusedWorkHours' | 'dataReliability' | 'adjustedWeeklyWorkHours') {
   const { startDate, endDate } = get30DayDateRange();
   
   let column = '';
@@ -786,11 +786,33 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
     case 'dataReliability':
       column = 'confidence_score';
       break;
+    case 'adjustedWeeklyWorkHours':
+      column = 'actual_work_hours';
+      isWeekly = true;
+      break;
   }
   
   // Get center-grade averages (same as what's displayed in the grid)
   let dataQuery = '';
-  if (isWeekly) {
+  if (metricType === 'adjustedWeeklyWorkHours') {
+    // For adjustedWeeklyWorkHours, calculate with AI adjustment
+    dataQuery = `
+      SELECT 
+        e.center_name as centerName,
+        'Lv.' || e.job_grade as grade,
+        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5 * (0.92 + (AVG(dar.confidence_score) / 100) * 0.08), 1) as avgValue
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.job_grade IS NOT NULL
+        AND e.center_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.actual_work_hours IS NOT NULL
+        AND dar.confidence_score IS NOT NULL
+      GROUP BY e.center_name, e.job_grade
+      ORDER BY avgValue ASC
+    `;
+  } else if (isWeekly) {
     dataQuery = `
       SELECT 
         e.center_name as centerName,
@@ -844,58 +866,14 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
   const results = stmt.all(startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
   
   if (results.length === 0) {
-    // Return default values if no data
-    if (metricType === 'efficiency') {
-      return {
-        low: '≤73.2%',
-        middle: '73.3-88.3%',
-        high: '≥88.4%',
-        thresholds: { low: 73.2, high: 88.4 }
-      };
-    } else if (metricType === 'workHours') {
-      return {
-        low: '<6.0h',
-        middle: '6.0-7.9h',
-        high: '≥8.0h',
-        thresholds: { low: 6.0, high: 8.0 }
-      };
-    } else if (metricType === 'claimedHours') {
-      return {
-        low: '<7.0h',
-        middle: '7.0-8.9h',
-        high: '≥9.0h',
-        thresholds: { low: 7.0, high: 9.0 }
-      };
-    } else if (metricType === 'weeklyWorkHours') {
-      return {
-        low: '<35.0h',
-        middle: '35.0-44.9h',
-        high: '≥45.0h',
-        thresholds: { low: 35.0, high: 45.0 }
-      };
-    } else if (metricType === 'focusedWorkHours') {
-      return {
-        low: '<2.0h',
-        middle: '2.0-4.9h',
-        high: '≥5.0h',
-        thresholds: { low: 2.0, high: 5.0 }
-      };
-    } else if (metricType === 'dataReliability') {
-      return {
-        low: '<70.0',
-        middle: '70.0-84.9',
-        high: '≥85.0',
-        thresholds: { low: 70.0, high: 85.0 }
-      };
-    } else {
-      // weeklyClaimedHours
-      return {
-        low: '<38.0h',
-        middle: '38.0-47.9h',
-        high: '≥48.0h',
-        thresholds: { low: 38.0, high: 48.0 }
-      };
-    }
+    // 데이터가 없으면 에러를 명확히 표시
+    console.error(`No data found for metric: ${metricType}`);
+    return {
+      low: 'N/A',
+      middle: 'N/A',
+      high: 'N/A',
+      thresholds: { low: 0, high: 0 }
+    };
   }
   
   // Calculate percentiles from center-grade averages

@@ -1,5 +1,6 @@
 import db from '../client';
 import type { Organization, OrganizationWithStats, OrgLevel } from '@/lib/types/organization';
+import { calculateAdjustedWorkHours } from '@/lib/utils';
 
 // Helper function to get 30-day date range
 function get30DayDateRange(): { startDate: string; endDate: string } {
@@ -178,7 +179,10 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         avgWeeklyClaimedHours: stats.avgWeeklyClaimedHours || 0,
         avgFocusedWorkHours: stats.avgFocusedWorkHours || 0,
         avgDataReliability: stats.avgDataReliability || 0,
-        centerName: stats.centerName || null
+        centerName: stats.centerName || null,
+        avgAdjustedWeeklyWorkHours: stats.avgWeeklyWorkHours && stats.avgDataReliability 
+          ? calculateAdjustedWorkHours(stats.avgWeeklyWorkHours, stats.avgDataReliability)
+          : 0
       }
     };
   });

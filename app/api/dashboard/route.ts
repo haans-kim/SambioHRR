@@ -16,10 +16,11 @@ import {
   getMetricThresholdsForGrid,
   getFocusedWorkTableData
 } from "@/lib/db/queries/analytics";
+import { calculateAdjustedWorkHours } from '@/lib/utils';
 
 export async function GET() {
   try {
-    const cacheKey = 'dashboard:v5';
+    const cacheKey = 'dashboard:v7';
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
@@ -42,6 +43,9 @@ export async function GET() {
     const avgWeeklyClaimedHours = weeklyStats?.avgWeeklyClaimedHours || 42.5;
     const avgFocusedWorkHours = focusedStats?.avgFocusedWorkHours || 4.2;
     const avgDataReliability = dataReliabilityStats?.avgDataReliability || 83.6;
+    const avgAdjustedWeeklyWorkHours = avgWeeklyWorkHours && avgDataReliability 
+      ? calculateAdjustedWorkHours(avgWeeklyWorkHours, avgDataReliability)
+      : 0;
     
     // Get grade efficiency, work hours, and claimed hours matrices for 30 days
     const gradeMatrix = getGradeEfficiencyMatrix30Days();
@@ -61,6 +65,8 @@ export async function GET() {
     const focusedWorkThresholds = getMetricThresholdsForGrid('focusedWorkHours');
     const dataReliabilityThresholds = getMetricThresholdsForGrid('dataReliability');
     
+    const adjustedWeeklyWorkThresholds = getMetricThresholdsForGrid('adjustedWeeklyWorkHours');
+    
     // Get focused work table data
     const focusedWorkTable = getFocusedWorkTableData();
 
@@ -72,6 +78,7 @@ export async function GET() {
       avgClaimedHours,
       avgWeeklyWorkHours,
       avgWeeklyClaimedHours,
+      avgAdjustedWeeklyWorkHours,
       avgFocusedWorkHours,
       avgDataReliability,
       gradeMatrix,
@@ -87,6 +94,7 @@ export async function GET() {
         workHours: workHoursThresholds,
         claimedHours: claimedHoursThresholds,
         weeklyWorkHours: weeklyWorkThresholds,
+        adjustedWeeklyWorkHours: adjustedWeeklyWorkThresholds,
         weeklyClaimedHours: weeklyClaimedThresholds,
         focusedWorkHours: focusedWorkThresholds,
         dataReliability: dataReliabilityThresholds

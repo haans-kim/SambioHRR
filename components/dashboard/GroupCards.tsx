@@ -18,6 +18,7 @@ interface GroupCardsProps {
   avgWeeklyClaimedHours?: number;
   avgFocusedWorkHours?: number;
   avgDataReliability?: number;
+  avgAdjustedWeeklyWorkHours?: number;
   thresholds?: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
@@ -26,6 +27,7 @@ interface GroupCardsProps {
     weeklyClaimedHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    adjustedWeeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -57,6 +59,8 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         return claimedHours;
       case 'weeklyWorkHours':
         return weeklyWorkHours;
+      case 'adjustedWeeklyWorkHours':
+        return org.stats?.avgAdjustedWeeklyWorkHours || 0;
       case 'weeklyClaimedHours':
         return weeklyClaimedHours;
       case 'focusedWorkHours':
@@ -85,7 +89,7 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         if (value >= 9.0) return "▲";
         if (value >= 7.0) return "●";
         return "▼";
-      } else if (selectedMetric === 'weeklyWorkHours') {
+      } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
         if (value >= 45.0) return "▲";
         if (value >= 35.0) return "●";
         return "▼";
@@ -126,7 +130,7 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         if (value >= 9.0) return "text-blue-600";
         if (value >= 7.0) return "text-green-600";
         return "text-red-600";
-      } else if (selectedMetric === 'weeklyWorkHours') {
+      } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
         if (value >= 45.0) return "text-blue-600";
         if (value >= 35.0) return "text-green-600";
         return "text-red-600";
@@ -167,7 +171,7 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         if (value >= 9.0) return "border-blue-300 bg-blue-50";
         if (value >= 7.0) return "border-green-300 bg-green-50";
         return "border-red-300 bg-red-50";
-      } else if (selectedMetric === 'weeklyWorkHours') {
+      } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
         if (value >= 45.0) return "border-blue-300 bg-blue-50";
         if (value >= 35.0) return "border-green-300 bg-green-50";
         return "border-red-300 bg-red-50";
@@ -230,6 +234,8 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
         return '일간 근무시간';
       case 'weeklyWorkHours':
         return '주간 근무추정시간';
+      case 'adjustedWeeklyWorkHours':
+        return '주간 근무추정시간(AI보정)';
       case 'weeklyClaimedHours':
         return '주간 근무시간';
       case 'focusedWorkHours':
@@ -280,7 +286,11 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
             <div 
               className="h-full rounded-full transition-all duration-1000 ease-out"
               style={{
-                width: selectedMetric === 'efficiency' || selectedMetric === 'dataReliability' ? `${value}%` : `${Math.min(value * 10, 100)}%`,
+                width: selectedMetric === 'efficiency' || selectedMetric === 'dataReliability' 
+                  ? `${value}%` 
+                  : selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours' || selectedMetric === 'weeklyClaimedHours'
+                  ? `${Math.min((value / 50) * 100, 100)}%`  // Scale weekly hours to 50h max
+                  : `${Math.min(value * 10, 100)}%`,
                 backgroundColor: getProgressColor(value)
               }}
             />
@@ -349,6 +359,8 @@ export function GroupCards({
           return group.stats?.avgAttendanceHours || 0;
         case 'weeklyWorkHours':
           return group.stats?.avgWeeklyWorkHours || 0;
+        case 'adjustedWeeklyWorkHours':
+          return group.stats?.avgAdjustedWeeklyWorkHours || 0;
         case 'weeklyClaimedHours':
           return group.stats?.avgWeeklyClaimedHours || 0;
         case 'focusedWorkHours':
@@ -529,6 +541,16 @@ export function GroupCards({
             </div>
             <div className="text-xs text-gray-700 mt-1">
               ▲ 모범사례({thresholds?.weeklyWorkHours?.high}) | ● 양호({thresholds?.weeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyWorkHours?.low})
+            </div>
+          </>
+        ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
+          <>
+            <div className="font-semibold text-gray-900">주간 근무추정시간(AI보정) : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
+            <div className="text-xs text-gray-700 mt-1">
+              AI 신뢰도 보정 적용 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.adjustedWeeklyWorkHours?.high}) | ● 양호({thresholds?.adjustedWeeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.adjustedWeeklyWorkHours?.low})
             </div>
           </>
         ) : selectedMetric === 'weeklyClaimedHours' ? (

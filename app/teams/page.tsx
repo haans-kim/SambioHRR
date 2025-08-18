@@ -19,6 +19,7 @@ interface TeamData {
     avgClaimedHours: number;
     avgWeeklyWorkHours: number;
     avgWeeklyClaimedHours: number;
+    avgAdjustedWeeklyWorkHours?: number;
     avgFocusedWorkHours: number;
     avgDataReliability: number;
   };
@@ -31,6 +32,7 @@ interface TeamData {
     weeklyClaimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    adjustedWeeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -94,6 +96,7 @@ export default function TeamsPage() {
       avgClaimedHours={data.summary?.avgClaimedHours || 0}
       avgWeeklyWorkHours={data.summary?.avgWeeklyWorkHours || 0}
       avgWeeklyClaimedHours={data.summary?.avgWeeklyClaimedHours || 0}
+      avgAdjustedWeeklyWorkHours={data.summary?.avgAdjustedWeeklyWorkHours || 0}
       avgFocusedWorkHours={data.summary?.avgFocusedWorkHours || 0}
       avgDataReliability={data.summary?.avgDataReliability || 0}
       selectedMetric={selectedMetric}
@@ -110,6 +113,7 @@ export default function TeamsPage() {
         avgClaimedHours={data.summary?.avgClaimedHours || 0}
         avgWeeklyWorkHours={data.summary?.avgWeeklyWorkHours || 0}
         avgWeeklyClaimedHours={data.summary?.avgWeeklyClaimedHours || 0}
+        avgAdjustedWeeklyWorkHours={data.summary?.avgAdjustedWeeklyWorkHours || 0}
         avgFocusedWorkHours={data.summary?.avgFocusedWorkHours || 0}
         avgDataReliability={data.summary?.avgDataReliability || 0}
         thresholds={data.thresholds}

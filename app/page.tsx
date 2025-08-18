@@ -16,6 +16,7 @@ interface DashboardData {
   avgClaimedHours: number;
   avgWeeklyWorkHours: number;
   avgWeeklyClaimedHours: number;
+  avgAdjustedWeeklyWorkHours?: number;
   avgFocusedWorkHours?: number;
   avgDataReliability?: number;
   gradeMatrix: any;
@@ -30,6 +31,7 @@ interface DashboardData {
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyWorkHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    adjustedWeeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
@@ -88,6 +90,9 @@ export default function HomePage() {
       avgClaimedHours={data.avgClaimedHours}
       avgWeeklyWorkHours={data.avgWeeklyWorkHours}
       avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
+      avgAdjustedWeeklyWorkHours={data.avgAdjustedWeeklyWorkHours}
+      avgFocusedWorkHours={data.avgFocusedWorkHours}
+      avgDataReliability={data.avgDataReliability}
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
     >
@@ -109,6 +114,7 @@ export default function HomePage() {
         avgClaimedHours={data.avgClaimedHours}
         avgWeeklyWorkHours={data.avgWeeklyWorkHours}
         avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
+        avgAdjustedWeeklyWorkHours={data.avgAdjustedWeeklyWorkHours}
         avgFocusedWorkHours={data.avgFocusedWorkHours}
         avgDataReliability={data.avgDataReliability}
         selectedMetric={selectedMetric}

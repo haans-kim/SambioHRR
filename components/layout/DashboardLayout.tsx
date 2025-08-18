@@ -15,6 +15,7 @@ interface DashboardLayoutProps {
   avgClaimedHours?: number;
   avgWeeklyWorkHours?: number;
   avgWeeklyClaimedHours?: number;
+  avgAdjustedWeeklyWorkHours?: number;
   avgFocusedWorkHours?: number;
   avgDataReliability?: number;
   selectedMetric?: MetricType;
@@ -31,6 +32,7 @@ export function DashboardLayout({
   avgClaimedHours = 8.5,
   avgWeeklyWorkHours = 40.0,
   avgWeeklyClaimedHours = 42.5,
+  avgAdjustedWeeklyWorkHours = 38.4,
   avgFocusedWorkHours = 4.2,
   avgDataReliability = 65.0,
   selectedMetric = 'efficiency',
@@ -89,11 +91,15 @@ export function DashboardLayout({
                           ? avgClaimedHours
                           : selectedMetric === 'weeklyWorkHours'
                           ? avgWeeklyWorkHours
+                          : selectedMetric === 'adjustedWeeklyWorkHours'
+                          ? avgAdjustedWeeklyWorkHours
                           : selectedMetric === 'weeklyClaimedHours'
                           ? avgWeeklyClaimedHours
                           : selectedMetric === 'focusedWorkHours'
                           ? avgFocusedWorkHours
-                          : avgDataReliability
+                          : selectedMetric === 'dataReliability'
+                          ? avgDataReliability
+                          : 0
                       } 
                       decimalPlaces={1} 
                     />
@@ -108,11 +114,15 @@ export function DashboardLayout({
                       ? '일간 근무시간'
                       : selectedMetric === 'weeklyWorkHours'
                       ? '주간 근무추정시간'
+                      : selectedMetric === 'adjustedWeeklyWorkHours'
+                      ? '주간 근무추정시간(AI보정)'
                       : selectedMetric === 'weeklyClaimedHours'
                       ? '주간 근무시간'
                       : selectedMetric === 'focusedWorkHours'
                       ? '집중근무시간'
-                      : '데이터 신뢰도'}
+                      : selectedMetric === 'dataReliability'
+                      ? '데이터 신뢰도'
+                      : ''}
                   </div>
                 </div>
               </div>

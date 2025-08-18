@@ -50,6 +50,7 @@ interface CenterLevelGridProps {
   avgClaimedHours?: number;
   avgWeeklyWorkHours?: number;
   avgWeeklyClaimedHours?: number;
+  avgAdjustedWeeklyWorkHours?: number;
   avgFocusedWorkHours?: number;
   avgDataReliability?: number;
   selectedMetric?: MetricType;
@@ -59,6 +60,7 @@ interface CenterLevelGridProps {
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    adjustedWeeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
@@ -96,6 +98,10 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
       } else if (metricType === 'weeklyClaimedHours') {
         if (value >= 48.0) return "▲";
         if (value >= 38.0) return "●";
+        return "▼";
+      } else if (metricType === 'adjustedWeeklyWorkHours') {
+        if (value >= 42.0) return "▲";
+        if (value >= 35.0) return "●";
         return "▼";
       } else if (metricType === 'focusedWorkHours') {
         if (value >= 5.0) return "▲";
@@ -138,6 +144,10 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
         if (value >= 48.0) return "text-blue-600";
         if (value >= 38.0) return "text-green-600";
         return "text-red-600";
+      } else if (metricType === 'adjustedWeeklyWorkHours') {
+        if (value >= 42.0) return "text-blue-600";
+        if (value >= 35.0) return "text-green-600";
+        return "text-red-600";
       } else if (metricType === 'focusedWorkHours') {
         if (value >= 5.0) return "text-blue-600";
         if (value >= 2.0) return "text-green-600";
@@ -172,9 +182,13 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
         isCircle = value >= 35.0 && value < 45.0;
       } else if (metricType === 'weeklyClaimedHours') {
         isCircle = value >= 38.0 && value < 48.0;
-      } else {
-        // focusedWorkHours
+      } else if (metricType === 'adjustedWeeklyWorkHours') {
+        isCircle = value >= 35.0 && value < 42.0;
+      } else if (metricType === 'focusedWorkHours') {
         isCircle = value >= 2.0 && value < 5.0;
+      } else {
+        // dataReliability
+        isCircle = value >= 70.0 && value < 85.0;
       }
     } else {
       // Use dynamic thresholds
@@ -209,6 +223,10 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
       } else if (metricType === 'weeklyClaimedHours') {
         if (value >= 48.0) return "border-blue-200 bg-blue-50";
         if (value >= 38.0) return "border-green-200 bg-green-50";
+        return "border-red-200 bg-red-50";
+      } else if (metricType === 'adjustedWeeklyWorkHours') {
+        if (value >= 42.0) return "border-blue-200 bg-blue-50";
+        if (value >= 35.0) return "border-green-200 bg-green-50";
         return "border-red-200 bg-red-50";
       } else if (metricType === 'focusedWorkHours') {
         if (value >= 5.0) return "border-blue-200 bg-blue-50";
@@ -269,6 +287,7 @@ export function CenterLevelGrid({
   avgClaimedHours = 8.5,
   avgWeeklyWorkHours = 40.0,
   avgWeeklyClaimedHours = 42.5,
+  avgAdjustedWeeklyWorkHours = 38.4,
   avgFocusedWorkHours = 4.2,
   avgDataReliability = 83.6,
   selectedMetric = 'efficiency',
@@ -354,6 +373,30 @@ export function CenterLevelGrid({
                     // Use weekly claimed hours data
                     if (weeklyClaimedHoursMatrix?.matrix[level]?.[center.orgName]) {
                       value = weeklyClaimedHoursMatrix.matrix[level][center.orgName];
+                    } else {
+                      value = 0; // 데이터 없음을 명확히 표시
+                    }
+                  } else if (selectedMetric === 'adjustedWeeklyWorkHours') {
+                    // Use adjusted weekly work hours data (AI보정)
+                    // weeklyWorkHours와 dataReliability를 조합하여 계산
+                    const weeklyHours = weeklyWorkHoursMatrix?.matrix[level]?.[center.orgName] || 0;
+                    const reliability = dataReliabilityMatrix?.matrix[level]?.[center.orgName] || 0;
+                    
+                    if (weeklyHours > 0 && reliability > 0) {
+                      // AI adjustment factor 계산 (92-100% 범위)
+                      const adjustmentFactor = 0.92 + (reliability / 100) * 0.08;
+                      value = weeklyHours * adjustmentFactor;
+                      
+                      // 디버깅용 로그
+                      if (levelIndex === 0) { // 첫 번째 레벨에서만 로그
+                        console.log(`[${center.orgName}] ${level}:`, {
+                          weeklyHours,
+                          reliability,
+                          adjustmentFactor,
+                          adjustedValue: value,
+                          thresholds: thresholds?.[selectedMetric]?.thresholds
+                        });
+                      }
                     } else {
                       value = 0; // 데이터 없음을 명확히 표시
                     }
@@ -443,6 +486,16 @@ export function CenterLevelGrid({
             </div>
             <div className="text-xs text-gray-700 mt-1">
               ▲ 모범사례({thresholds?.weeklyClaimedHours?.high}) | ● 양호({thresholds?.weeklyClaimedHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyClaimedHours?.low})
+            </div>
+          </>
+        ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
+          <>
+            <div className="font-semibold text-gray-900">주간 근무추정시간(AI보정) : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
+            <div className="text-xs text-gray-700 mt-1">
+              AI 신뢰도 보정 적용 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.adjustedWeeklyWorkHours?.high || '상위 20%'}) | ● 양호({thresholds?.adjustedWeeklyWorkHours?.middle || '중위 60%'}) | ▼ 관찰필요({thresholds?.adjustedWeeklyWorkHours?.low || '하위 20%'})
             </div>
           </>
         ) : selectedMetric === 'focusedWorkHours' ? (

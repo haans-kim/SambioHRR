@@ -88,6 +88,7 @@ export default function GroupsPage() {
       avgClaimedHours={data.avgClaimedHours}
       avgWeeklyWorkHours={data.avgWeeklyWorkHours}
       avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
+      avgAdjustedWeeklyWorkHours={data.avgAdjustedWeeklyWorkHours}
       avgFocusedWorkHours={data.avgFocusedWorkHours}
       avgDataReliability={data.avgDataReliability}
       selectedMetric={selectedMetric}
@@ -104,6 +105,7 @@ export default function GroupsPage() {
         avgClaimedHours={data.avgClaimedHours}
         avgWeeklyWorkHours={data.avgWeeklyWorkHours}
         avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
+        avgAdjustedWeeklyWorkHours={data.avgAdjustedWeeklyWorkHours}
         avgFocusedWorkHours={data.avgFocusedWorkHours}
         avgDataReliability={data.avgDataReliability}
         thresholds={data.thresholds}

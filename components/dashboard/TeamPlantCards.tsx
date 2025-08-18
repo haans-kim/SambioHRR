@@ -17,11 +17,13 @@ interface TeamPlantCardsProps {
   avgWeeklyClaimedHours?: number;
   avgFocusedWorkHours?: number;
   avgDataReliability?: number;
+  avgAdjustedWeeklyWorkHours?: number;
   thresholds?: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    adjustedWeeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
@@ -43,7 +45,18 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
   const weeklyClaimedHours = org.stats?.avgWeeklyClaimedHours || (claimedHours * 5);
   const focusedWorkHours = org.stats?.avgFocusedWorkHours || 0;
   const dataReliability = org.stats?.avgDataReliability || 0;
+  const adjustedWeeklyWorkHours = org.stats?.avgAdjustedWeeklyWorkHours || 0;
   const employees = org.stats?.totalEmployees || 0;
+  
+  // Debug logging for adjusted values
+  if (selectedMetric === 'adjustedWeeklyWorkHours') {
+    console.log(`[PlantCard] ${org.orgName}:`, {
+      weeklyWorkHours,
+      adjustedWeeklyWorkHours,
+      dataReliability,
+      'org.stats': org.stats
+    });
+  }
 
   const getValue = () => {
     switch (selectedMetric) {
@@ -55,6 +68,9 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         return claimedHours;
       case 'weeklyWorkHours':
         return weeklyWorkHours;
+      case 'adjustedWeeklyWorkHours':
+        console.log(`getValue for ${org.orgName}: adjustedWeeklyWorkHours = ${adjustedWeeklyWorkHours}`);
+        return adjustedWeeklyWorkHours;
       case 'weeklyClaimedHours':
         return weeklyClaimedHours;
       case 'focusedWorkHours':
@@ -67,9 +83,6 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
   };
 
   const value = getValue();
-  
-  // Debug logging
-  console.log('Team:', org.orgName, 'Metric:', selectedMetric, 'Value:', value, 'Thresholds:', thresholds);
 
   const getStatusIcon = (value: number) => {
     if (!thresholds) {
@@ -86,7 +99,7 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         if (value >= 9.0) return "▲";
         if (value >= 7.0) return "●";
         return "▼";
-      } else if (selectedMetric === 'weeklyWorkHours') {
+      } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
         if (value >= 48.0) return "▲";
         if (value > 42.5) return "●";
         return "▼";
@@ -128,7 +141,7 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         if (value >= 9.0) return "text-blue-600";
         if (value >= 7.0) return "text-green-600";
         return "text-red-600";
-      } else if (selectedMetric === 'weeklyWorkHours') {
+      } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
         if (value >= 48.0) return "text-blue-600";
         if (value > 42.5) return "text-green-600";
         return "text-red-600";
@@ -169,7 +182,7 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         if (value >= 9.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
         if (value >= 7.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
         return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
-      } else if (selectedMetric === 'weeklyWorkHours') {
+      } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
         if (value >= 48.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
         if (value > 42.5) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
         return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
@@ -232,6 +245,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
         return '일간 근무시간';
       case 'weeklyWorkHours':
         return '주간 근무추정시간';
+      case 'adjustedWeeklyWorkHours':
+        return '주간 근무추정시간(AI보정)';
       case 'weeklyClaimedHours':
         return '주간 근무시간';
       case 'focusedWorkHours':
@@ -301,6 +316,7 @@ export function TeamPlantCards({
   avgClaimedHours = 8.5,
   avgWeeklyWorkHours = 40.0,
   avgWeeklyClaimedHours = 42.5,
+  avgAdjustedWeeklyWorkHours = 38.4,
   avgFocusedWorkHours = 4.2,
   avgDataReliability = 83.6,
   thresholds
@@ -407,6 +423,8 @@ export function TeamPlantCards({
         return team.stats?.avgAttendanceHours || 0;
       case 'weeklyWorkHours':
         return team.stats?.avgWeeklyWorkHours || 0;
+      case 'adjustedWeeklyWorkHours':
+        return team.stats?.avgAdjustedWeeklyWorkHours || 0;
       case 'weeklyClaimedHours':
         return team.stats?.avgWeeklyClaimedHours || 0;
       case 'focusedWorkHours':
@@ -532,6 +550,16 @@ export function TeamPlantCards({
             </div>
             <div className="text-xs text-gray-700 mt-1">
               ▲ 모범사례({thresholds?.weeklyWorkHours?.high}) | ● 양호({thresholds?.weeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyWorkHours?.low})
+            </div>
+          </>
+        ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
+          <>
+            <div className="font-semibold text-gray-900">주간 근무추정시간(AI보정) : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
+            <div className="text-xs text-gray-700 mt-1">
+              AI 신뢰도 보정 적용 | 30일 평균 데이터
+            </div>
+            <div className="text-xs text-gray-700 mt-1">
+              ▲ 모범사례({thresholds?.adjustedWeeklyWorkHours?.high}) | ● 양호({thresholds?.adjustedWeeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.adjustedWeeklyWorkHours?.low})
             </div>
           </>
         ) : selectedMetric === 'weeklyClaimedHours' ? (
