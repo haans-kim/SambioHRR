@@ -12,7 +12,7 @@ import { get30DayDateRange } from '@/lib/db/queries/analytics';
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const teamCode = searchParams.get('team');
-  const cacheKey = `groups:v5:team=${teamCode || ''}`; // v5로 변경하여 캐시 무효화
+  const cacheKey = `groups:v7:team=${teamCode || ''}`; // v7으로 변경하여 캐시 무효화
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });

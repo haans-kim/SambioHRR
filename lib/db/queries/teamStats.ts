@@ -11,6 +11,7 @@ interface TeamStats {
   avgFocusedWorkHours: number;
   avgDataReliability: number;
   totalEmployees: number;
+  centerName?: string;
 }
 
 // Get aggregated stats for teams under a center
@@ -127,6 +128,7 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
     const groupSummaries = db.prepare(`
       SELECT 
         e.group_name as groupName,
+        e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
         ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgEfficiencyRatio,
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
@@ -137,7 +139,7 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
       ${teamFilter ? "AND e.team_name = ?" : ""}
-      GROUP BY e.group_name
+      GROUP BY e.group_name, e.center_name
     `).all(...(teamFilter ? [teamFilter] : [])) as any[];
     
     // Get organization_master mapping for proper org_code
@@ -192,7 +194,8 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         avgWeeklyClaimedHours: (summary.avgClaimedHours * 5) || 0,
         avgFocusedWorkHours: summary.avgFocusedHours || 0,
         avgDataReliability: summary.avgConfidenceScore || 0,
-        totalEmployees: groupUnique.get(summary.groupName) || summary.analyzedEmployees || 0
+        totalEmployees: groupUnique.get(summary.groupName) || summary.analyzedEmployees || 0,
+        centerName: summary.centerName || null
       });
     });
     

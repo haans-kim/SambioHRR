@@ -121,6 +121,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     const groupStats = db.prepare(`
       SELECT 
         e.group_name as orgName,
+        e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
         COUNT(*) as manDays,
         ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgWorkEfficiency,
@@ -134,7 +135,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.group_name IS NOT NULL
-      GROUP BY e.group_name
+      GROUP BY e.group_name, e.center_name
     `).all(startDate, endDate) as any[];
     
     groupStats.forEach(stat => {
