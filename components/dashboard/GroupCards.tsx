@@ -338,7 +338,7 @@ export function GroupCards({
   }, {} as Record<string, OrganizationWithStats[]>);
 
   // 각 센터별 그룹들을 정렬하고 상위/중위/하위로 분류
-  const categorizeGroups = (groups: OrganizationWithStats[]) => {
+  const categorizeGroups = (groups: OrganizationWithStats[], useLocalThresholds: boolean = false) => {
     const getValue = (group: OrganizationWithStats) => {
       switch (selectedMetric) {
         case 'efficiency':
@@ -360,21 +360,59 @@ export function GroupCards({
       }
     };
 
-    const sortedGroups = [...groups].sort((a, b) => {
-      const valueA = getValue(a);
-      const valueB = getValue(b);
-      return valueB - valueA; // 내림차순 정렬
+    // 현재 메트릭의 threshold 가져오기
+    const currentThresholds = getCurrentThresholds();
+    
+    // threshold 기준으로 그룹들을 분류
+    const top: OrganizationWithStats[] = [];
+    const middle: OrganizationWithStats[] = [];
+    const bottom: OrganizationWithStats[] = [];
+    
+    groups.forEach(group => {
+      const value = getValue(group);
+      if (currentThresholds) {
+        if (value >= currentThresholds.high) {
+          top.push(group);
+        } else if (value <= currentThresholds.low) {
+          bottom.push(group);
+        } else {
+          middle.push(group);
+        }
+      } else {
+        // fallback to count-based categorization
+        middle.push(group);
+      }
     });
     
-    const total = sortedGroups.length;
-    const topCount = Math.ceil(total * 0.2); // 상위 20%
-    const bottomCount = Math.ceil(total * 0.2); // 하위 20%
+    // 각 그룹 내에서 정렬
+    top.sort((a, b) => getValue(b) - getValue(a));
+    middle.sort((a, b) => getValue(b) - getValue(a));
+    bottom.sort((a, b) => getValue(b) - getValue(a));
     
-    const top = sortedGroups.slice(0, topCount);
-    const middle = sortedGroups.slice(topCount, total - bottomCount);
-    const bottom = sortedGroups.slice(total - bottomCount);
+    // 로컬 임계값 계산 (팀 내부에서만 비교할 때 사용)
+    let localThresholds = null;
+    if (useLocalThresholds && groups.length > 0) {
+      const values = groups.map(group => getValue(group)).filter(v => v > 0).sort((a, b) => a - b);
+      if (values.length > 0) {
+        const getPercentile = (arr: number[], percentile: number) => {
+          if (arr.length === 0) return 0;
+          if (arr.length <= 3) {
+            if (percentile <= 20) return arr[0];
+            if (percentile >= 80) return arr[arr.length - 1];
+            return arr[Math.floor(arr.length / 2)];
+          }
+          const index = Math.ceil((percentile / 100) * arr.length) - 1;
+          return arr[Math.max(0, Math.min(index, arr.length - 1))];
+        };
+        
+        localThresholds = {
+          low: getPercentile(values, 20),
+          high: getPercentile(values, 80)
+        };
+      }
+    }
     
-    return { top, middle, bottom };
+    return { top, middle, bottom, localThresholds };
   };
 
   return (
@@ -385,7 +423,9 @@ export function GroupCards({
       
       <div className="space-y-6">
         {Object.entries(groupedGroups).map(([center, centerGroups]) => {
-          const { top, middle, bottom } = categorizeGroups(centerGroups);
+          // 항상 전체 기준으로 비교
+          const { top, middle, bottom, localThresholds } = categorizeGroups(centerGroups, false);
+          const effectiveThresholds = getCurrentThresholds();
           
           return (
             <div key={center} className="border rounded-lg p-4 bg-gray-50">
@@ -401,7 +441,7 @@ export function GroupCards({
                         key={group.orgCode}
                         org={group}
                         selectedMetric={selectedMetric}
-                        thresholds={getCurrentThresholds()}
+                        thresholds={effectiveThresholds}
                         onClick={() => handleGroupClick(group.orgCode)}
                       />
                     ))}
@@ -419,7 +459,7 @@ export function GroupCards({
                         key={group.orgCode}
                         org={group}
                         selectedMetric={selectedMetric}
-                        thresholds={getCurrentThresholds()}
+                        thresholds={effectiveThresholds}
                         onClick={() => handleGroupClick(group.orgCode)}
                       />
                     ))}
@@ -437,7 +477,7 @@ export function GroupCards({
                         key={group.orgCode}
                         org={group}
                         selectedMetric={selectedMetric}
-                        thresholds={getCurrentThresholds()}
+                        thresholds={effectiveThresholds}
                         onClick={() => handleGroupClick(group.orgCode)}
                       />
                     ))}

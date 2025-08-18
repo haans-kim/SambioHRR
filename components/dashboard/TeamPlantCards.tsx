@@ -340,22 +340,60 @@ export function TeamPlantCards({
   }, {} as Record<string, OrganizationWithStats[]>);
 
   // 각 센터별 팀들을 정렬하고 상위/중위/하위로 분류
-  const categorizeTeams = (teams: OrganizationWithStats[]) => {
-    const sortedTeams = [...teams].sort((a, b) => {
-      const valueA = getValue(a);
-      const valueB = getValue(b);
-      return valueB - valueA; // 내림차순 정렬
+  const categorizeTeams = (teams: OrganizationWithStats[], useLocalThresholds: boolean = false) => {
+    // 현재 메트릭의 threshold 가져오기
+    const currentThresholds = getCurrentThresholds();
+    
+    // threshold 기준으로 팀들을 분류
+    const top: OrganizationWithStats[] = [];
+    const middle: OrganizationWithStats[] = [];
+    const bottom: OrganizationWithStats[] = [];
+    
+    teams.forEach(team => {
+      const value = getValue(team);
+      if (currentThresholds) {
+        if (value >= currentThresholds.high) {
+          top.push(team);
+        } else if (value <= currentThresholds.low) {
+          bottom.push(team);
+        } else {
+          middle.push(team);
+        }
+      } else {
+        // fallback to count-based categorization
+        middle.push(team);
+      }
     });
     
-    const total = sortedTeams.length;
-    const topCount = Math.ceil(total * 0.2); // 상위 20%
-    const bottomCount = Math.ceil(total * 0.2); // 하위 20%
+    // 각 그룹 내에서 정렬
+    top.sort((a, b) => getValue(b) - getValue(a));
+    middle.sort((a, b) => getValue(b) - getValue(a));
+    bottom.sort((a, b) => getValue(b) - getValue(a));
     
-    const top = sortedTeams.slice(0, topCount);
-    const middle = sortedTeams.slice(topCount, total - bottomCount);
-    const bottom = sortedTeams.slice(total - bottomCount);
+    // 로컬 임계값 계산 (센터 내부에서만 비교할 때 사용)
+    let localThresholds = null;
+    if (useLocalThresholds && teams.length > 0) {
+      const values = teams.map(team => getValue(team)).filter(v => v > 0).sort((a, b) => a - b);
+      if (values.length > 0) {
+        const getPercentile = (arr: number[], percentile: number) => {
+          if (arr.length === 0) return 0;
+          if (arr.length <= 3) {
+            if (percentile <= 20) return arr[0];
+            if (percentile >= 80) return arr[arr.length - 1];
+            return arr[Math.floor(arr.length / 2)];
+          }
+          const index = Math.ceil((percentile / 100) * arr.length) - 1;
+          return arr[Math.max(0, Math.min(index, arr.length - 1))];
+        };
+        
+        localThresholds = {
+          low: getPercentile(values, 20),
+          high: getPercentile(values, 80)
+        };
+      }
+    }
     
-    return { top, middle, bottom };
+    return { top, middle, bottom, localThresholds };
   };
 
   // 팀의 값을 가져오는 헬퍼 함수
@@ -388,7 +426,9 @@ export function TeamPlantCards({
       
       <div className="space-y-6">
         {Object.entries(groupedTeams).map(([center, centerTeams]) => {
-          const { top, middle, bottom } = categorizeTeams(centerTeams);
+          // 항상 전체 기준으로 비교
+          const { top, middle, bottom, localThresholds } = categorizeTeams(centerTeams, false);
+          const effectiveThresholds = getCurrentThresholds();
           
           return (
             <div key={center} className="border rounded-lg p-4 bg-gray-50">
@@ -404,7 +444,7 @@ export function TeamPlantCards({
                         key={team.orgCode}
                         org={team}
                         selectedMetric={selectedMetric}
-                        thresholds={getCurrentThresholds()}
+                        thresholds={effectiveThresholds}
                         onClick={() => handleCardClick(team)}
                       />
                     ))}
@@ -422,7 +462,7 @@ export function TeamPlantCards({
                         key={team.orgCode}
                         org={team}
                         selectedMetric={selectedMetric}
-                        thresholds={getCurrentThresholds()}
+                        thresholds={effectiveThresholds}
                         onClick={() => handleCardClick(team)}
                       />
                     ))}
@@ -440,7 +480,7 @@ export function TeamPlantCards({
                         key={team.orgCode}
                         org={team}
                         selectedMetric={selectedMetric}
-                        thresholds={getCurrentThresholds()}
+                        thresholds={effectiveThresholds}
                         onClick={() => handleCardClick(team)}
                       />
                     ))}
