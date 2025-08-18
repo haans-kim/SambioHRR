@@ -43,7 +43,13 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
       SELECT 
         e.team_name as teamName,
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
-        ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgEfficiencyRatio,
+        ROUND(
+          SUM(
+            dar.actual_work_hours * 
+            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+          ) / SUM(dar.claimed_work_hours) * 100, 
+          1
+        ) as avgEfficiencyRatio,
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours,
         ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours,
@@ -52,6 +58,9 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
       ${centerFilter ? "AND e.center_name = ?" : ""}
+        AND dar.actual_work_hours IS NOT NULL
+        AND dar.claimed_work_hours IS NOT NULL
+        AND dar.confidence_score IS NOT NULL
       GROUP BY e.team_name
     `).all(...(centerFilter ? [centerFilter] : [])) as any[];
     
@@ -138,7 +147,13 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         e.group_name as groupName,
         e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
-        ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgEfficiencyRatio,
+        ROUND(
+          SUM(
+            dar.actual_work_hours * 
+            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+          ) / SUM(dar.claimed_work_hours) * 100, 
+          1
+        ) as avgEfficiencyRatio,
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours,
         ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours,
@@ -147,6 +162,9 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
       ${teamFilter ? "AND e.team_name = ?" : ""}
+        AND dar.actual_work_hours IS NOT NULL
+        AND dar.claimed_work_hours IS NOT NULL
+        AND dar.confidence_score IS NOT NULL
       GROUP BY e.group_name, e.center_name
     `).all(...(teamFilter ? [teamFilter] : [])) as any[];
     

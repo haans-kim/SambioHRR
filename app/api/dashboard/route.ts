@@ -20,7 +20,7 @@ import { calculateAdjustedWorkHours } from '@/lib/utils';
 
 export async function GET() {
   try {
-    const cacheKey = 'dashboard:v7';
+    const cacheKey = 'dashboard:v8';
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {

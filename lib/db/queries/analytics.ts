@@ -303,7 +303,13 @@ export function getOrganizationWeeklyStats30Days() {
   const query = `
     SELECT 
       COUNT(DISTINCT dar.employee_id) as totalEmployees,
-      ROUND(AVG(dar.efficiency_ratio), 1) as avgEfficiencyRatio,
+      ROUND(
+        SUM(
+          dar.actual_work_hours * 
+          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+        ) / SUM(dar.claimed_work_hours) * 100, 
+        1
+      ) as avgEfficiencyRatio,
       ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
       ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
       ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore
@@ -311,6 +317,9 @@ export function getOrganizationWeeklyStats30Days() {
     LEFT JOIN employees e ON e.employee_id = dar.employee_id
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
+      AND dar.actual_work_hours IS NOT NULL
+      AND dar.claimed_work_hours IS NOT NULL
+      AND dar.confidence_score IS NOT NULL
   `;
   
   const stmt = db.prepare(query);
@@ -350,20 +359,32 @@ export function getOrganizationStats30Days() {
   const { startDate, endDate } = get30DayDateRange();
   
   const query = `
+    WITH adjusted_efficiency AS (
+      SELECT 
+        dar.employee_id,
+        (dar.actual_work_hours * (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))) / dar.claimed_work_hours * 100 as ai_adjusted_efficiency,
+        dar.actual_work_hours,
+        dar.claimed_work_hours,
+        dar.confidence_score
+      FROM daily_analysis_results dar
+      LEFT JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
+        AND dar.actual_work_hours IS NOT NULL
+        AND dar.claimed_work_hours IS NOT NULL
+        AND dar.confidence_score IS NOT NULL
+    )
     SELECT 
-      COUNT(DISTINCT dar.employee_id) as totalEmployees,
-      ROUND(AVG(dar.efficiency_ratio), 1) as avgEfficiencyRatio,
-      ROUND(AVG(dar.actual_work_hours), 1) as avgActualWorkHours,
-      ROUND(AVG(dar.claimed_work_hours), 1) as avgClaimedHours,
-      ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore,
-      SUM(CASE WHEN dar.efficiency_ratio >= 90 THEN 1 ELSE 0 END) as efficiency90Plus,
-      SUM(CASE WHEN dar.efficiency_ratio >= 80 AND dar.efficiency_ratio < 90 THEN 1 ELSE 0 END) as efficiency80To90,
-      SUM(CASE WHEN dar.efficiency_ratio >= 70 AND dar.efficiency_ratio < 80 THEN 1 ELSE 0 END) as efficiency70To80,
-      SUM(CASE WHEN dar.efficiency_ratio < 70 THEN 1 ELSE 0 END) as efficiencyBelow70
-    FROM daily_analysis_results dar
-    LEFT JOIN employees e ON e.employee_id = dar.employee_id
-    WHERE dar.analysis_date BETWEEN ? AND ?
-      AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
+      COUNT(DISTINCT employee_id) as totalEmployees,
+      ROUND(AVG(ai_adjusted_efficiency), 1) as avgEfficiencyRatio,
+      ROUND(AVG(actual_work_hours), 1) as avgActualWorkHours,
+      ROUND(AVG(claimed_work_hours), 1) as avgClaimedHours,
+      ROUND(AVG(confidence_score), 1) as avgConfidenceScore,
+      SUM(CASE WHEN ai_adjusted_efficiency >= 90 THEN 1 ELSE 0 END) as efficiency90Plus,
+      SUM(CASE WHEN ai_adjusted_efficiency >= 80 AND ai_adjusted_efficiency < 90 THEN 1 ELSE 0 END) as efficiency80To90,
+      SUM(CASE WHEN ai_adjusted_efficiency >= 70 AND ai_adjusted_efficiency < 80 THEN 1 ELSE 0 END) as efficiency70To80,
+      SUM(CASE WHEN ai_adjusted_efficiency < 70 THEN 1 ELSE 0 END) as efficiencyBelow70
+    FROM adjusted_efficiency
   `;
   
   const stmt = db.prepare(query);
@@ -477,13 +498,22 @@ export function getGradeEfficiencyMatrix30Days() {
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
-      ROUND(AVG(dar.efficiency_ratio), 1) as avgEfficiency
+      ROUND(
+        SUM(
+          dar.actual_work_hours * 
+          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+        ) / SUM(dar.claimed_work_hours) * 100, 
+        1
+      ) as avgEfficiency
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
       AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+      AND dar.actual_work_hours IS NOT NULL
+      AND dar.claimed_work_hours IS NOT NULL
+      AND dar.confidence_score IS NOT NULL
     GROUP BY e.center_name, e.job_grade
     ORDER BY e.center_name, e.job_grade
   `;
@@ -794,13 +824,42 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
   
   // Get center-grade averages (same as what's displayed in the grid)
   let dataQuery = '';
-  if (metricType === 'adjustedWeeklyWorkHours') {
-    // For adjustedWeeklyWorkHours, calculate with AI adjustment
+  if (metricType === 'efficiency') {
+    // For efficiency, calculate with AI-adjusted work hours
     dataQuery = `
       SELECT 
         e.center_name as centerName,
         'Lv.' || e.job_grade as grade,
-        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5 * (0.92 + (AVG(dar.confidence_score) / 100) * 0.08), 1) as avgValue
+        ROUND(
+          SUM(
+            dar.actual_work_hours * 
+            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+          ) / SUM(dar.claimed_work_hours) * 100, 
+          1
+        ) as avgValue
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.job_grade IS NOT NULL
+        AND e.center_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.actual_work_hours IS NOT NULL
+        AND dar.claimed_work_hours IS NOT NULL
+        AND dar.confidence_score IS NOT NULL
+      GROUP BY e.center_name, e.job_grade
+      ORDER BY avgValue ASC
+    `;
+  } else if (metricType === 'adjustedWeeklyWorkHours') {
+    // For adjustedWeeklyWorkHours, calculate with AI adjustment using sigmoid function
+    dataQuery = `
+      SELECT 
+        e.center_name as centerName,
+        'Lv.' || e.job_grade as grade,
+        ROUND(
+          (SUM(dar.actual_work_hours) / COUNT(*)) * 5 * 
+          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.08)), 
+          1
+        ) as avgValue
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?

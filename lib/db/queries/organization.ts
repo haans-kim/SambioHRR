@@ -46,7 +46,13 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         e.center_name as orgName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
         COUNT(*) as manDays,
-        ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgWorkEfficiency,
+        ROUND(
+          SUM(
+            dar.actual_work_hours * 
+            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+          ) / SUM(dar.claimed_work_hours) * 100, 
+          1
+        ) as avgWorkEfficiency,
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
@@ -71,7 +77,13 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         SELECT 
           COUNT(DISTINCT dar.employee_id) as totalEmployees,
           COUNT(*) as manDays,
-          ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgWorkEfficiency,
+          ROUND(
+            SUM(
+              dar.actual_work_hours * 
+              (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+            ) / SUM(dar.claimed_work_hours) * 100, 
+            1
+          ) as avgWorkEfficiency,
           ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
           ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
           ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
@@ -101,7 +113,13 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
         COUNT(*) as manDays,
-        ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgWorkEfficiency,
+        ROUND(
+          SUM(
+            dar.actual_work_hours * 
+            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+          ) / SUM(dar.claimed_work_hours) * 100, 
+          1
+        ) as avgWorkEfficiency,
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
@@ -125,7 +143,13 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
         COUNT(*) as manDays,
-        ROUND(SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 1) as avgWorkEfficiency,
+        ROUND(
+          SUM(
+            dar.actual_work_hours * 
+            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+          ) / SUM(dar.claimed_work_hours) * 100, 
+          1
+        ) as avgWorkEfficiency,
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
