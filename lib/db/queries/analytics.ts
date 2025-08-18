@@ -1070,6 +1070,7 @@ export function getFocusedWorkTableData() {
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND dar.focused_work_minutes >= 30  -- At least 30 minutes
       AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     GROUP BY e.center_name
     HAVING COUNT(DISTINCT dar.employee_id) > 0
     ORDER BY avgFocusedWorkHours DESC

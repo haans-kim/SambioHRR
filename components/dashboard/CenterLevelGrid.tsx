@@ -283,6 +283,10 @@ export function CenterLevelGrid({
   // Use actual center names from database
   const centers = organizations.filter(org => org.orgLevel === 'center');
   
+  // Debug: Check if 경영진단팀 is in the centers array
+  console.log('Centers from organizations:', centers.map(c => c.orgName));
+  console.log('Centers from gradeMatrix:', gradeMatrix?.centers);
+  
   const handleCellClick = (center: OrganizationWithStats) => {
     // Check if center has divisions (담당)
     if (center.childrenCount && center.childrenCount > 0) {

@@ -19,7 +19,7 @@ import {
 
 export async function GET() {
   try {
-    const cacheKey = 'dashboard:v1';
+    const cacheKey = 'dashboard:v3';
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
