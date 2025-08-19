@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useDevMode } from "@/contexts/DevModeContext";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TrendingUp } from "lucide-react";
 import {
   ScatterChart,
   Scatter,
@@ -11,99 +12,73 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
   Cell,
 } from "recharts";
 
-interface CenterData {
-  center_name: string;
-  levels: {
-    level: number;
-    grades: {
-      grade: string;
-      avg_weekly_work_hours: number;
-      total_members: number;
-      level_salary: number;
-    }[];
-    total_salary: number;
-    avg_members: number;
-  }[];
-  center_total_salary: number;
+interface PatternData {
+  center: string;
+  bu: string;
+  team: string;
+  employee_count: number;
+  location_fixity: number;
+  movement_complexity: number;
+  data_density: number;
+  external_activity: number;
+  cluster: number;
+  reliability_score: number;
+  correction_factor: number;
+  correction_type: string;
 }
 
-interface BubbleData {
-  x: number; // 주간근무시간(AI보정)
-  y: number; // 인건비
-  z: number; // 인원수
-  center: string;
-  level: number;
-  grades: string[];
+interface ClusterStats {
+  cluster_name: string;
+  cluster: number;
+  team_count: number;
+  total_employees: number;
+  avg_location_fixity: number;
+  avg_data_density: number;
+  avg_external_activity: number;
+  avg_reliability: number;
+  avg_correction_factor: number;
 }
+
+const CLUSTER_COLORS = [
+  '#FF6B6B', // Type A - 빨강
+  '#FFD93D', // Type B - 노랑
+  '#95E77E', // Type C - 연두
+  '#4ECDC4', // Type D - 청록
+  '#A8DADC', // Type E - 하늘
+];
+
+const CLUSTER_NAMES = [
+  'Type_A_생산고정형',
+  'Type_B_생산중심형(외부활동)',
+  'Type_C_혼합근무형',
+  'Type_D_사무중심형',
+  'Type_E_사무전문형'
+];
 
 export function Insight2View() {
-  const [data, setData] = useState<CenterData[]>([]);
-  const [bubbleData, setBubbleData] = useState<BubbleData[]>([]);
+  const [patterns, setPatterns] = useState<PatternData[]>([]);
+  const [clusterStats, setClusterStats] = useState<ClusterStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isDevMode } = useDevMode();
 
   useEffect(() => {
-    fetchData();
+    fetchPatternAnalysis();
   }, []);
 
-  const fetchData = async () => {
+  const fetchPatternAnalysis = async () => {
     try {
-      const response = await fetch('/api/insights/salary-worktime');
-      const result = await response.json();
+      const response = await fetch('/api/insights/pattern-analysis');
+      const data = await response.json();
       
-      // 데이터가 배열인지 확인
-      if (Array.isArray(result)) {
-        setData(result);
-        
-        // 버블차트용 데이터 변환
-        const transformedData: BubbleData[] = [];
-        
-        result.forEach((center: CenterData) => {
-          center.levels.forEach((level) => {
-            // 레벨별로 평균 근무시간 계산
-            const totalHours = level.grades.reduce((sum, g) => sum + g.avg_weekly_work_hours * g.total_members, 0);
-            const totalMembers = level.grades.reduce((sum, g) => sum + g.total_members, 0);
-            const avgHours = totalMembers > 0 ? totalHours / totalMembers : 0;
-            
-            transformedData.push({
-              x: Number(avgHours.toFixed(1)),
-              y: level.total_salary,
-              z: totalMembers,
-              center: center.center_name,
-              level: level.level,
-              grades: level.grades.map(g => g.grade)
-            });
-          });
-        });
-        
-        setBubbleData(transformedData);
-      } else {
-        console.error('Invalid data format:', result);
-        setData([]);
-        setBubbleData([]);
-      }
+      setPatterns(data.patterns || []);
+      setClusterStats(data.clusterStats || []);
     } catch (error) {
-      console.error('Failed to fetch insight data:', error);
-      setData([]);
-      setBubbleData([]);
+      console.error('Failed to fetch pattern analysis:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  // 레벨별 색상 정의
-  const getLevelColor = (level: number) => {
-    const colors = {
-      1: "#ef4444", // red-500
-      2: "#f97316", // orange-500
-      3: "#eab308", // yellow-500
-      4: "#22c55e", // green-500
-    };
-    return colors[level as keyof typeof colors] || "#6b7280";
   };
 
   // 커스텀 툴팁
@@ -111,37 +86,21 @@ export function Insight2View() {
     if (active && payload && payload[0]) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
-          <p className="font-semibold text-gray-900">{data.center}</p>
-          <p className="text-sm text-gray-600">레벨: Lv.{data.level}</p>
-          <p className="text-sm text-gray-600">직급: {data.grades.join(", ")}</p>
-          <p className="text-sm text-gray-600">
-            주간근무시간: <span className="font-semibold">{data.x}h</span>
-          </p>
-          <p className="text-sm text-gray-600">
-            인건비: <span className="font-semibold">{(data.y / 100000000).toFixed(1)}억</span>
-          </p>
-          <p className="text-sm text-gray-600">
-            인원: <span className="font-semibold">{data.z}명</span>
-          </p>
+        <div className="bg-white p-3 border rounded-lg shadow-lg">
+          <p className="font-semibold">{data.team}</p>
+          <p className="text-sm text-gray-600">{data.center} / {data.bu}</p>
+          <div className="mt-2 space-y-1 text-sm">
+            <p>직원수: {data.employee_count}명</p>
+            <p>위치 고정성: {data.location_fixity.toFixed(1)}%</p>
+            <p>데이터 밀도: {data.data_density.toFixed(1)}</p>
+            <p>클러스터: {CLUSTER_NAMES[data.cluster]}</p>
+            <p>신뢰도: {(data.reliability_score * 100).toFixed(1)}%</p>
+          </div>
         </div>
       );
     }
     return null;
   };
-
-  // Y축 포맷터
-  const formatYAxis = (value: number) => {
-    return `${(value / 100000000).toFixed(0)}억`;
-  };
-
-  // 범례 데이터
-  const legendData = [
-    { value: 'Lv.1 (36h 이하)', type: 'circle', color: getLevelColor(1) },
-    { value: 'Lv.2 (36-38h)', type: 'circle', color: getLevelColor(2) },
-    { value: 'Lv.3 (38-40h)', type: 'circle', color: getLevelColor(3) },
-    { value: 'Lv.4 (40h 이상)', type: 'circle', color: getLevelColor(4) },
-  ];
 
   if (loading) {
     return (
@@ -153,95 +112,136 @@ export function Insight2View() {
 
   return (
     <div className="p-6">
-      <Card className="h-full">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">패턴 분석 대시보드</h1>
+        <p className="text-gray-600 mt-1">팀별 근무 패턴 분석 및 클러스터링 결과</p>
+      </div>
+
+      {/* 산점도 차트 */}
+      <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">
-            인건비 × 주간 근무추정시간(AI보정) 분석
+          <CardTitle className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-white" />
+            </div>
+            팀별 근무 패턴 분포
           </CardTitle>
-          <p className="text-sm text-gray-500 mt-2">
-            센터별 레벨 기준 인건비와 AI 보정된 주간 근무시간의 상관관계를 버블차트로 표현합니다.
-            버블 크기는 해당 레벨의 인원수를 나타냅니다.
-          </p>
         </CardHeader>
         <CardContent>
-          <div className="h-[600px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart
-                margin={{ top: 20, right: 20, bottom: 60, left: 80 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis
-                  type="number"
-                  dataKey="x"
-                  name="주간근무시간"
-                  unit="h"
-                  domain={[30, 50]}
-                  label={{
-                    value: "주간 근무추정시간(AI보정)",
-                    position: "insideBottom",
-                    offset: -10,
-                    style: { fontSize: 14, fill: '#374151' }
-                  }}
-                  tick={{ fontSize: 12 }}
-                />
-                <YAxis
-                  type="number"
-                  dataKey="y"
-                  name="인건비"
-                  tickFormatter={formatYAxis}
-                  label={{
-                    value: "레벨별 인건비",
-                    angle: -90,
-                    position: "insideLeft",
-                    style: { textAnchor: 'middle', fontSize: 14, fill: '#374151' }
-                  }}
-                  tick={{ fontSize: 12 }}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  verticalAlign="top"
-                  height={36}
-                  iconType="circle"
-                  payload={legendData}
-                  wrapperStyle={{ paddingBottom: '20px' }}
-                />
-                <Scatter
-                  name="센터별 데이터"
-                  data={bubbleData}
-                  fill="#8884d8"
-                >
-                  {bubbleData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={getLevelColor(entry.level)}
-                      fillOpacity={0.7}
+          <div className="mb-4">
+            <div className="flex items-center gap-6">
+              <span className="text-sm font-medium text-gray-700">패턴 유형</span>
+              <div className="flex gap-4 flex-wrap">
+                {CLUSTER_NAMES.map((name, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: CLUSTER_COLORS[index] }}
                     />
-                  ))}
-                </Scatter>
-              </ScatterChart>
-            </ResponsiveContainer>
+                    <span className="text-sm text-gray-600">{name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           
-          {/* 추가 설명 */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-2">차트 읽는 방법</h4>
-              <ul className="space-y-1">
-                <li>• X축: AI로 보정된 주간 근무시간 (신뢰도 기반 조정)</li>
-                <li>• Y축: 레벨별 총 인건비</li>
-                <li>• 버블 크기: 해당 레벨의 총 인원수</li>
-                <li>• 색상: 근무시간 기준 레벨 구분</li>
-              </ul>
+          <ResponsiveContainer width="100%" height={500}>
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 60, left: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis 
+                dataKey="location_fixity" 
+                type="number"
+                domain={[0, 100]}
+                label={{ value: '위치 고정성 (%)', position: 'insideBottom', offset: -10 }}
+                stroke="#666"
+              />
+              <YAxis 
+                dataKey="data_density"
+                type="number"
+                domain={[0, 30]}
+                label={{ value: '데이터 밀도', angle: -90, position: 'insideLeft' }}
+                stroke="#666"
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Scatter 
+                data={patterns} 
+                fill="#8884d8"
+                shape={(props: any) => {
+                  const { cx, cy, fill, payload } = props;
+                  // 직원 수에 따라 원의 크기 조정 (최소 3, 최대 30)
+                  const radius = Math.min(30, Math.max(3, Math.sqrt(payload.employee_count) * 2));
+                  return (
+                    <circle 
+                      cx={cx} 
+                      cy={cy} 
+                      r={radius} 
+                      fill={fill}
+                      fillOpacity={0.7}
+                      stroke={fill}
+                      strokeWidth={1}
+                    />
+                  );
+                }}
+              >
+                {patterns.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={CLUSTER_COLORS[entry.cluster]}
+                  />
+                ))}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* 클러스터별 통계 테이블 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-blue-900 mb-2">AI 보정 계수</h4>
-              <ul className="space-y-1">
-                <li>• 데이터 신뢰도가 높을수록 보정 계수가 1에 가까워짐</li>
-                <li>• 신뢰도가 낮으면 근무시간이 하향 조정됨 (최대 8%)</li>
-                <li>• 시그모이드 함수 적용으로 부드러운 전환</li>
-              </ul>
-            </div>
-          </div>
+            패턴 유형별 분포
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="font-semibold">cluster</TableHead>
+                <TableHead className="text-center font-semibold">팀수</TableHead>
+                <TableHead className="text-center font-semibold">총직원수</TableHead>
+                <TableHead className="text-center font-semibold">평균위치고정성</TableHead>
+                <TableHead className="text-center font-semibold">평균데이터밀도</TableHead>
+                <TableHead className="text-center font-semibold">평균신뢰도</TableHead>
+                <TableHead className="text-center font-semibold">평균보정Factor</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clusterStats
+                .sort((a, b) => a.cluster - b.cluster)
+                .map((stat) => (
+                  <TableRow key={stat.cluster} className="hover:bg-gray-50">
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: CLUSTER_COLORS[stat.cluster] }}
+                        />
+                        {stat.cluster_name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">{stat.team_count}</TableCell>
+                    <TableCell className="text-center">{stat.total_employees.toLocaleString()}</TableCell>
+                    <TableCell className="text-center">{stat.avg_location_fixity.toFixed(2)}</TableCell>
+                    <TableCell className="text-center">{stat.avg_data_density.toFixed(2)}</TableCell>
+                    <TableCell className="text-center">{stat.avg_reliability.toFixed(2)}</TableCell>
+                    <TableCell className="text-center">{stat.avg_correction_factor.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
