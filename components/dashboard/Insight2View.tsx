@@ -48,7 +48,7 @@ const CLUSTER_COLORS = [
   '#FFD93D', // Type B - 노랑
   '#95E77E', // Type C - 연두
   '#4ECDC4', // Type D - 청록
-  '#A8DADC', // Type E - 하늘
+  '#2C3E50', // Type E - 짙은 남색
 ];
 
 const CLUSTER_NAMES = [
@@ -117,35 +117,53 @@ export function Insight2View() {
     });
   };
 
-  // 커스텀 타원 컴포넌트
-  const CustomEllipse = (props: any) => {
-    const { cx, cy, rx, ry, fill, stroke } = props;
-    const { xAxisMap, yAxisMap } = props;
-    
-    if (!xAxisMap || !yAxisMap) return null;
+  // 커스텀 타원 배경 컴포넌트
+  const ClusterBackground = ({ viewBox, xAxisMap, yAxisMap }: any) => {
+    if (!xAxisMap || !yAxisMap || patterns.length === 0) return null;
     
     const xAxis = xAxisMap[0];
     const yAxis = yAxisMap[0];
     
-    // 데이터 좌표를 픽셀 좌표로 변환
-    const xPixel = xAxis.scale(cx);
-    const yPixel = yAxis.scale(cy);
-    const rxPixel = (rx / 100) * xAxis.width;
-    const ryPixel = (ry / 30) * yAxis.height;
+    if (!xAxis || !yAxis || !xAxis.scale || !yAxis.scale) return null;
+    
+    const ellipses = getClusterEllipses();
     
     return (
-      <ellipse
-        cx={xPixel}
-        cy={yPixel}
-        rx={rxPixel}
-        ry={ryPixel}
-        fill={fill}
-        fillOpacity={0.15}
-        stroke={stroke}
-        strokeWidth={1.5}
-        strokeOpacity={0.3}
-        strokeDasharray="5,5"
-      />
+      <g>
+        <defs>
+          {ellipses.map((ellipse) => (
+            <radialGradient 
+              key={`gradient-${ellipse.cluster}`} 
+              id={`cluster-gradient-${ellipse.cluster}`}
+            >
+              <stop offset="0%" stopColor={CLUSTER_COLORS[ellipse.cluster]} stopOpacity={0.2} />
+              <stop offset="50%" stopColor={CLUSTER_COLORS[ellipse.cluster]} stopOpacity={0.1} />
+              <stop offset="100%" stopColor={CLUSTER_COLORS[ellipse.cluster]} stopOpacity={0.05} />
+            </radialGradient>
+          ))}
+        </defs>
+        {ellipses.map((ellipse) => {
+          const xPixel = xAxis.scale(ellipse.cx);
+          const yPixel = yAxis.scale(ellipse.cy);
+          const rxPixel = (ellipse.rx / 100) * xAxis.width;
+          const ryPixel = (ellipse.ry / 30) * yAxis.height;
+          
+          return (
+            <ellipse
+              key={`cluster-bg-${ellipse.cluster}`}
+              cx={xPixel}
+              cy={yPixel}
+              rx={rxPixel}
+              ry={ryPixel}
+              fill={`url(#cluster-gradient-${ellipse.cluster})`}
+              stroke={CLUSTER_COLORS[ellipse.cluster]}
+              strokeWidth={1.5}
+              strokeOpacity={0.3}
+              strokeDasharray="5,5"
+            />
+          );
+        })}
+      </g>
     );
   };
 
@@ -233,22 +251,7 @@ export function Insight2View() {
               <Tooltip content={<CustomTooltip />} />
               
               {/* 클러스터 타원 배경 영역 */}
-              {patterns.length > 0 && getClusterEllipses().map((ellipse) => (
-                <Customized
-                  key={`cluster-ellipse-${ellipse.cluster}`}
-                  component={(props: any) => (
-                    <CustomEllipse
-                      {...props}
-                      cx={ellipse.cx}
-                      cy={ellipse.cy}
-                      rx={ellipse.rx}
-                      ry={ellipse.ry}
-                      fill={CLUSTER_COLORS[ellipse.cluster]}
-                      stroke={CLUSTER_COLORS[ellipse.cluster]}
-                    />
-                  )}
-                />
-              ))}
+              <Customized component={ClusterBackground} />
               
               {/* 데이터 포인트 (더 진한 색상) */}
               <Scatter 
