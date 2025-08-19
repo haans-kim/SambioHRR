@@ -13,6 +13,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  Customized,
 } from "recharts";
 
 interface PatternData {
@@ -79,6 +80,73 @@ export function Insight2View() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 클러스터별 타원 영역 계산
+  const getClusterEllipses = () => {
+    const clusters: { [key: number]: { x: number[], y: number[], count: number[] } } = {};
+    
+    patterns.forEach(p => {
+      if (!clusters[p.cluster]) {
+        clusters[p.cluster] = { x: [], y: [], count: [] };
+      }
+      clusters[p.cluster].x.push(p.location_fixity);
+      clusters[p.cluster].y.push(p.data_density);
+      clusters[p.cluster].count.push(p.employee_count);
+    });
+
+    return Object.entries(clusters).map(([cluster, data]) => {
+      // 가중 평균 중심점 계산
+      const totalCount = data.count.reduce((sum, c) => sum + c, 0);
+      const weightedX = data.x.reduce((sum, x, i) => sum + x * data.count[i], 0) / totalCount;
+      const weightedY = data.y.reduce((sum, y, i) => sum + y * data.count[i], 0) / totalCount;
+      
+      // 표준편차로 타원 크기 결정
+      const avgX = data.x.reduce((sum, x) => sum + x, 0) / data.x.length;
+      const avgY = data.y.reduce((sum, y) => sum + y, 0) / data.y.length;
+      const stdX = Math.sqrt(data.x.reduce((sum, x) => sum + Math.pow(x - avgX, 2), 0) / data.x.length);
+      const stdY = Math.sqrt(data.y.reduce((sum, y) => sum + Math.pow(y - avgY, 2), 0) / data.y.length);
+      
+      return {
+        cluster: parseInt(cluster),
+        cx: weightedX,
+        cy: weightedY,
+        rx: Math.max(stdX * 1.8, 10),
+        ry: Math.max(stdY * 1.8, 3),
+      };
+    });
+  };
+
+  // 커스텀 타원 컴포넌트
+  const CustomEllipse = (props: any) => {
+    const { cx, cy, rx, ry, fill, stroke } = props;
+    const { xAxisMap, yAxisMap } = props;
+    
+    if (!xAxisMap || !yAxisMap) return null;
+    
+    const xAxis = xAxisMap[0];
+    const yAxis = yAxisMap[0];
+    
+    // 데이터 좌표를 픽셀 좌표로 변환
+    const xPixel = xAxis.scale(cx);
+    const yPixel = yAxis.scale(cy);
+    const rxPixel = (rx / 100) * xAxis.width;
+    const ryPixel = (ry / 30) * yAxis.height;
+    
+    return (
+      <ellipse
+        cx={xPixel}
+        cy={yPixel}
+        rx={rxPixel}
+        ry={ryPixel}
+        fill={fill}
+        fillOpacity={0.15}
+        stroke={stroke}
+        strokeWidth={1.5}
+        strokeOpacity={0.3}
+        strokeDasharray="5,5"
+      />
+    );
   };
 
   // 커스텀 툴팁
@@ -163,6 +231,26 @@ export function Insight2View() {
                 stroke="#666"
               />
               <Tooltip content={<CustomTooltip />} />
+              
+              {/* 클러스터 타원 배경 영역 */}
+              {patterns.length > 0 && getClusterEllipses().map((ellipse) => (
+                <Customized
+                  key={`cluster-ellipse-${ellipse.cluster}`}
+                  component={(props: any) => (
+                    <CustomEllipse
+                      {...props}
+                      cx={ellipse.cx}
+                      cy={ellipse.cy}
+                      rx={ellipse.rx}
+                      ry={ellipse.ry}
+                      fill={CLUSTER_COLORS[ellipse.cluster]}
+                      stroke={CLUSTER_COLORS[ellipse.cluster]}
+                    />
+                  )}
+                />
+              ))}
+              
+              {/* 데이터 포인트 (더 진한 색상) */}
               <Scatter 
                 data={patterns} 
                 fill="#8884d8"
@@ -176,9 +264,9 @@ export function Insight2View() {
                       cy={cy} 
                       r={radius} 
                       fill={fill}
-                      fillOpacity={0.7}
+                      fillOpacity={0.9}  // 더 진하게 (기존 0.7 → 0.9)
                       stroke={fill}
-                      strokeWidth={1}
+                      strokeWidth={1.5}  // 테두리도 약간 굵게
                     />
                   );
                 }}
