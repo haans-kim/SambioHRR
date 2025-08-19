@@ -12,7 +12,24 @@ const db = new Database(dbPath, {
 
 // 성능 최적화
 // WAL 모드 비활성화 - DELETE 모드 사용 (기본 rollback journal)
-db.pragma('journal_mode = DELETE');
+// journal_mode 변경 전에 체크포인트 실행
+try {
+  // 먼저 현재 journal mode 확인
+  const currentMode = db.pragma('journal_mode') as { journal_mode: string };
+  console.log('Current journal mode:', currentMode);
+  
+  // WAL 모드였다면 체크포인트 실행
+  if (currentMode.journal_mode === 'wal') {
+    db.pragma('wal_checkpoint(TRUNCATE)');
+  }
+  
+  // DELETE 모드로 변경 (WAL 비활성화)
+  db.pragma('journal_mode = DELETE');
+  console.log('Journal mode changed to DELETE');
+} catch (error) {
+  console.error('Error changing journal mode:', error);
+}
+
 db.pragma('busy_timeout = 5000');
 db.pragma('synchronous = NORMAL');
 db.pragma('cache_size = 10000');
