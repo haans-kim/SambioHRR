@@ -11,7 +11,8 @@ const db = new Database(dbPath, {
 });
 
 // 성능 최적화
-db.pragma('journal_mode = WAL');
+// WAL 모드 비활성화 - DELETE 모드 사용 (기본 rollback journal)
+db.pragma('journal_mode = DELETE');
 db.pragma('busy_timeout = 5000');
 db.pragma('synchronous = NORMAL');
 db.pragma('cache_size = 10000');
