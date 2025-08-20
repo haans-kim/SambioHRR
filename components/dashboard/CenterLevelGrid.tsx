@@ -333,8 +333,89 @@ export function CenterLevelGrid({
             </tr>
           </thead>
           <tbody>
+            {/* Center Average Row */}
+            <tr key="center-avg" className="border-t-2 border-gray-400">
+              <td className="p-2 font-medium text-gray-700 text-base bg-gray-50">센터평균</td>
+              {centers.map((center) => {
+                let value: number;
+                
+                // Calculate center average based on selected metric
+                if (selectedMetric === 'efficiency') {
+                  value = center.stats?.avgWorkEfficiency || 0;
+                } else if (selectedMetric === 'workHours') {
+                  value = center.stats?.avgActualWorkHours || 0;
+                } else if (selectedMetric === 'claimedHours') {
+                  value = center.stats?.avgAttendanceHours || 0;
+                } else if (selectedMetric === 'weeklyWorkHours') {
+                  value = center.stats?.avgWeeklyWorkHours || 0;
+                } else if (selectedMetric === 'weeklyClaimedHours') {
+                  value = center.stats?.avgWeeklyClaimedHours || 0;
+                } else if (selectedMetric === 'adjustedWeeklyWorkHours') {
+                  value = center.stats?.avgAdjustedWeeklyWorkHours || 0;
+                } else if (selectedMetric === 'focusedWorkHours') {
+                  value = center.stats?.avgFocusedWorkHours || 0;
+                } else {
+                  // dataReliability
+                  value = center.stats?.avgDataReliability || 0;
+                }
+                
+                // Calculate ranking among centers for color coding
+                const centerValuesWithIndex = centers.map((c, idx) => ({
+                  value: (() => {
+                    if (selectedMetric === 'efficiency') return c.stats?.avgWorkEfficiency || 0;
+                    else if (selectedMetric === 'workHours') return c.stats?.avgActualWorkHours || 0;
+                    else if (selectedMetric === 'claimedHours') return c.stats?.avgAttendanceHours || 0;
+                    else if (selectedMetric === 'weeklyWorkHours') return c.stats?.avgWeeklyWorkHours || 0;
+                    else if (selectedMetric === 'weeklyClaimedHours') return c.stats?.avgWeeklyClaimedHours || 0;
+                    else if (selectedMetric === 'adjustedWeeklyWorkHours') return c.stats?.avgAdjustedWeeklyWorkHours || 0;
+                    else if (selectedMetric === 'focusedWorkHours') return c.stats?.avgFocusedWorkHours || 0;
+                    else return c.stats?.avgDataReliability || 0;
+                  })(),
+                  index: idx
+                })).filter(item => item.value > 0);
+                
+                // Sort values (descending)
+                const sortedValues = [...centerValuesWithIndex].sort((a, b) => b.value - a.value);
+                const currentCenterIndex = centers.indexOf(center);
+                const currentItem = centerValuesWithIndex.find(item => item.index === currentCenterIndex);
+                const rank = currentItem ? sortedValues.findIndex(item => item.index === currentCenterIndex) + 1 : -1;
+                const totalValidCenters = sortedValues.length;
+                
+                // Top 2 centers get blue, bottom 2 get red, rest get green
+                let customThresholds;
+                if (totalValidCenters > 0 && rank > 0 && value > 0) {
+                  if (rank <= 2) {
+                    // Force blue (top 2)
+                    customThresholds = { low: value - 1, high: value - 0.1 };
+                  } else if (rank >= totalValidCenters - 1) {
+                    // Force red (bottom 2)
+                    customThresholds = { low: value + 0.1, high: value + 1 };
+                  } else {
+                    // Force green (middle)
+                    customThresholds = { low: value - 0.1, high: value + 0.1 };
+                  }
+                } else {
+                  // Default thresholds for invalid data
+                  customThresholds = thresholds?.[selectedMetric]?.thresholds;
+                }
+                
+                return (
+                  <td key={`center-avg-${center.orgCode}`} className="p-2 bg-gray-50">
+                    <MetricIndicator 
+                      value={value} 
+                      label=""
+                      metricType={selectedMetric}
+                      thresholds={customThresholds}
+                      onClick={() => handleCellClick(center)}
+                    />
+                  </td>
+                );
+              })}
+            </tr>
+            
+            {/* Grade Level Rows */}
             {levels.map((level, levelIndex) => (
-              <tr key={level} className="border-t border-gray-200">
+              <tr key={level} className={levelIndex === 0 ? "border-t-2 border-gray-400" : "border-t border-gray-200"}>
                 <td className="p-2 font-medium text-gray-700 text-base">{level}</td>
                 {centers.map((center) => {
                   let value: number;
