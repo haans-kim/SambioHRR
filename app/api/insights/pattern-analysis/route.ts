@@ -10,15 +10,17 @@ export async function GET() {
         bu,
         team,
         employee_count,
-        location_fixity,
-        movement_complexity,
-        data_density,
-        external_activity,
-        cluster,
+        ROUND((eam_count + lams_count + mes_count + equis_count + mdm_count) * 1.0 / NULLIF(employee_count, 0), 1) as data_density,  -- o_per_person: 장비 사용 (건/인)
+        ROUND((t1_count * 1.0 / NULLIF(employee_count, 0)) / 
+              NULLIF((knox_total_count + (eam_count + lams_count + mes_count + equis_count + mdm_count) + t1_count + g3_count) * 1.0 / NULLIF(employee_count, 0), 0) * 100, 1) as movement_complexity,  -- mobility_index: 이동성 지수 (%)
+        ROUND(knox_total_count * 1.0 / NULLIF(employee_count, 0), 1) as knox_per,
+        ROUND(g3_count * 1.0 / NULLIF(employee_count, 0), 1) as g3_per,
+        cluster,  -- DB에 저장된 cluster 값 사용
         reliability_score,
         correction_factor,
         correction_type
       FROM dept_pattern_analysis_new
+      WHERE employee_count >= 5  -- 5명 미만 팀 제외
       ORDER BY cluster, team
     `).all();
 
@@ -26,21 +28,23 @@ export async function GET() {
     const clusterStats = db.prepare(`
       SELECT 
         CASE cluster
-          WHEN 0 THEN 'Type_A_생산고정형'
-          WHEN 1 THEN 'Type_B_생산중심형(외부활동)'
-          WHEN 2 THEN 'Type_C_혼합근무형'
-          WHEN 3 THEN 'Type_D_사무중심형'
-          WHEN 4 THEN 'Type_E_사무전문형'
+          WHEN 0 THEN '장비운영집중형'
+          WHEN 1 THEN '디지털협업중심형'
+          WHEN 2 THEN '현장이동활발형'
+          WHEN 3 THEN '균형업무형'
+          WHEN 4 THEN '회의협업중심형'
         END as cluster_name,
         cluster,
         COUNT(*) as team_count,
         SUM(employee_count) as total_employees,
-        ROUND(AVG(location_fixity), 2) as avg_location_fixity,
-        ROUND(AVG(data_density), 2) as avg_data_density,
-        ROUND(AVG(external_activity), 2) as avg_external_activity,
+        ROUND(AVG(knox_total_count * 1.0 / NULLIF(employee_count, 0)), 1) as avg_location_fixity,  -- Knox 평균
+        ROUND(AVG((eam_count + lams_count + mes_count + equis_count + mdm_count) * 1.0 / NULLIF(employee_count, 0)), 1) as avg_data_density,  -- 장비 사용 평균 (o_per_person)
+        ROUND(AVG((t1_count * 1.0 / NULLIF(employee_count, 0)) / 
+              NULLIF((knox_total_count + (eam_count + lams_count + mes_count + equis_count + mdm_count) + t1_count + g3_count) * 1.0 / NULLIF(employee_count, 0), 0) * 100), 1) as avg_external_activity,  -- 이동성 지수 평균 (mobility_index %)
         ROUND(AVG(reliability_score), 2) as avg_reliability,
         ROUND(AVG(correction_factor), 2) as avg_correction_factor
       FROM dept_pattern_analysis_new
+      WHERE employee_count >= 5  -- 5명 미만 팀 제외
       GROUP BY cluster
       ORDER BY cluster
     `).all();

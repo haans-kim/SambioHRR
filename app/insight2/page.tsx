@@ -3,8 +3,8 @@ import { Sidebar } from "@/components/navigation/Sidebar";
 import { Insight2View } from "@/components/dashboard/Insight2View";
 
 export const metadata: Metadata = {
-  title: "Insight#2 - HR Dashboard",
-  description: "인건비와 주간근무시간 버블차트 분석",
+  title: "근무 패턴 분석 - HR Dashboard",
+  description: "장비 사용과 이동성 지수 기반 근무 패턴 분석",
 };
 
 export default function Insight2Page() {
