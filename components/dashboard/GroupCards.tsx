@@ -311,6 +311,7 @@ export function GroupCards({
   avgClaimedHours = 8.5,
   avgWeeklyWorkHours = 40.0,
   avgWeeklyClaimedHours = 42.5,
+  avgAdjustedWeeklyWorkHours = 38.4,
   avgFocusedWorkHours = 4.2,
   avgDataReliability = 65.0,
   thresholds
