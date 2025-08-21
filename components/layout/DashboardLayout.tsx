@@ -58,7 +58,7 @@ export function DashboardLayout({
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-64">
+      <div className="flex-1 ml-56">
         {/* Title Section */}
         <div className="bg-gradient-to-br from-blue-50 to-white border-b border-gray-200">
           <div className="max-w-[1600px] mx-auto px-6 py-6">
@@ -72,14 +72,14 @@ export function DashboardLayout({
             {/* Stats Cards */}
             <div className="flex justify-between items-end gap-12 mt-6">
               <div className="flex gap-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 min-w-[200px]">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3 min-w-[160px]">
                   <div className="text-3xl font-bold text-blue-600">
                     <NumberTicker value={totalEmployees} />
                   </div>
                   <div className="text-sm text-gray-600 mt-1">총 분석 인원</div>
                 </div>
                 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-4 min-w-[200px]">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3 min-w-[160px]">
                   <div className="text-3xl font-bold text-blue-600">
                     <NumberTicker 
                       value={

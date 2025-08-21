@@ -41,7 +41,7 @@ export function Sidebar() {
   ];
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 h-screen fixed left-0 top-0 overflow-y-auto">
+    <div className="w-56 bg-white border-r border-gray-200 h-screen fixed left-0 top-0 overflow-y-auto">
       {/* Logo/Brand */}
       <div className="p-6 border-b border-gray-200">
         <h1 className="text-2xl font-bold text-gray-900">HR Dashboard</h1>

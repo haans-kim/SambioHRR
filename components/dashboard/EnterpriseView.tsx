@@ -118,7 +118,7 @@ export default function EnterpriseView() {
       {/* 헤더 섹션 */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">근무 불균형 - 전사 대시보드</h1>
+          <h1 className="text-2xl font-bold">근무 불균형 - 전사 대시보드</h1>
           <p className="text-gray-600 mt-1">5,000명 조직 실시간 모니터링</p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2">
@@ -130,7 +130,7 @@ export default function EnterpriseView() {
 
       {/* AI 인사이트 섹션 */}
       <div className="space-y-4">
-        <h2 className="text-3xl font-bold">실시간 인사이트</h2>
+        <h2 className="text-xl font-semibold">실시간 인사이트</h2>
         <div className="grid grid-cols-3 gap-4">
           {insights.map((insight, index) => (
             <Alert key={index} className={`border-l-4 ${
@@ -140,20 +140,20 @@ export default function EnterpriseView() {
               'border-green-500'
             }`}>
               <div className="flex items-start space-x-3">
-                <div className={`p-3 rounded-full ${getSeverityColor(insight.severity)} text-white flex-shrink-0`}>
-                  {React.cloneElement(getInsightIcon(insight.type), { className: 'h-7 w-7' })}
+                <div className={`p-2 rounded-full ${getSeverityColor(insight.severity)} text-white flex-shrink-0`}>
+                  {React.cloneElement(getInsightIcon(insight.type), { className: 'h-5 w-5' })}
                 </div>
                 <div className="flex-1">
-                  <AlertTitle className="text-2xl font-bold mb-3 whitespace-nowrap">{insight.title}</AlertTitle>
-                  <AlertDescription className="text-lg text-gray-700 whitespace-nowrap">
+                  <AlertTitle className="text-base font-semibold mb-2">{insight.title}</AlertTitle>
+                  <AlertDescription className="text-sm text-gray-700">
                     {insight.description}
                   </AlertDescription>
                   {insight.affectedCount > 0 && (
-                    <Badge variant="secondary" className="mt-3 text-base px-4 py-2 inline-block">
+                    <Badge variant="secondary" className="mt-2 text-sm px-3 py-1 inline-block">
                       영향: {insight.affectedCount}{insight.type === 'imbalance' ? '개팀' : '명'}
                     </Badge>
                   )}
-                  <p className="text-lg font-semibold text-blue-600 mt-4 whitespace-nowrap">
+                  <p className="text-sm font-medium text-blue-600 mt-3">
                     💡 {insight.recommendation}
                   </p>
                 </div>
@@ -166,8 +166,8 @@ export default function EnterpriseView() {
       {/* 상위 10개 팀 버블 차트 */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-3xl font-bold">근무 불균형 상위 10개 팀</h2>
-          <p className="text-lg text-gray-600 mt-2">버블 크기: 인원수 | 색상: 위험도</p>
+          <h2 className="text-xl font-semibold">근무 불균형 상위 10개 팀</h2>
+          <p className="text-sm text-gray-600 mt-1">버블 크기: 인원수 | 색상: 위험도</p>
         </div>
         <Card>
           <CardContent className="p-2">
@@ -207,12 +207,12 @@ export default function EnterpriseView() {
                       <line x1="80" y1="50" x2="80" y2="530" stroke="#374151" strokeWidth="2"/>
                       
                       {/* X축 레이블 - 평균 근무시간 */}
-                      <text x="600" y="570" textAnchor="middle" className="text-lg font-semibold fill-gray-700">
+                      <text x="600" y="570" textAnchor="middle" className="text-base font-medium fill-gray-700">
                         평균 근무시간 (시간)
                       </text>
                       
                       {/* Y축 레이블 - 변동계수 */}
-                      <text x="40" y="300" textAnchor="middle" className="text-lg font-semibold fill-gray-700" transform="rotate(-90 40 300)">
+                      <text x="40" y="300" textAnchor="middle" className="text-base font-medium fill-gray-700" transform="rotate(-90 40 300)">
                         변동계수 (CV%)
                       </text>
                       
@@ -312,8 +312,8 @@ export default function EnterpriseView() {
       {/* 팀별 업무 균형도 */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-3xl font-bold">팀별 근무 균형도 분석</h2>
-          <p className="text-lg text-gray-600 mt-2">변동계수(CV)가 높은 상위 24개 팀 - 근무 재분배 필요</p>
+          <h2 className="text-xl font-semibold">팀별 근무 균형도 분석</h2>
+          <p className="text-sm text-gray-600 mt-1">변동계수(CV)가 높은 상위 24개 팀 - 근무 재분배 필요</p>
         </div>
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
           {teamDistribution.slice(0, 24).map((team, index) => {
