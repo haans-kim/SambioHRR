@@ -51,7 +51,7 @@ interface ClusterStats {
 }
 
 const CLUSTER_COLORS: { [key: string]: string } = {
-  '장비운영집중형': '#1f77b4',  // 파란색
+  '시스템운영집중형': '#1f77b4',  // 파란색
   '현장이동활발형': '#ff7f0e',  // 주황색
   '디지털협업중심형': '#2ca02c',  // 녹색
   '저활동형': '#8c564b',  // 갈색
@@ -246,25 +246,25 @@ export function Insight2View() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">근무 패턴 분석</h1>
-        <p className="text-gray-600 mt-1">실시간 업무패턴 분석 및 근무 추정시간 모니터링</p>
+        <h1 className="text-3xl font-bold text-gray-900">근무 패턴 분석</h1>
+        <p className="text-lg text-gray-600 mt-1">실시간 업무패턴 분석 및 근무 추정시간 모니터링</p>
       </div>
 
       {/* 발견된 패턴 그룹 */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-base">발견된 패턴 그룹</CardTitle>
+          <CardTitle className="text-xl">발견된 패턴 그룹</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead className="w-16">패턴 유형</TableHead>
-                <TableHead className="text-center">팀 수</TableHead>
-                <TableHead className="text-center">직원 수</TableHead>
-                <TableHead className="text-center">평균 Knox</TableHead>
-                <TableHead className="text-center">평균 장비</TableHead>
-                <TableHead>주요 팀</TableHead>
+                <TableHead className="w-16 text-base">패턴 유형</TableHead>
+                <TableHead className="text-center text-base">팀 수</TableHead>
+                <TableHead className="text-center text-base">직원 수</TableHead>
+                <TableHead className="text-center text-base">평균 Knox</TableHead>
+                <TableHead className="text-center text-base">평균 장비</TableHead>
+                <TableHead className="text-base">주요 팀</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -283,14 +283,14 @@ export function Insight2View() {
                           className="w-3 h-3 rounded-full" 
                           style={{ backgroundColor: CLUSTER_COLORS[stat.cluster_name] }}
                         />
-                        <span className="font-medium">{stat.cluster_name}</span>
+                        <span className="font-medium text-base">{stat.cluster_name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">{stat.team_count}개</TableCell>
-                    <TableCell className="text-center">{stat.total_employees.toLocaleString()}명</TableCell>
-                    <TableCell className="text-center">{stat.avg_knox_per_person?.toFixed(1) || 0}</TableCell>
-                    <TableCell className="text-center">{stat.avg_equipment_per_person?.toFixed(1) || 0}</TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-center text-base">{stat.team_count}개</TableCell>
+                    <TableCell className="text-center text-base">{stat.total_employees.toLocaleString()}명</TableCell>
+                    <TableCell className="text-center text-base">{stat.avg_knox_per_person?.toFixed(1) || 0}</TableCell>
+                    <TableCell className="text-center text-base">{stat.avg_equipment_per_person?.toFixed(1) || 0}</TableCell>
+                    <TableCell className="text-base">
                       {clusterTeams.slice(0, 5).map(t => t.team).join(', ')}
                       {clusterTeams.length > 5 && ` 외 ${clusterTeams.length - 5}개`}
                     </TableCell>
@@ -305,17 +305,12 @@ export function Insight2View() {
       {/* 산점도 차트 */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-white" />
-            </div>
-            장비 사용 (건/인) vs 이동성 지수 패턴 분포
-          </CardTitle>
+          <CardTitle className="text-xl">시스템 사용 vs 이동성 지수 패턴 분포</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
             <div className="flex items-center gap-6">
-              <span className="text-sm font-medium text-gray-700">패턴 유형</span>
+              <span className="text-base font-medium text-gray-700">패턴 유형</span>
               <div className="flex gap-4 flex-wrap">
                 {Object.entries(CLUSTER_COLORS).map(([name, color]) => (
                   <div key={name} className="flex items-center gap-2">
@@ -323,7 +318,7 @@ export function Insight2View() {
                       className="w-3 h-3 rounded-full" 
                       style={{ backgroundColor: color }}
                     />
-                    <span className="text-sm text-gray-600">{name}</span>
+                    <span className="text-base text-gray-600">{name}</span>
                   </div>
                 ))}
               </div>
@@ -337,7 +332,7 @@ export function Insight2View() {
                 dataKey="equipment_per_person" 
                 type="number"
                 domain={[0, 700]}
-                label={{ value: '장비 사용 (건/인)', position: 'insideBottom', offset: -10 }}
+                label={{ value: '시스템 사용 (건/인)', position: 'insideBottom', offset: -10 }}
                 stroke="#666"
                 ticks={[0, 100, 200, 300, 400, 500, 600, 700]}
               />
@@ -386,10 +381,10 @@ export function Insight2View() {
           {/* 지표 설명 */}
           <div className="mt-4 space-y-2">
             <div className="p-3 bg-gray-50 rounded-lg">
-              <div className="flex gap-6 text-xs text-gray-600">
+              <div className="flex gap-6 text-base text-gray-600">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold">X축 (장비 사용):</span>
-                  <span>1인당 일일 장비 사용 건수 (o_tag_count / employee_count)</span>
+                  <span className="font-semibold">X축 (시스템 사용):</span>
+                  <span>1인당 일일 시스템 사용 건수 (o_tag_count / employee_count)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Y축 (이동성 지수):</span>
@@ -402,7 +397,7 @@ export function Insight2View() {
               </div>
             </div>
             <div className="p-2 bg-blue-50 border border-blue-200 rounded">
-              <p className="text-xs text-blue-800">
+              <p className="text-base text-blue-800">
                 <span className="font-semibold">분석 기준:</span> 5인 이상인 팀, 직속 제외
               </p>
             </div>
@@ -415,14 +410,14 @@ export function Insight2View() {
         {/* Knox 활동 분포 */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">패턴별 Knox 활동 분포</CardTitle>
+            <CardTitle className="text-xl">패턴별 Knox 활동 분포</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px] relative">
               {(() => {
                 // 패턴별로 실제 데이터 그룹화
                 const clusterData: { [key: string]: number[] } = {};
-                const order = ['장비운영집중형', '현장이동활발형', '디지털협업중심형', '저활동형', '균형업무형'];
+                const order = ['시스템운영집중형', '현장이동활발형', '디지털협업중심형', '저활동형', '균형업무형'];
                 
                 patterns.forEach(p => {
                   if (!clusterData[p.cluster_type]) {
@@ -556,14 +551,14 @@ export function Insight2View() {
         {/* 장비 사용 분포 */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">패턴별 장비 사용 분포</CardTitle>
+            <CardTitle className="text-xl">패턴별 장비 사용 분포</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px] relative">
               {(() => {
                 // 패턴별로 실제 데이터 그룹화
                 const clusterData: { [key: string]: number[] } = {};
-                const order = ['장비운영집중형', '현장이동활발형', '디지털협업중심형', '저활동형', '균형업무형'];
+                const order = ['시스템운영집중형', '현장이동활발형', '디지털협업중심형', '저활동형', '균형업무형'];
                 
                 patterns.forEach(p => {
                   if (!clusterData[p.cluster_type]) {
@@ -697,7 +692,7 @@ export function Insight2View() {
 
       {/* 패턴별 상세 정보 */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">패턴별 상세 분석</h2>
+        <h2 className="text-2xl font-semibold">패턴별 상세 분석</h2>
         {[...clusterStats]
           .sort((a, b) => b.total_employees - a.total_employees)
           .map((stat) => {
@@ -729,18 +724,18 @@ export function Insight2View() {
                           className="w-4 h-4 rounded-full" 
                           style={{ backgroundColor: CLUSTER_COLORS[stat.cluster_name] }}
                         />
-                        <CardTitle className="text-base">
+                        <CardTitle className="text-xl">
                           {stat.cluster_name} ({stat.team_count}개 팀)
                         </CardTitle>
                       </div>
-                      <div className="text-sm text-gray-600 ml-7">
+                      <div className="text-base text-gray-600 ml-7">
                         <span className="font-medium">주요 팀:</span> {clusterTeams.slice(0, 5).map(t => t.team).join(', ')}
                         {clusterTeams.length > 5 && ` 외 ${clusterTeams.length - 5}개`}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="text-sm text-gray-500">총 인원</div>
+                        <div className="text-base text-gray-500">총 인원</div>
                         <div className="text-lg font-semibold">{stat.total_employees.toLocaleString()}명</div>
                       </div>
                       {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -753,44 +748,44 @@ export function Insight2View() {
                     {/* 통계 요약 */}
                     <div className="grid grid-cols-4 gap-4 mb-6">
                       <div className="bg-gray-50 p-3 rounded">
-                        <div className="flex items-center gap-2 text-gray-600 text-xs mb-1">
+                        <div className="flex items-center gap-2 text-gray-600 text-base mb-1">
                           <Users className="w-3 h-3" />
                           <span>소속 팀 수</span>
                         </div>
-                        <div className="text-xl font-semibold">{stat.team_count}개</div>
+                        <div className="text-lg font-semibold">{stat.team_count}개</div>
                       </div>
                       <div className="bg-gray-50 p-3 rounded">
-                        <div className="flex items-center gap-2 text-gray-600 text-xs mb-1">
+                        <div className="flex items-center gap-2 text-gray-600 text-base mb-1">
                           <Users className="w-3 h-3" />
                           <span>총 직원 수</span>
                         </div>
-                        <div className="text-xl font-semibold">{stat.total_employees.toLocaleString()}명</div>
+                        <div className="text-lg font-semibold">{stat.total_employees.toLocaleString()}명</div>
                       </div>
                       <div className="bg-gray-50 p-3 rounded">
-                        <div className="flex items-center gap-2 text-gray-600 text-xs mb-1">
+                        <div className="flex items-center gap-2 text-gray-600 text-base mb-1">
                           <Activity className="w-3 h-3" />
                           <span>평균 Knox 활동</span>
                         </div>
-                        <div className="text-xl font-semibold">{stat.avg_knox_per_person?.toFixed(1)}건/인</div>
+                        <div className="text-lg font-semibold">{stat.avg_knox_per_person?.toFixed(1)}건/인</div>
                       </div>
                       <div className="bg-gray-50 p-3 rounded">
-                        <div className="flex items-center gap-2 text-gray-600 text-xs mb-1">
+                        <div className="flex items-center gap-2 text-gray-600 text-base mb-1">
                           <BarChart3 className="w-3 h-3" />
                           <span>평균 장비 사용</span>
                         </div>
-                        <div className="text-xl font-semibold">{stat.avg_equipment_per_person?.toFixed(1)}건/인</div>
+                        <div className="text-lg font-semibold">{stat.avg_equipment_per_person?.toFixed(1)}건/인</div>
                       </div>
                     </div>
                     
                     {/* 소속 팀 전체 목록 */}
                     <div className="border rounded-lg p-4">
-                      <h4 className="text-sm font-semibold mb-3">소속 팀 전체 목록 ({stat.team_count}개):</h4>
+                      <h4 className="text-base font-semibold mb-3">소속 팀 전체 목록 ({stat.team_count}개):</h4>
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-gray-50">
-                            <TableHead className="text-xs">센터</TableHead>
-                            <TableHead className="text-xs">팀 수</TableHead>
-                            <TableHead className="text-xs">소속 팀</TableHead>
+                            <TableHead className="text-base">센터</TableHead>
+                            <TableHead className="text-base">팀 수</TableHead>
+                            <TableHead className="text-base">소속 팀</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -798,9 +793,9 @@ export function Insight2View() {
                             .sort(([, a], [, b]) => b.length - a.length)
                             .map(([center, teams]) => (
                               <TableRow key={center}>
-                                <TableCell className="font-medium text-sm">{center}</TableCell>
-                                <TableCell className="text-sm">{teams.length}개</TableCell>
-                                <TableCell className="text-xs">
+                                <TableCell className="font-medium text-base">{center}</TableCell>
+                                <TableCell className="text-base">{teams.length}개</TableCell>
+                                <TableCell className="text-base">
                                   {teams.map(t => t.team).join(', ')}
                                 </TableCell>
                               </TableRow>
