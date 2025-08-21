@@ -116,9 +116,9 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
     }
     
     // Use dynamic thresholds - 상위 20% (high) 이상은 ▲, 하위 20% (low) 이하는 ▼
-    if (value >= thresholds.high) return "▲"; // 상위 20% 모범사례 - 파란 삼각형
-    if (value <= thresholds.low) return "▼"; // 하위 20% 관찰 주시 필요 - 빨간 역삼각형
-    return "●"; // 중간 60% 양호 - 초록 원
+    if (value >= thresholds.high) return "▲"; // 상위 20% - 빨간 삼각형 (번아웃 위험)
+    if (value <= thresholds.low) return "▼"; // 하위 20% - 파란 역삼각형 (양호)
+    return "●"; // 중간 60% 중위 - 초록 원
   };
 
   const getIconColor = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
@@ -161,9 +161,9 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
     }
     
     // Use dynamic thresholds
-    if (value >= thresholds.high) return "text-blue-600"; // 모범사례
-    if (value <= thresholds.low) return "text-red-600"; // 관찰 주시 필요
-    return "text-green-600"; // 양호
+    if (value >= thresholds.high) return "text-red-600"; // 상위 (번아웃 위험)
+    if (value <= thresholds.low) return "text-blue-600"; // 하위 (양호)
+    return "text-green-600"; // 중위
   };
 
   const getIconStyle = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
@@ -205,45 +205,45 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
     if (!thresholds) {
       // Fallback to hardcoded values if thresholds are not available
       if (metricType === 'efficiency') {
-        if (value >= 88.4) return "border-blue-400 bg-blue-50";
+        if (value >= 88.4) return "border-red-400 bg-red-50";
         if (value > 73.2) return "border-green-400 bg-green-50";
-        return "border-red-400 bg-red-50";
+        return "border-blue-400 bg-blue-50";
       } else if (metricType === 'workHours') {
-        if (value >= 8.0) return "border-blue-400 bg-blue-50";
+        if (value >= 8.0) return "border-red-400 bg-red-50";
         if (value >= 6.0) return "border-green-400 bg-green-50";
-        return "border-red-400 bg-red-50";
+        return "border-blue-400 bg-blue-50";
       } else if (metricType === 'claimedHours') {
-        if (value >= 9.0) return "border-blue-400 bg-blue-50";
+        if (value >= 9.0) return "border-red-400 bg-red-50";
         if (value >= 7.0) return "border-green-400 bg-green-50";
-        return "border-red-400 bg-red-50";
+        return "border-blue-400 bg-blue-50";
       } else if (metricType === 'weeklyWorkHours') {
-        if (value >= 45.0) return "border-blue-400 bg-blue-50";
+        if (value >= 45.0) return "border-red-400 bg-red-50";
         if (value >= 35.0) return "border-green-400 bg-green-50";
-        return "border-red-400 bg-red-50";
+        return "border-blue-400 bg-blue-50";
       } else if (metricType === 'weeklyClaimedHours') {
-        if (value >= 48.0) return "border-blue-400 bg-blue-50";
+        if (value >= 48.0) return "border-red-400 bg-red-50";
         if (value >= 38.0) return "border-green-400 bg-green-50";
-        return "border-red-400 bg-red-50";
+        return "border-blue-400 bg-blue-50";
       } else if (metricType === 'adjustedWeeklyWorkHours') {
-        if (value >= 42.0) return "border-blue-400 bg-blue-50";
+        if (value >= 42.0) return "border-red-400 bg-red-50";
         if (value >= 35.0) return "border-green-400 bg-green-50";
-        return "border-red-400 bg-red-50";
+        return "border-blue-400 bg-blue-50";
       } else if (metricType === 'focusedWorkHours') {
-        if (value >= 5.0) return "border-blue-400 bg-blue-50";
+        if (value >= 5.0) return "border-red-400 bg-red-50";
         if (value >= 2.0) return "border-green-400 bg-green-50";
-        return "border-red-400 bg-red-50";
+        return "border-blue-400 bg-blue-50";
       } else {
         // dataReliability
-        if (value >= 85.0) return "border-blue-400 bg-blue-50";
+        if (value >= 85.0) return "border-red-400 bg-red-50";
         if (value >= 70.0) return "border-green-400 bg-green-50";
-        return "border-red-400 bg-red-50";
+        return "border-blue-400 bg-blue-50";
       }
     }
     
     // Use dynamic thresholds
-    if (value >= thresholds.high) return "border-blue-400 bg-blue-50"; // 모범사례
-    if (value <= thresholds.low) return "border-red-400 bg-red-50"; // 관찰 주시 필요
-    return "border-green-400 bg-green-50"; // 양호
+    if (value >= thresholds.high) return "border-red-400 bg-red-50"; // 상위 (번아웃 위험)
+    if (value <= thresholds.low) return "border-blue-400 bg-blue-50"; // 하위 (양호)
+    return "border-green-400 bg-green-50"; // 중위
   };
 
   const formatValue = (value: number, metricType: MetricType) => {
@@ -528,7 +528,7 @@ export function CenterLevelGrid({
               실제 근무시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.efficiency?.high}) | ● 양호({thresholds?.efficiency?.middle}) | ▼ 관찰필요({thresholds?.efficiency?.low})
+              ▲ 상위({thresholds?.efficiency?.high}) | ● 중위({thresholds?.efficiency?.middle}) | ▼ 하위({thresholds?.efficiency?.low})
             </div>
           </>
         ) : selectedMetric === 'workHours' ? (
@@ -538,7 +538,7 @@ export function CenterLevelGrid({
               실제 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.workHours?.high}) | ● 양호({thresholds?.workHours?.middle}) | ▼ 관찰필요({thresholds?.workHours?.low})
+              ▲ 상위({thresholds?.workHours?.high}) | ● 중위({thresholds?.workHours?.middle}) | ▼ 하위({thresholds?.workHours?.low})
             </div>
           </>
         ) : selectedMetric === 'claimedHours' ? (
@@ -548,7 +548,7 @@ export function CenterLevelGrid({
               신고 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.claimedHours?.high}) | ● 양호({thresholds?.claimedHours?.middle}) | ▼ 관찰필요({thresholds?.claimedHours?.low})
+              ▲ 상위({thresholds?.claimedHours?.high}) | ● 중위({thresholds?.claimedHours?.middle}) | ▼ 하위({thresholds?.claimedHours?.low})
             </div>
           </>
         ) : selectedMetric === 'weeklyWorkHours' ? (
@@ -558,7 +558,7 @@ export function CenterLevelGrid({
               주당 실제 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.weeklyWorkHours?.high}) | ● 양호({thresholds?.weeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyWorkHours?.low})
+              ▲ 상위({thresholds?.weeklyWorkHours?.high}) | ● 중위({thresholds?.weeklyWorkHours?.middle}) | ▼ 하위({thresholds?.weeklyWorkHours?.low})
             </div>
           </>
         ) : selectedMetric === 'weeklyClaimedHours' ? (
@@ -568,7 +568,7 @@ export function CenterLevelGrid({
               주당 신고 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.weeklyClaimedHours?.high}) | ● 양호({thresholds?.weeklyClaimedHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyClaimedHours?.low})
+              ▲ 상위({thresholds?.weeklyClaimedHours?.high}) | ● 중위({thresholds?.weeklyClaimedHours?.middle}) | ▼ 하위({thresholds?.weeklyClaimedHours?.low})
             </div>
           </>
         ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
@@ -578,7 +578,7 @@ export function CenterLevelGrid({
               AI 신뢰도 보정 적용 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.adjustedWeeklyWorkHours?.high || '상위 20%'}) | ● 양호({thresholds?.adjustedWeeklyWorkHours?.middle || '중위 60%'}) | ▼ 관찰필요({thresholds?.adjustedWeeklyWorkHours?.low || '하위 20%'})
+              ▲ 상위({thresholds?.adjustedWeeklyWorkHours?.high || '상위 20%'}) | ● 중위({thresholds?.adjustedWeeklyWorkHours?.middle || '중위 60%'}) | ▼ 하위({thresholds?.adjustedWeeklyWorkHours?.low || '하위 20%'})
             </div>
           </>
         ) : selectedMetric === 'focusedWorkHours' ? (
@@ -588,7 +588,7 @@ export function CenterLevelGrid({
               집중적으로 업무에 몰입한 시간 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.focusedWorkHours?.high}) | ● 양호({thresholds?.focusedWorkHours?.middle}) | ▼ 관찰필요({thresholds?.focusedWorkHours?.low})
+              ▲ 상위({thresholds?.focusedWorkHours?.high}) | ● 중위({thresholds?.focusedWorkHours?.middle}) | ▼ 하위({thresholds?.focusedWorkHours?.low})
             </div>
           </>
         ) : (
@@ -598,7 +598,7 @@ export function CenterLevelGrid({
               데이터 품질 및 정확성 점수 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.dataReliability?.high}) | ● 양호({thresholds?.dataReliability?.middle}) | ▼ 관찰필요({thresholds?.dataReliability?.low})
+              ▲ 상위({thresholds?.dataReliability?.high}) | ● 중위({thresholds?.dataReliability?.middle}) | ▼ 하위({thresholds?.dataReliability?.low})
             </div>
           </>
         )}

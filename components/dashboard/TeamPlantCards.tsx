@@ -130,40 +130,40 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
     if (!thresholds) {
       // Fallback based on metric type
       if (selectedMetric === 'efficiency') {
-        if (value >= 88.4) return "text-blue-600";
+        if (value >= 88.4) return "text-red-600";
         if (value > 73.2) return "text-green-600";
-        return "text-red-600";
+        return "text-blue-600";
       } else if (selectedMetric === 'workHours') {
-        if (value >= 8.0) return "text-blue-600";
+        if (value >= 8.0) return "text-red-600";
         if (value >= 6.0) return "text-green-600";
-        return "text-red-600";
+        return "text-blue-600";
       } else if (selectedMetric === 'claimedHours') {
-        if (value >= 9.0) return "text-blue-600";
+        if (value >= 9.0) return "text-red-600";
         if (value >= 7.0) return "text-green-600";
-        return "text-red-600";
+        return "text-blue-600";
       } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
-        if (value >= 48.0) return "text-blue-600";
+        if (value >= 48.0) return "text-red-600";
         if (value > 42.5) return "text-green-600";
-        return "text-red-600";
+        return "text-blue-600";
       } else if (selectedMetric === 'weeklyClaimedHours') {
-        if (value >= 48.0) return "text-blue-600";
+        if (value >= 48.0) return "text-red-600";
         if (value >= 38.0) return "text-green-600";
-        return "text-red-600";
+        return "text-blue-600";
       } else if (selectedMetric === 'focusedWorkHours') {
-        if (value >= 5.0) return "text-blue-600";
+        if (value >= 5.0) return "text-red-600";
         if (value >= 2.0) return "text-green-600";
-        return "text-red-600";
+        return "text-blue-600";
       } else {
         // dataReliability
-        if (value >= 85.0) return "text-blue-600";
+        if (value >= 85.0) return "text-red-600";
         if (value >= 70.0) return "text-green-600";
-        return "text-red-600";
+        return "text-blue-600";
       }
     }
     
     // Use dynamic thresholds - 상위 20% (high) 이상은 파란색, 하위 20% (low) 이하는 빨간색
-    if (value >= thresholds.high) return "text-blue-600";
-    if (value <= thresholds.low) return "text-red-600";
+    if (value >= thresholds.high) return "text-red-600";
+    if (value <= thresholds.low) return "text-blue-600";
     return "text-green-600";
   };
 
@@ -171,60 +171,61 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
     if (!thresholds) {
       // Fallback based on metric type
       if (selectedMetric === 'efficiency') {
-        if (value >= 88.4) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 88.4) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
         if (value > 73.2) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
-        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+        return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
       } else if (selectedMetric === 'workHours') {
-        if (value >= 8.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 8.0) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
         if (value >= 6.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
-        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+        return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
       } else if (selectedMetric === 'claimedHours') {
-        if (value >= 9.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 9.0) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
         if (value >= 7.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
-        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+        return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
       } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
-        if (value >= 48.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 48.0) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
         if (value > 42.5) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
-        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+        return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
       } else if (selectedMetric === 'weeklyClaimedHours') {
-        if (value >= 48.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 48.0) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
         if (value >= 38.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
-        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+        return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
       } else if (selectedMetric === 'focusedWorkHours') {
-        if (value >= 5.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 5.0) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
         if (value >= 2.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
-        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+        return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
       } else {
         // dataReliability
-        if (value >= 85.0) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
+        if (value >= 85.0) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
         if (value >= 70.0) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
-        return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+        return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
       }
     }
     
     // Use dynamic thresholds - 상위 20% (high) 이상은 파란색, 하위 20% (low) 이하는 빨간색
-    if (value >= thresholds.high) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
-    if (value <= thresholds.low) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+    if (value >= thresholds.high) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+    if (value <= thresholds.low) return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
     return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
   };
 
   const getProgressColor = (value: number) => {
     if (!thresholds) {
-      // Fallback
+      // Fallback - burnout perspective: higher = red, lower = blue
       if (selectedMetric === 'efficiency') {
-        if (value >= 88.4) return "#3b82f6"; // blue
-        if (value > 73.2) return "#10b981"; // green
-        return "#f59e0b"; // amber
+        if (value >= 88.4) return "#ef4444"; // red - 상위 (번아웃 위험)
+        if (value > 73.2) return "#10b981"; // green - 중위
+        return "#3b82f6"; // blue - 하위 (양호)
       } else {
-        if (value >= 8.0) return "#3b82f6";
-        if (value >= 6.0) return "#10b981";
-        return "#f59e0b";
+        if (value >= 8.0) return "#ef4444"; // red - 상위 (번아웃 위험)
+        if (value >= 6.0) return "#10b981"; // green - 중위
+        return "#3b82f6"; // blue - 하위 (양호)
       }
     }
     
-    if (value >= thresholds.high) return "#3b82f6";
-    if (value > thresholds.low) return "#10b981";
-    return "#f59e0b";
+    // Use dynamic thresholds - burnout perspective
+    if (value >= thresholds.high) return "#ef4444"; // red - 상위 (번아웃 위험)
+    if (value > thresholds.low) return "#10b981"; // green - 중위
+    return "#3b82f6"; // blue - 하위 (양호)
   };
 
   const formatValue = (value: number, metric: MetricType) => {
@@ -455,7 +456,7 @@ export function TeamPlantCards({
               {/* 상위 20% */}
               {top.length > 0 && (
                 <div className="mb-3">
-                  <h4 className="text-sm font-medium text-blue-600 mb-2">상위 20% (모범사례)</h4>
+                  <h4 className="text-sm font-medium text-red-600 mb-2">상위 20%</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                     {top.map((team) => (
                       <PlantCard
@@ -473,7 +474,7 @@ export function TeamPlantCards({
               {/* 중위 60% */}
               {middle.length > 0 && (
                 <div className="mb-3">
-                  <h4 className="text-sm font-medium text-green-600 mb-2">중위 60% (양호)</h4>
+                  <h4 className="text-sm font-medium text-green-600 mb-2">중위 60%</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                     {middle.map((team) => (
                       <PlantCard
@@ -491,7 +492,7 @@ export function TeamPlantCards({
               {/* 하위 20% */}
               {bottom.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-red-600 mb-2">하위 20% (관찰필요)</h4>
+                  <h4 className="text-sm font-medium text-blue-600 mb-2">하위 20%</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                     {bottom.map((team) => (
                       <PlantCard
@@ -519,7 +520,7 @@ export function TeamPlantCards({
               실제 근무시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.efficiency?.high}) | ● 양호({thresholds?.efficiency?.middle}) | ▼ 관찰필요({thresholds?.efficiency?.low})
+              ▲ 상위({thresholds?.efficiency?.high}) | ● 중위({thresholds?.efficiency?.middle}) | ▼ 하위({thresholds?.efficiency?.low})
             </div>
           </>
         ) : selectedMetric === 'workHours' ? (
@@ -529,7 +530,7 @@ export function TeamPlantCards({
               실제 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.workHours?.high}) | ● 양호({thresholds?.workHours?.middle}) | ▼ 관찰필요({thresholds?.workHours?.low})
+              ▲ 상위({thresholds?.workHours?.high}) | ● 중위({thresholds?.workHours?.middle}) | ▼ 하위({thresholds?.workHours?.low})
             </div>
           </>
         ) : selectedMetric === 'claimedHours' ? (
@@ -539,7 +540,7 @@ export function TeamPlantCards({
               신고 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.claimedHours?.high}) | ● 양호({thresholds?.claimedHours?.middle}) | ▼ 관찰필요({thresholds?.claimedHours?.low})
+              ▲ 상위({thresholds?.claimedHours?.high}) | ● 중위({thresholds?.claimedHours?.middle}) | ▼ 하위({thresholds?.claimedHours?.low})
             </div>
           </>
         ) : selectedMetric === 'weeklyWorkHours' ? (
@@ -549,7 +550,7 @@ export function TeamPlantCards({
               주당 실제 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.weeklyWorkHours?.high}) | ● 양호({thresholds?.weeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyWorkHours?.low})
+              ▲ 상위({thresholds?.weeklyWorkHours?.high}) | ● 중위({thresholds?.weeklyWorkHours?.middle}) | ▼ 하위({thresholds?.weeklyWorkHours?.low})
             </div>
           </>
         ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
@@ -559,7 +560,7 @@ export function TeamPlantCards({
               AI 신뢰도 보정 적용 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.adjustedWeeklyWorkHours?.high}) | ● 양호({thresholds?.adjustedWeeklyWorkHours?.middle}) | ▼ 관찰필요({thresholds?.adjustedWeeklyWorkHours?.low})
+              ▲ 상위({thresholds?.adjustedWeeklyWorkHours?.high}) | ● 중위({thresholds?.adjustedWeeklyWorkHours?.middle}) | ▼ 하위({thresholds?.adjustedWeeklyWorkHours?.low})
             </div>
           </>
         ) : selectedMetric === 'weeklyClaimedHours' ? (
@@ -569,7 +570,7 @@ export function TeamPlantCards({
               주당 신고 근무시간 평균 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.weeklyClaimedHours?.high}) | ● 양호({thresholds?.weeklyClaimedHours?.middle}) | ▼ 관찰필요({thresholds?.weeklyClaimedHours?.low})
+              ▲ 상위({thresholds?.weeklyClaimedHours?.high}) | ● 중위({thresholds?.weeklyClaimedHours?.middle}) | ▼ 하위({thresholds?.weeklyClaimedHours?.low})
             </div>
           </>
         ) : selectedMetric === 'focusedWorkHours' ? (
@@ -579,7 +580,7 @@ export function TeamPlantCards({
               집중적으로 업무에 몰입한 시간 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.focusedWorkHours?.high}) | ● 양호({thresholds?.focusedWorkHours?.middle}) | ▼ 관찰필요({thresholds?.focusedWorkHours?.low})
+              ▲ 상위({thresholds?.focusedWorkHours?.high}) | ● 중위({thresholds?.focusedWorkHours?.middle}) | ▼ 하위({thresholds?.focusedWorkHours?.low})
             </div>
           </>
         ) : (
@@ -589,7 +590,7 @@ export function TeamPlantCards({
               데이터 품질 및 정확성 점수 | 30일 평균 데이터
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 모범사례({thresholds?.dataReliability?.high}) | ● 양호({thresholds?.dataReliability?.middle}) | ▼ 관찰필요({thresholds?.dataReliability?.low})
+              ▲ 상위({thresholds?.dataReliability?.high}) | ● 중위({thresholds?.dataReliability?.middle}) | ▼ 하위({thresholds?.dataReliability?.low})
             </div>
           </>
         )}
