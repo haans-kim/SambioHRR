@@ -573,7 +573,7 @@ export function CenterLevelGrid({
           </>
         ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
           <>
-            <div className="font-semibold text-gray-900">주간 근무추정시간(AI보정) : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
+            <div className="font-semibold text-gray-900">근무추정시간(AI보정) : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
             <div className="text-xs text-gray-700 mt-1">
               AI 신뢰도 보정 적용 | 30일 평균 데이터
             </div>

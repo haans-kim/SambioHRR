@@ -115,7 +115,7 @@ export function DashboardLayout({
                       : selectedMetric === 'weeklyWorkHours'
                       ? '주간 근무추정시간'
                       : selectedMetric === 'adjustedWeeklyWorkHours'
-                      ? '주간 근무추정시간(AI보정)'
+                      ? '근무추정시간(AI보정)'
                       : selectedMetric === 'weeklyClaimedHours'
                       ? '주간 근무시간'
                       : selectedMetric === 'focusedWorkHours'
