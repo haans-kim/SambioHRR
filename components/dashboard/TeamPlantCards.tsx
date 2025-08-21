@@ -453,58 +453,73 @@ export function TeamPlantCards({
             <div key={center} className="border rounded-lg p-4 bg-gray-50">
               <h3 className="text-base font-semibold mb-3 text-gray-900">{center}</h3>
               
-              {/* 상위 20% */}
-              {top.length > 0 && (
-                <div className="mb-3">
-                  <h4 className="text-sm font-medium text-red-600 mb-2">상위 20%</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                    {top.map((team) => (
-                      <PlantCard
-                        key={team.orgCode}
-                        org={team}
-                        selectedMetric={selectedMetric}
-                        thresholds={effectiveThresholds}
-                        onClick={() => handleCardClick(team)}
-                      />
-                    ))}
-                  </div>
+              {/* 개별 센터 뷰에서는 모든 팀을 한 행에 표시 */}
+              {parentOrg ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                  {[...top, ...middle, ...bottom].sort((a, b) => getValue(b) - getValue(a)).map((team) => (
+                    <PlantCard
+                      key={team.orgCode}
+                      org={team}
+                      selectedMetric={selectedMetric}
+                      thresholds={effectiveThresholds}
+                      onClick={() => handleCardClick(team)}
+                    />
+                  ))}
                 </div>
-              )}
-              
-              {/* 중위 60% */}
-              {middle.length > 0 && (
-                <div className="mb-3">
-                  <h4 className="text-sm font-medium text-green-600 mb-2">중위 60%</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                    {middle.map((team) => (
-                      <PlantCard
-                        key={team.orgCode}
-                        org={team}
-                        selectedMetric={selectedMetric}
-                        thresholds={effectiveThresholds}
-                        onClick={() => handleCardClick(team)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* 하위 20% */}
-              {bottom.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-blue-600 mb-2">하위 20%</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                    {bottom.map((team) => (
-                      <PlantCard
-                        key={team.orgCode}
-                        org={team}
-                        selectedMetric={selectedMetric}
-                        thresholds={effectiveThresholds}
-                        onClick={() => handleCardClick(team)}
-                      />
-                    ))}
-                  </div>
-                </div>
+              ) : (
+                <>
+                  {/* 전체 팀 뷰에서는 기존처럼 상/중/하 구분 표시 */}
+                  {top.length > 0 && (
+                    <div className="mb-3">
+                      <h4 className="text-sm font-medium text-red-600 mb-2">상위 20%</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                        {top.map((team) => (
+                          <PlantCard
+                            key={team.orgCode}
+                            org={team}
+                            selectedMetric={selectedMetric}
+                            thresholds={effectiveThresholds}
+                            onClick={() => handleCardClick(team)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {middle.length > 0 && (
+                    <div className="mb-3">
+                      <h4 className="text-sm font-medium text-green-600 mb-2">중위 60%</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                        {middle.map((team) => (
+                          <PlantCard
+                            key={team.orgCode}
+                            org={team}
+                            selectedMetric={selectedMetric}
+                            thresholds={effectiveThresholds}
+                            onClick={() => handleCardClick(team)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {bottom.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-blue-600 mb-2">하위 20%</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                        {bottom.map((team) => (
+                          <PlantCard
+                            key={team.orgCode}
+                            org={team}
+                            selectedMetric={selectedMetric}
+                            thresholds={effectiveThresholds}
+                            onClick={() => handleCardClick(team)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           );

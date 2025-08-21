@@ -250,6 +250,36 @@ export function Insight2View() {
         <p className="text-lg text-gray-600 mt-1">실시간 업무패턴 분석 및 근무 추정시간 모니터링</p>
       </div>
 
+      {/* Top 5 팀 - 단일 행 표시 */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-4">패턴별 주요 팀</h2>
+        <div className="flex gap-4 overflow-x-auto">
+          {Object.entries(topTeamsByCluster).map(([clusterType, teams]) => (
+            <Card key={clusterType} className="min-w-[250px] flex-shrink-0">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: CLUSTER_COLORS[clusterType] }}
+                  />
+                  <CardTitle className="text-sm">{clusterType}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-2">
+                  {teams.slice(0, 5).map((team: any) => (
+                    <div key={team.team} className="flex justify-between text-xs">
+                      <span className="truncate flex-1">{team.team}</span>
+                      <span className="text-gray-600">{team.employees}명</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
       {/* 발견된 패턴 그룹 */}
       <Card className="mb-6">
         <CardHeader>
