@@ -168,3 +168,4 @@ const getOrganizationData = (orgLevel: 'center' | 'division' | 'team' | 'group')
 - Component tests for UI elements
 - E2E tests for navigation flow
 - Performance tests for large dataset handling
+- 1,과 같이 순위의 윗부분에 공간이 너무 많이 남아. 주간업무시간 아래의 공간도 너무 많이 남고. 카드의 높이를 좀 줄여줘.

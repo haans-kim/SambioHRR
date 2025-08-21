@@ -368,35 +368,35 @@ export default function EnterpriseView() {
                                'hover:shadow-yellow-200';
             
             return (
-            <Card key={team.team_id} className={`relative hover:shadow-lg ${shadowClass} transition-all duration-200 min-h-[180px] border ${colorClass}`}>
-              <CardContent className="p-3 h-full flex flex-col">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-semibold text-gray-500 bg-white/70 px-1.5 py-0.5 rounded">#{index + 1}</span>
-                </div>
+            <Card key={team.team_id} className={`relative hover:shadow-lg ${shadowClass} transition-all duration-200 h-[234px] border ${colorClass}`}>
+              <CardContent className="px-3 pb-3 flex flex-col h-full !pt-0.5">
+                <span className="text-sm font-bold text-gray-600">#{index + 1}</span>
                 
-                <div className="mb-3">
-                  <h3 className="font-semibold text-sm leading-tight line-clamp-2 min-h-[2.5rem]" title={team.team_name}>
+                <div className="mt-1 min-h-[2.5rem]">
+                  <h3 className="font-semibold text-base text-gray-900 leading-tight line-clamp-2" title={team.team_name}>
                     {team.team_name}
                   </h3>
                 </div>
                 
-                <div className="flex-1 flex flex-col justify-center mb-3">
-                  <div className="text-center py-2">
+                <div className="flex-grow"></div>
+                
+                <div className="mt-auto">
+                  <div className="text-center pb-2">
                     <div className={`text-3xl font-bold ${getBalanceColor(team.balance_status)}`}>
                       {team.cv_percentage}%
                     </div>
                     <div className="text-xs text-gray-600 mt-1">변동계수</div>
                   </div>
-                </div>
 
-                <div className="border-t border-gray-200 pt-2 space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">인원</span>
-                    <span className="font-semibold text-gray-700">{team.headcount}명</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">주간</span>
-                    <span className="font-semibold text-gray-700">{team.avg_weekly_adjusted_hours}h</span>
+                  <div className="border-t border-gray-200 pt-2 space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">인원</span>
+                      <span className="font-semibold text-gray-700">{team.headcount}명</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">주간</span>
+                      <span className="font-semibold text-gray-700">{team.avg_weekly_adjusted_hours}h</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
