@@ -75,6 +75,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     organizations.forEach(div => {
       const divStats = db.prepare(`
         SELECT 
+          MIN(e.center_name) as centerName,
           COUNT(DISTINCT dar.employee_id) as totalEmployees,
           COUNT(*) as manDays,
           ROUND(
