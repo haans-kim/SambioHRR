@@ -308,7 +308,10 @@ export function getCenterTeamDistribution(centerId?: string) {
         d.employee_id,
         AVG(d.actual_work_hours) as emp_avg_hours,
         AVG(d.efficiency_ratio) as emp_efficiency,
-        AVG(d.confidence_score) as emp_reliability
+        AVG(d.confidence_score) as emp_reliability,
+        -- AI 보정 주간 근무시간: 일 평균 * 5일 * sigmoid 가중치 (0.92 ~ 1.0 범위)
+        AVG(d.actual_work_hours) * 5 * 
+        (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(d.confidence_score) / 100.0 - 0.65))) * 0.08)) as emp_weekly_adjusted_hours
       FROM daily_analysis_results d
       WHERE d.analysis_date BETWEEN '${dates.min_date}' AND '${dates.max_date}'
         AND d.team_name IS NOT NULL
@@ -324,6 +327,7 @@ export function getCenterTeamDistribution(centerId?: string) {
         team_name,
         COUNT(DISTINCT employee_id) as headcount,
         AVG(emp_avg_hours) as avg_work_hours,
+        AVG(emp_weekly_adjusted_hours) as avg_weekly_adjusted_hours,
         AVG(emp_efficiency) as avg_efficiency,
         AVG(emp_reliability) as avg_reliability
       FROM team_emp_work
@@ -338,12 +342,13 @@ export function getCenterTeamDistribution(centerId?: string) {
         t.team_name,
         t.headcount,
         t.avg_work_hours,
+        t.avg_weekly_adjusted_hours,
         t.avg_efficiency,
         t.avg_reliability,
-        SQRT(AVG((e.emp_avg_hours - t.avg_work_hours) * (e.emp_avg_hours - t.avg_work_hours))) as std_dev_hours
+        SQRT(AVG((e.emp_weekly_adjusted_hours - t.avg_weekly_adjusted_hours) * (e.emp_weekly_adjusted_hours - t.avg_weekly_adjusted_hours))) as std_dev_hours
       FROM team_stats t
       JOIN team_emp_work e ON t.team_name = e.team_name
-      GROUP BY t.center_id, t.center_name, t.team_id, t.team_name, t.headcount, t.avg_work_hours, t.avg_efficiency, t.avg_reliability
+      GROUP BY t.center_id, t.center_name, t.team_id, t.team_name, t.headcount, t.avg_work_hours, t.avg_weekly_adjusted_hours, t.avg_efficiency, t.avg_reliability
     )
     SELECT 
       COALESCE(team_id, team_name) as team_id,
@@ -351,13 +356,14 @@ export function getCenterTeamDistribution(centerId?: string) {
       center_name,
       headcount,
       ROUND(avg_work_hours, 1) as avg_work_hours,
+      ROUND(avg_weekly_adjusted_hours, 1) as avg_weekly_adjusted_hours,
       ROUND(avg_efficiency, 1) as efficiency_rate,
       ROUND(avg_reliability, 1) as data_reliability,
       ROUND(std_dev_hours, 1) as std_dev_hours,
-      ROUND((std_dev_hours / NULLIF(avg_work_hours, 0)) * 100, 1) as cv_percentage,
+      ROUND((std_dev_hours / NULLIF(avg_weekly_adjusted_hours, 0)) * 100, 1) as cv_percentage,
       CASE 
-        WHEN (std_dev_hours / NULLIF(avg_work_hours, 0)) * 100 < 15 THEN 'balanced'
-        WHEN (std_dev_hours / NULLIF(avg_work_hours, 0)) * 100 < 25 THEN 'moderate'
+        WHEN (std_dev_hours / NULLIF(avg_weekly_adjusted_hours, 0)) * 100 < 15 THEN 'balanced'
+        WHEN (std_dev_hours / NULLIF(avg_weekly_adjusted_hours, 0)) * 100 < 25 THEN 'moderate'
         ELSE 'imbalanced'
       END as balance_status
     FROM team_variance

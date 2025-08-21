@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         center_name: team.center_name,
         headcount: team.headcount,
         avg_work_hours: Math.min(team.avg_work_hours, 12), // 최대 12시간으로 제한
+        avg_weekly_adjusted_hours: Math.min(team.avg_weekly_adjusted_hours, 60), // 최대 60시간으로 제한
         efficiency_rate: Math.min(team.efficiency_rate, 100), // 최대 100%로 제한
         std_dev_hours: team.std_dev_hours,
         cv_percentage: team.cv_percentage,
