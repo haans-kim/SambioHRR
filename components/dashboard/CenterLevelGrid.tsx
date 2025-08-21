@@ -259,7 +259,7 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
   return (
     <div 
       className={cn(
-        "flex items-center justify-center gap-1 p-3 rounded-lg border transition-all",
+        "flex items-center justify-center gap-1 p-3 rounded-lg border transition-all w-full min-w-[100px]",
         onClick && "cursor-pointer hover:shadow-md hover:scale-105",
         getBorderColor(value, metricType, thresholds)
       )}
@@ -335,7 +335,7 @@ export function CenterLevelGrid({
           <tbody>
             {/* Center Average Row */}
             <tr key="center-avg" className="border-t-2 border-gray-400">
-              <td className="p-2 font-medium text-gray-700 text-base bg-gray-50">센터평균</td>
+              <td className="p-2 font-medium text-gray-700 text-base bg-gray-50 whitespace-nowrap min-w-[100px] text-center">센터평균</td>
               {centers.map((center) => {
                 let value: number;
                 
@@ -416,7 +416,7 @@ export function CenterLevelGrid({
             {/* Grade Level Rows */}
             {levels.map((level, levelIndex) => (
               <tr key={level} className={levelIndex === 0 ? "border-t-2 border-gray-400" : "border-t border-gray-200"}>
-                <td className="p-2 font-medium text-gray-700 text-base">{level}</td>
+                <td className="p-2 font-medium text-gray-700 text-base whitespace-nowrap min-w-[100px] text-center">{level}</td>
                 {centers.map((center) => {
                   let value: number;
                   
@@ -500,7 +500,7 @@ export function CenterLevelGrid({
                   }
                   
                   return (
-                    <td key={`${level}-${center.orgCode}`} className="p-2">
+                    <td key={`${level}-${center.orgCode}`} className="p-2 w-[160px]">
                       <MetricIndicator 
                         value={value} 
                         label=""
