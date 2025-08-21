@@ -322,7 +322,7 @@ export function CenterLevelGrid({
         <table className="w-full min-w-[1400px]">
           <thead>
             <tr>
-              <th className="text-left p-2 text-base font-medium text-gray-600">구분</th>
+              <th className="text-center p-2 text-base font-medium text-gray-600">구분</th>
               {centers.map(center => (
                 <th key={center.orgCode} className="text-center p-2 text-base font-medium text-gray-600 min-w-[100px]">
                   <TextAnimate delay={0.1}>
