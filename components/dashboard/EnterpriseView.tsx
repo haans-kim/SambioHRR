@@ -326,12 +326,12 @@ export default function EnterpriseView() {
                             </text>
                             <text
                               x={adjustedX}
-                              y={adjustedY + 12}
+                              y={adjustedY + 10}
                               textAnchor="middle"
-                              className="text-sm font-medium pointer-events-none"
+                              className="text-xs font-medium pointer-events-none"
                               fill="#1f2937"
                             >
-                              {team.team_name.length > 10 ? team.team_name.substring(0, 10) + '...' : team.team_name}
+                              {team.team_name}
                             </text>
                             {/* 팀명 툴팁 표시 */}
                             <title>{team.team_name}&#10;CV: {team.cv_percentage}%&#10;인원: {team.headcount}명&#10;주간: {team.avg_weekly_adjusted_hours}시간</title>
