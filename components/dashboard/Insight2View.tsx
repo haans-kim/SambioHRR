@@ -418,7 +418,7 @@ export function Insight2View() {
             <CardTitle className="text-base">패턴별 Knox 활동 분포</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] relative">
+            <div className="h-[280px] relative">
               {(() => {
                 // 패턴별로 실제 데이터 그룹화
                 const clusterData: { [key: string]: number[] } = {};
@@ -448,7 +448,7 @@ export function Insight2View() {
                 
                 // 고정 스케일 사용 (800을 최대값으로)
                 const maxValue = 800;
-                const height = 250;
+                const height = 240;
                 const scale = height / maxValue;
                 
                 // Y축 그리드와 라벨 생성
@@ -457,7 +457,7 @@ export function Insight2View() {
                 return (
                   <>
                     {/* Y축 그리드와 라벨 */}
-                    <div className="absolute left-0 bottom-10 h-[250px] w-full">
+                    <div className="absolute left-0 bottom-10 h-[240px] w-full">
                       {yAxisTicks.map(tick => (
                         <div key={tick}>
                           <div 
@@ -559,7 +559,7 @@ export function Insight2View() {
             <CardTitle className="text-base">패턴별 장비 사용 분포</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] relative">
+            <div className="h-[280px] relative">
               {(() => {
                 // 패턴별로 실제 데이터 그룹화
                 const clusterData: { [key: string]: number[] } = {};
@@ -589,7 +589,7 @@ export function Insight2View() {
                 
                 // 고정 스케일 사용 (800을 최대값으로)
                 const maxValue = 800;
-                const height = 250;
+                const height = 240;
                 const scale = height / maxValue;
                 
                 // Y축 그리드와 라벨 생성
@@ -598,7 +598,7 @@ export function Insight2View() {
                 return (
                   <>
                     {/* Y축 그리드와 라벨 */}
-                    <div className="absolute left-0 bottom-10 h-[250px] w-full">
+                    <div className="absolute left-0 bottom-10 h-[240px] w-full">
                       {yAxisTicks.map(tick => (
                         <div key={tick}>
                           <div 
