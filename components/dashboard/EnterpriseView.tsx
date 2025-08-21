@@ -116,21 +116,15 @@ export default function EnterpriseView() {
   return (
     <div className="p-6 space-y-6">
       {/* 헤더 섹션 */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">근무 불균형 - 전사 대시보드</h1>
-          <p className="text-gray-600 mt-1">5,000명 조직 실시간 모니터링</p>
-        </div>
-        <Badge variant="outline" className="text-lg px-4 py-2">
-          <Clock className="mr-2 h-4 w-4" />
-          {new Date().toLocaleTimeString('ko-KR')}
-        </Badge>
+      <div>
+        <h1 className="text-2xl font-bold">근무 불균형 - 전사 대시보드</h1>
+        <p className="text-gray-600 mt-1">5,000명 조직 모니터링</p>
       </div>
 
 
       {/* AI 인사이트 섹션 */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">실시간 인사이트</h2>
+        <h2 className="text-xl font-semibold">인사이트</h2>
         <div className="grid grid-cols-3 gap-4">
           {insights.map((insight, index) => (
             <Alert key={index} className={`border-l-4 ${
@@ -144,16 +138,18 @@ export default function EnterpriseView() {
                   {React.cloneElement(getInsightIcon(insight.type), { className: 'h-5 w-5' })}
                 </div>
                 <div className="flex-1">
-                  <AlertTitle className="text-base font-semibold mb-2">{insight.title}</AlertTitle>
-                  <AlertDescription className="text-sm text-gray-700">
+                  <AlertTitle className="text-base font-semibold mb-2 whitespace-nowrap">{insight.title}</AlertTitle>
+                  <AlertDescription className="text-sm text-gray-700 whitespace-nowrap">
                     {insight.description}
                   </AlertDescription>
                   {insight.affectedCount > 0 && (
-                    <Badge variant="secondary" className="mt-2 text-sm px-3 py-1 inline-block">
-                      영향: {insight.affectedCount}{insight.type === 'imbalance' ? '개팀' : '명'}
-                    </Badge>
+                    <div className="flex justify-center mt-2">
+                      <Badge variant="secondary" className="text-2xl px-4 py-2">
+                        {insight.affectedCount}{insight.type === 'imbalance' ? '개팀' : '명'}
+                      </Badge>
+                    </div>
                   )}
-                  <p className="text-sm font-medium text-blue-600 mt-3">
+                  <p className="text-sm font-medium text-blue-600 mt-3 whitespace-nowrap">
                     💡 {insight.recommendation}
                   </p>
                 </div>
