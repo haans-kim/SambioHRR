@@ -8,6 +8,8 @@ import { TrendingUp } from "lucide-react";
 import {
   ScatterChart,
   Scatter,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -15,6 +17,7 @@ import {
   ResponsiveContainer,
   Cell,
   Customized,
+  Legend,
 } from "recharts";
 
 interface PatternData {
@@ -42,6 +45,9 @@ interface ClusterStats {
   avg_meeting_per_person: number;
   avg_reliability: number;
   avg_correction_factor: number;
+  avg_actual_work_hours?: number;
+  avg_meeting_hours?: number;
+  avg_movement_hours?: number;
 }
 
 const CLUSTER_COLORS: { [key: string]: string } = {
@@ -262,7 +268,7 @@ export function Insight2View() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clusterStats
+              {[...clusterStats]
                 .sort((a, b) => b.total_employees - a.total_employees)
                 .map((stat) => {
                 const clusterTeams = patterns
@@ -397,17 +403,302 @@ export function Insight2View() {
             </div>
             <div className="p-2 bg-blue-50 border border-blue-200 rounded">
               <p className="text-xs text-blue-800">
-                <span className="font-semibold">분석 기준:</span> 분석 대상 팀 데이터 (is_analysis_target = 1)
+                <span className="font-semibold">분석 기준:</span> 5인 이상인 팀, 직속 제외
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* 패턴별 지표 분포 (박스플롯) */}
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        {/* Knox 활동 분포 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">패턴별 Knox 활동 분포</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] relative">
+              {(() => {
+                // 패턴별로 실제 데이터 그룹화
+                const clusterData: { [key: string]: number[] } = {};
+                const order = ['장비운영집중형', '현장이동활발형', '디지털협업중심형', '저활동형', '균형업무형'];
+                
+                patterns.forEach(p => {
+                  if (!clusterData[p.cluster_type]) {
+                    clusterData[p.cluster_type] = [];
+                  }
+                  clusterData[p.cluster_type].push(p.knox_per_person || 0);
+                });
+                
+                // 박스플롯 계산 함수
+                const calculateBoxPlot = (values: number[]) => {
+                  if (values.length === 0) return { min: 0, q1: 0, median: 0, q3: 0, max: 0 };
+                  const sorted = [...values].sort((a, b) => a - b);
+                  const len = sorted.length;
+                  
+                  return {
+                    min: sorted[0],
+                    q1: sorted[Math.floor(len * 0.25)],
+                    median: sorted[Math.floor(len * 0.5)],
+                    q3: sorted[Math.floor(len * 0.75)],
+                    max: sorted[len - 1]
+                  };
+                };
+                
+                // 고정 스케일 사용 (800을 최대값으로)
+                const maxValue = 800;
+                const height = 250;
+                const scale = height / maxValue;
+                
+                // Y축 그리드와 라벨 생성
+                const yAxisTicks = [0, 200, 400, 600, 800];
+                
+                return (
+                  <>
+                    {/* Y축 그리드와 라벨 */}
+                    <div className="absolute left-0 bottom-10 h-[250px] w-full">
+                      {yAxisTicks.map(tick => (
+                        <div key={tick}>
+                          <div 
+                            className="absolute w-full border-t border-gray-200"
+                            style={{ bottom: `${tick * scale}px` }}
+                          />
+                          <div 
+                            className="absolute text-xs text-gray-500"
+                            style={{ 
+                              bottom: `${tick * scale - 5}px`,
+                              left: '5px'
+                            }}
+                          >
+                            {tick}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* 박스플롯 */}
+                    <div className="flex items-end justify-around h-[250px] absolute bottom-10 left-10 right-0">
+                      {order.map(clusterName => {
+                        const values = clusterData[clusterName] || [];
+                        const stats = calculateBoxPlot(values);
+                        
+                        return (
+                          <div key={clusterName} className="flex flex-col items-center flex-1 relative">
+                            <div className="absolute bottom-0 w-full flex justify-center" style={{ height: `${height}px` }}>
+                              {values.length > 0 && (
+                                <>
+                                  {/* Whisker line */}
+                                  <div 
+                                    className="absolute w-0.5 bg-gray-400"
+                                    style={{
+                                      bottom: `${stats.min * scale}px`,
+                                      height: `${(stats.max - stats.min) * scale}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                  {/* Max whisker */}
+                                  <div 
+                                    className="absolute w-4 h-0.5 bg-gray-600"
+                                    style={{
+                                      bottom: `${stats.max * scale}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                  {/* Min whisker */}
+                                  <div 
+                                    className="absolute w-4 h-0.5 bg-gray-600"
+                                    style={{
+                                      bottom: `${stats.min * scale}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                  {/* Box */}
+                                  <div 
+                                    className="absolute w-12 bg-blue-200 border-2 border-blue-500"
+                                    style={{
+                                      bottom: `${stats.q1 * scale}px`,
+                                      height: `${Math.max(1, (stats.q3 - stats.q1) * scale)}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                  {/* Median line */}
+                                  <div 
+                                    className="absolute w-12 h-0.5 bg-blue-700"
+                                    style={{
+                                      bottom: `${stats.median * scale}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                </>
+                              )}
+                            </div>
+                            <div className="absolute -bottom-10 text-xs text-center w-full">
+                              <div className="font-medium truncate">{clusterName}</div>
+                              <div className="text-gray-500">중앙값: {stats.median.toFixed(0)}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 장비 사용 분포 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">패턴별 장비 사용 분포</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] relative">
+              {(() => {
+                // 패턴별로 실제 데이터 그룹화
+                const clusterData: { [key: string]: number[] } = {};
+                const order = ['장비운영집중형', '현장이동활발형', '디지털협업중심형', '저활동형', '균형업무형'];
+                
+                patterns.forEach(p => {
+                  if (!clusterData[p.cluster_type]) {
+                    clusterData[p.cluster_type] = [];
+                  }
+                  clusterData[p.cluster_type].push(p.equipment_per_person || 0);
+                });
+                
+                // 박스플롯 계산 함수
+                const calculateBoxPlot = (values: number[]) => {
+                  if (values.length === 0) return { min: 0, q1: 0, median: 0, q3: 0, max: 0 };
+                  const sorted = [...values].sort((a, b) => a - b);
+                  const len = sorted.length;
+                  
+                  return {
+                    min: sorted[0],
+                    q1: sorted[Math.floor(len * 0.25)],
+                    median: sorted[Math.floor(len * 0.5)],
+                    q3: sorted[Math.floor(len * 0.75)],
+                    max: sorted[len - 1]
+                  };
+                };
+                
+                // 고정 스케일 사용 (800을 최대값으로)
+                const maxValue = 800;
+                const height = 250;
+                const scale = height / maxValue;
+                
+                // Y축 그리드와 라벨 생성
+                const yAxisTicks = [0, 200, 400, 600, 800];
+                
+                return (
+                  <>
+                    {/* Y축 그리드와 라벨 */}
+                    <div className="absolute left-0 bottom-10 h-[250px] w-full">
+                      {yAxisTicks.map(tick => (
+                        <div key={tick}>
+                          <div 
+                            className="absolute w-full border-t border-gray-200"
+                            style={{ bottom: `${tick * scale}px` }}
+                          />
+                          <div 
+                            className="absolute text-xs text-gray-500"
+                            style={{ 
+                              bottom: `${tick * scale - 5}px`,
+                              left: '5px'
+                            }}
+                          >
+                            {tick}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* 박스플롯 */}
+                    <div className="flex items-end justify-around h-[250px] absolute bottom-10 left-10 right-0">
+                      {order.map(clusterName => {
+                        const values = clusterData[clusterName] || [];
+                        const stats = calculateBoxPlot(values);
+                  
+                        return (
+                          <div key={clusterName} className="flex flex-col items-center flex-1 relative">
+                            <div className="absolute bottom-0 w-full flex justify-center" style={{ height: `${height}px` }}>
+                              {values.length > 0 && (
+                                <>
+                                  {/* Whisker line */}
+                                  <div 
+                                    className="absolute w-0.5 bg-gray-400"
+                                    style={{
+                                      bottom: `${stats.min * scale}px`,
+                                      height: `${(stats.max - stats.min) * scale}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                  {/* Max whisker */}
+                                  <div 
+                                    className="absolute w-4 h-0.5 bg-gray-600"
+                                    style={{
+                                      bottom: `${stats.max * scale}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                  {/* Min whisker */}
+                                  <div 
+                                    className="absolute w-4 h-0.5 bg-gray-600"
+                                    style={{
+                                      bottom: `${stats.min * scale}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                  {/* Box */}
+                                  <div 
+                                    className="absolute w-12 bg-blue-200 border-2 border-blue-500"
+                                    style={{
+                                      bottom: `${stats.q1 * scale}px`,
+                                      height: `${Math.max(1, (stats.q3 - stats.q1) * scale)}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                  {/* Median line */}
+                                  <div 
+                                    className="absolute w-12 h-0.5 bg-blue-700"
+                                    style={{
+                                      bottom: `${stats.median * scale}px`,
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
+                                    }}
+                                  />
+                                </>
+                              )}
+                            </div>
+                            <div className="absolute -bottom-10 text-xs text-center w-full">
+                              <div className="font-medium truncate">{clusterName}</div>
+                              <div className="text-gray-500">중앙값: {stats.median.toFixed(0)}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* 패턴별 상세 정보 */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">패턴별 상세 분석</h2>
-        {clusterStats
+        {[...clusterStats]
           .sort((a, b) => b.total_employees - a.total_employees)
           .map((stat) => {
             const clusterTeams = patterns

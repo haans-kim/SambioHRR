@@ -27,22 +27,35 @@ export async function GET() {
       ORDER BY cluster_type, team
     `).all();
 
-    // 클러스터별 통계
+    // 클러스터별 통계 (시간 정보 포함)
     const clusterStats = db.prepare(`
       SELECT 
-        cluster_type as cluster_name,
-        COUNT(*) as team_count,
-        SUM(employee_count) as total_employees,
-        ROUND(AVG(knox_total_count * 1.0 / NULLIF(employee_count, 0)), 1) as avg_knox_per_person,
-        ROUND(AVG(o_tag_count * 1.0 / NULLIF(employee_count, 0)), 1) as avg_equipment_per_person,
-        ROUND(AVG(t1_count * 1.0 / NULLIF(employee_count, 0)), 1) as avg_movement_per_person,
-        ROUND(AVG(g3_count * 1.0 / NULLIF(employee_count, 0)), 1) as avg_meeting_per_person,
-        ROUND(AVG(reliability_score), 2) as avg_reliability,
-        ROUND(AVG(correction_factor), 2) as avg_correction_factor
-      FROM dept_pattern_analysis_new
-      WHERE is_analysis_target = 1  -- 분석 대상 팀만
-      GROUP BY cluster_type
-      ORDER BY cluster_type
+        p.cluster_type as cluster_name,
+        COUNT(DISTINCT p.team) as team_count,
+        SUM(p.employee_count) as total_employees,
+        ROUND(AVG(p.knox_total_count * 1.0 / NULLIF(p.employee_count, 0)), 1) as avg_knox_per_person,
+        ROUND(AVG(p.o_tag_count * 1.0 / NULLIF(p.employee_count, 0)), 1) as avg_equipment_per_person,
+        ROUND(AVG(p.t1_count * 1.0 / NULLIF(p.employee_count, 0)), 1) as avg_movement_per_person,
+        ROUND(AVG(p.g3_count * 1.0 / NULLIF(p.employee_count, 0)), 1) as avg_meeting_per_person,
+        ROUND(AVG(p.reliability_score), 2) as avg_reliability,
+        ROUND(AVG(p.correction_factor), 2) as avg_correction_factor,
+        ROUND(AVG(s.avg_actual_work_hours), 1) as avg_actual_work_hours,
+        ROUND(AVG(s.avg_meeting_hours), 1) as avg_meeting_hours,
+        ROUND(AVG(s.avg_movement_hours), 1) as avg_movement_hours
+      FROM dept_pattern_analysis_new p
+      LEFT JOIN (
+        SELECT 
+          org_code,
+          AVG(avg_actual_work_hours) as avg_actual_work_hours,
+          AVG(avg_meeting_hours) as avg_meeting_hours,
+          AVG(avg_movement_hours) as avg_movement_hours
+        FROM organization_daily_stats
+        WHERE work_date >= date('now', '-30 days')
+        GROUP BY org_code
+      ) s ON p.team = s.org_code
+      WHERE p.is_analysis_target = 1  -- 분석 대상 팀만
+      GROUP BY p.cluster_type
+      ORDER BY p.cluster_type
     `).all();
 
     // 센터별 클러스터 분포
