@@ -124,8 +124,7 @@ export default function EnterpriseView() {
 
 
       {/* AI 인사이트 섹션 */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">인사이트</h2>
+      <div className="max-w-[90%] mx-auto">
         <div className="grid grid-cols-3 gap-4">
           {insights.map((insight, index) => (
             <Alert key={index} className={`border-l-4 ${
@@ -168,7 +167,7 @@ export default function EnterpriseView() {
         </div>
         
         {/* 변동계수 설명 */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-[90%] mx-auto">
           <div className="flex items-start space-x-2">
             <div className="text-blue-600 mt-0.5">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,9 +199,8 @@ export default function EnterpriseView() {
           </div>
         </div>
         
-        <Card className="shadow-lg border-0">
-          <CardContent className="p-6">
-            <div className="relative h-[600px] bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-300">
+        <div className="max-w-[90%] mx-auto">
+          <div className="relative h-[600px] bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-300 p-2">
               <svg className="w-full h-full" viewBox="0 0 1200 600">
                 {(() => {
                   // 실제 데이터 범위 계산
@@ -344,9 +342,8 @@ export default function EnterpriseView() {
                   );
                 })()}
               </svg>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
 
@@ -356,7 +353,7 @@ export default function EnterpriseView() {
           <h2 className="text-xl font-semibold">팀별 근무 균형도 분석</h2>
           <p className="text-sm text-gray-600 mt-1">변동계수(CV)가 높은 상위 24개 팀 - 근무 재분배 필요</p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 max-w-[90%] mx-auto">
           {teamDistribution.slice(0, 24).map((team, index) => {
             // 상위 20% (0-4번째) = 빨간색, 하위 20% (20-23번째) = 초록색, 나머지 = 노란색
             const colorClass = index < 5 ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-300' :
