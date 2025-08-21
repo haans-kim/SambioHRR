@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Users, Building2, Activity, BarChart3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrendingUp } from "lucide-react";
@@ -56,18 +56,18 @@ export function Insight2View() {
   const [patterns, setPatterns] = useState<PatternData[]>([]);
   const [clusterStats, setClusterStats] = useState<ClusterStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedClusters, setExpandedClusters] = useState<Set<number>>(new Set());
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchPatternAnalysis();
   }, []);
 
-  const toggleCluster = (clusterId: number) => {
+  const toggleCluster = (clusterName: string) => {
     const newExpanded = new Set(expandedClusters);
-    if (newExpanded.has(clusterId)) {
-      newExpanded.delete(clusterId);
+    if (newExpanded.has(clusterName)) {
+      newExpanded.delete(clusterName);
     } else {
-      newExpanded.add(clusterId);
+      newExpanded.add(clusterName);
     }
     setExpandedClusters(newExpanded);
   };
@@ -404,61 +404,125 @@ export function Insight2View() {
         </CardContent>
       </Card>
 
-      {/* 클러스터별 통계 테이블 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span className="text-lg">주요 발견사항</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="font-semibold">패턴 유형</TableHead>
-                <TableHead className="text-center font-semibold">팀 수</TableHead>
-                <TableHead className="text-center font-semibold">직원 수</TableHead>
-                <TableHead className="text-center font-semibold">평균 Knox</TableHead>
-                <TableHead className="text-center font-semibold">평균 장비</TableHead>
-                <TableHead className="text-center font-semibold">주요 팀</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {clusterStats
-                .map((stat) => {
-                  // 해당 클러스터의 상위 3개 팀 찾기
-                  const topTeams = patterns
-                    .filter(p => p.cluster_type === stat.cluster_name)
-                    .sort((a, b) => b.employee_count - a.employee_count)
-                    .slice(0, 3)
-                    .map(t => t.team);
-                  
-                  return (
-                    <TableRow key={stat.cluster_name} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: CLUSTER_COLORS[stat.cluster_name] }}
-                          />
-                          {stat.cluster_name}
+      {/* 패턴별 상세 정보 */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">패턴별 상세 분석</h2>
+        {clusterStats
+          .sort((a, b) => b.total_employees - a.total_employees)
+          .map((stat) => {
+            const clusterTeams = patterns
+              .filter(p => p.cluster_type === stat.cluster_name)
+              .sort((a, b) => b.employee_count - a.employee_count);
+            
+            // 센터별로 그룹화
+            const teamsByCenter = clusterTeams.reduce((acc, team) => {
+              if (!acc[team.center]) {
+                acc[team.center] = [];
+              }
+              acc[team.center].push(team);
+              return acc;
+            }, {} as { [key: string]: PatternData[] });
+            
+            const isExpanded = expandedClusters.has(stat.cluster_name);
+            
+            return (
+              <Card key={stat.cluster_name}>
+                <CardHeader 
+                  className="cursor-pointer"
+                  onClick={() => toggleCluster(stat.cluster_name)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div 
+                          className="w-4 h-4 rounded-full" 
+                          style={{ backgroundColor: CLUSTER_COLORS[stat.cluster_name] }}
+                        />
+                        <CardTitle className="text-base">
+                          {stat.cluster_name} ({stat.team_count}개 팀)
+                        </CardTitle>
+                      </div>
+                      <div className="text-sm text-gray-600 ml-7">
+                        <span className="font-medium">주요 팀:</span> {clusterTeams.slice(0, 5).map(t => t.team).join(', ')}
+                        {clusterTeams.length > 5 && ` 외 ${clusterTeams.length - 5}개`}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-sm text-gray-500">총 인원</div>
+                        <div className="text-lg font-semibold">{stat.total_employees.toLocaleString()}명</div>
+                      </div>
+                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                    </div>
+                  </div>
+                </CardHeader>
+                
+                {isExpanded && (
+                  <CardContent>
+                    {/* 통계 요약 */}
+                    <div className="grid grid-cols-4 gap-4 mb-6">
+                      <div className="bg-gray-50 p-3 rounded">
+                        <div className="flex items-center gap-2 text-gray-600 text-xs mb-1">
+                          <Users className="w-3 h-3" />
+                          <span>소속 팀 수</span>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-center">{stat.team_count}개</TableCell>
-                      <TableCell className="text-center">{stat.total_employees.toLocaleString()}명</TableCell>
-                      <TableCell className="text-center">{stat.avg_knox_per_person?.toFixed(1) || '0.0'}</TableCell>
-                      <TableCell className="text-center">{stat.avg_equipment_per_person?.toFixed(1) || '0.0'}건/인</TableCell>
-                      <TableCell className="text-xs">
-                        {topTeams.slice(0, 2).join(', ')}
-                        {topTeams.length > 2 && ' 외'}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                        <div className="text-xl font-semibold">{stat.team_count}개</div>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <div className="flex items-center gap-2 text-gray-600 text-xs mb-1">
+                          <Users className="w-3 h-3" />
+                          <span>총 직원 수</span>
+                        </div>
+                        <div className="text-xl font-semibold">{stat.total_employees.toLocaleString()}명</div>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <div className="flex items-center gap-2 text-gray-600 text-xs mb-1">
+                          <Activity className="w-3 h-3" />
+                          <span>평균 Knox 활동</span>
+                        </div>
+                        <div className="text-xl font-semibold">{stat.avg_knox_per_person?.toFixed(1)}건/인</div>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded">
+                        <div className="flex items-center gap-2 text-gray-600 text-xs mb-1">
+                          <BarChart3 className="w-3 h-3" />
+                          <span>평균 장비 사용</span>
+                        </div>
+                        <div className="text-xl font-semibold">{stat.avg_equipment_per_person?.toFixed(1)}건/인</div>
+                      </div>
+                    </div>
+                    
+                    {/* 소속 팀 전체 목록 */}
+                    <div className="border rounded-lg p-4">
+                      <h4 className="text-sm font-semibold mb-3">소속 팀 전체 목록 ({stat.team_count}개):</h4>
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-gray-50">
+                            <TableHead className="text-xs">센터</TableHead>
+                            <TableHead className="text-xs">팀 수</TableHead>
+                            <TableHead className="text-xs">소속 팀</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(teamsByCenter)
+                            .sort(([, a], [, b]) => b.length - a.length)
+                            .map(([center, teams]) => (
+                              <TableRow key={center}>
+                                <TableCell className="font-medium text-sm">{center}</TableCell>
+                                <TableCell className="text-sm">{teams.length}개</TableCell>
+                                <TableCell className="text-xs">
+                                  {teams.map(t => t.team).join(', ')}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })}
+      </div>
     </div>
   );
 }
