@@ -57,7 +57,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
-        ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedWorkHours,
+        ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
@@ -89,7 +89,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
           ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
           ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
           ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
-          ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedWorkHours,
+          ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
           ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
         FROM daily_analysis_results dar
         JOIN employees e ON e.employee_id = dar.employee_id
@@ -125,7 +125,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
-        ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedWorkHours,
+        ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
@@ -155,7 +155,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
-        ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedWorkHours,
+        ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id

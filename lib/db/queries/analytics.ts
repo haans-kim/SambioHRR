@@ -902,6 +902,7 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
         AND e.center_name IS NOT NULL
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
         AND dar.${column} IS NOT NULL
+        AND dar.${column} >= 30  -- At least 30 minutes filter for thresholds
       GROUP BY e.center_name, e.job_grade
       ORDER BY avgValue ASC
     `;

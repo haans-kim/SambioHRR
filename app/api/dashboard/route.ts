@@ -20,7 +20,7 @@ import { calculateAdjustedWorkHours } from '@/lib/utils';
 
 export async function GET() {
   try {
-    const cacheKey = 'dashboard:v10'; // Updated to invalidate cache after focused work filter change
+    const cacheKey = 'dashboard:v12'; // Updated to invalidate cache after center stats filter change
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
