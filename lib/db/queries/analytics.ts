@@ -345,6 +345,7 @@ export function getOrganizationFocusedStats30Days() {
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
       AND dar.focused_work_minutes IS NOT NULL
+      AND dar.focused_work_minutes >= 30  -- At least 30 minutes filter added
   `;
   
   const stmt = db.prepare(query);
@@ -691,6 +692,7 @@ export function getGradeFocusedWorkHoursMatrix30Days() {
       AND e.center_name IS NOT NULL
       AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
       AND dar.focused_work_minutes IS NOT NULL
+      AND dar.focused_work_minutes >= 30  -- At least 30 minutes filter added
     GROUP BY e.center_name, e.job_grade
     ORDER BY e.center_name, e.job_grade
   `;

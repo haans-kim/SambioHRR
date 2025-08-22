@@ -1,26 +1,97 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface FocusedWorkTableProps {
   visible: boolean;
 }
 
+interface CenterData {
+  center: string;
+  employees: number;
+  avgFocusedWorkHours: number;
+  stdDev: number;
+  maxFocusedWorkHours: number;
+  avgWorkHours: number;
+  efficiency: number;
+  focusedRatio: number;
+}
+
 export function FocusedWorkTable({ visible }: FocusedWorkTableProps) {
+  const [data, setData] = useState<CenterData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/dashboard');
+        if (!response.ok) throw new Error('Failed to fetch');
+        const result = await response.json();
+        
+        if (result.focusedWorkTable) {
+          // Define the desired center order
+          const centerOrder = [
+            '영업센터',
+            '오퍼레이션센터', 
+            'EPCV센터',
+            '품질운영센터',
+            'CDO개발센터',
+            '바이오연구소',
+            '경영지원센터',
+            'People센터',
+            '상생협력센터'
+          ];
+          
+          // Create a map for easy lookup
+          const dataMap = new Map<string, any>();
+          result.focusedWorkTable.forEach((item: any) => {
+            dataMap.set(item.center, {
+              center: item.center,
+              employees: item.employees,
+              avgFocusedWorkHours: item.avgFocusedWorkHours,
+              stdDev: item.stdDev,
+              maxFocusedWorkHours: item.avgFocusedWorkHours + item.stdDev, // Calculate max
+              avgWorkHours: item.avgWorkHours,
+              efficiency: item.efficiency,
+              focusedRatio: item.focusedRatio
+            });
+          });
+          
+          // Sort according to the defined order
+          const sortedData = centerOrder
+            .map(center => dataMap.get(center))
+            .filter(item => item !== undefined);
+          
+          setData(sortedData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch focused work data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [visible]);
+
   if (!visible) return null;
 
-  const centerData = [
-    { name: 'CDO개발센터', count: 696, avg: 2.87, std: 2.42, min: 0.50, max: 9.77, work: 9.43, confidence: 72.1, ratio: 30.7 },
-    { name: 'People센터', count: 421, avg: 2.51, std: 1.82, min: 0.50, max: 10.97, work: 9.51, confidence: 76.8, ratio: 26.2 },
-    { name: 'EPCV센터', count: 3090, avg: 2.47, std: 1.64, min: 0.50, max: 11.48, work: 9.05, confidence: 86.2, ratio: 28.1 },
-    { name: '상생협력센터', count: 1158, avg: 2.42, std: 1.87, min: 0.50, max: 12.48, work: 8.57, confidence: 85.0, ratio: 29.1 },
-    { name: '품질운영센터', count: 4403, avg: 2.18, std: 1.48, min: 0.50, max: 9.97, work: 9.64, confidence: 80.1, ratio: 24.0 },
-    { name: '오퍼레이션센터', count: 9342, avg: 2.13, std: 1.53, min: 0.50, max: 13.68, work: 10.01, confidence: 79.2, ratio: 22.8 },
-    { name: '경영지원센터', count: 1161, avg: 1.93, std: 1.25, min: 0.50, max: 10.25, work: 9.16, confidence: 80.9, ratio: 22.1 },
-    { name: '바이오연구소', count: 331, avg: 1.84, std: 1.34, min: 0.50, max: 8.30, work: 8.71, confidence: 69.1, ratio: 22.1 },
-    { name: '영업센터', count: 417, avg: 1.73, std: 1.22, min: 0.50, max: 9.22, work: 8.92, confidence: 72.9, ratio: 20.1 }
-  ];
+  if (loading) {
+    return (
+      <div className="mt-6 space-y-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center h-32">
+              <div className="text-gray-600">데이터를 불러오는 중...</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-6 space-y-4">
@@ -38,7 +109,6 @@ export function FocusedWorkTable({ visible }: FocusedWorkTableProps) {
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">데이터 수</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">평균 집중시간</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">표준편차</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">최소</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">최대</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">평균 근무시간</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">데이터 신뢰도</th>
@@ -46,31 +116,30 @@ export function FocusedWorkTable({ visible }: FocusedWorkTableProps) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {centerData.map((center, idx) => (
+                {data.map((center, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{center.name}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">{center.count.toLocaleString()}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">{center.avg}h</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">±{center.std}h</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">{center.min}h</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">{center.max}h</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">{center.work}h</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{center.center}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">{center.employees.toLocaleString()}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">{center.avgFocusedWorkHours.toFixed(2)}h</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">±{center.stdDev.toFixed(2)}h</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">{center.maxFocusedWorkHours.toFixed(2)}h</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">{center.avgWorkHours.toFixed(2)}h</td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
                       <span className={`inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${
-                        center.confidence >= 80 ? 'bg-green-100 text-green-800' : 
-                        center.confidence >= 70 ? 'bg-yellow-100 text-yellow-800' : 
+                        center.efficiency >= 80 ? 'bg-green-100 text-green-800' : 
+                        center.efficiency >= 70 ? 'bg-yellow-100 text-yellow-800' : 
                         'bg-red-100 text-red-800'
                       }`}>
-                        {center.confidence}%
+                        {center.efficiency.toFixed(1)}%
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
                       <span className={`font-semibold ${
-                        center.ratio >= 25 ? 'text-green-600' : 
-                        center.ratio >= 20 ? 'text-yellow-600' : 
+                        center.focusedRatio >= 25 ? 'text-green-600' : 
+                        center.focusedRatio >= 20 ? 'text-yellow-600' : 
                         'text-red-600'
                       }`}>
-                        {center.ratio}%
+                        {center.focusedRatio.toFixed(1)}%
                       </span>
                     </td>
                   </tr>

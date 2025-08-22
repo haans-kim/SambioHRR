@@ -47,20 +47,39 @@ export function FocusedWorkChart({ visible }: FocusedWorkChartProps) {
         
         // Transform the focused work table data into chart format
         if (result.focusedWorkTable) {
-          const chartData = result.focusedWorkTable.map((item: any) => ({
-            center: item.center,
-            employees: item.employees,
-            focusedWorkHours: parseFloat(item.avgFocusedWorkHours.toFixed(1)),
-            workHours: parseFloat(item.avgWorkHours.toFixed(1)),
-            stdDev: parseFloat(item.stdDev.toFixed(1)),
-            minRange: parseFloat((item.avgFocusedWorkHours - item.stdDev).toFixed(1)),
-            maxRange: parseFloat((item.avgFocusedWorkHours + item.stdDev).toFixed(1)),
-            efficiency: parseFloat(item.efficiency.toFixed(1)),
-            focusedRatio: parseFloat(item.focusedRatio.toFixed(1))
-          }));
+          // Define the desired center order (same as table)
+          const centerOrder = [
+            '영업센터',
+            '오퍼레이션센터', 
+            'EPCV센터',
+            '품질운영센터',
+            'CDO개발센터',
+            '바이오연구소',
+            '경영지원센터',
+            'People센터',
+            '상생협력센터'
+          ];
           
-          // Sort by focused work hours descending
-          chartData.sort((a: CenterData, b: CenterData) => b.focusedWorkHours - a.focusedWorkHours);
+          // Create a map for easy lookup
+          const dataMap = new Map<string, CenterData>();
+          result.focusedWorkTable.forEach((item: any) => {
+            dataMap.set(item.center, {
+              center: item.center,
+              employees: item.employees,
+              focusedWorkHours: parseFloat(item.avgFocusedWorkHours.toFixed(1)),
+              workHours: parseFloat(item.avgWorkHours.toFixed(1)),
+              stdDev: parseFloat(item.stdDev.toFixed(1)),
+              minRange: parseFloat((item.avgFocusedWorkHours - item.stdDev).toFixed(1)),
+              maxRange: parseFloat((item.avgFocusedWorkHours + item.stdDev).toFixed(1)),
+              efficiency: parseFloat(item.efficiency.toFixed(1)),
+              focusedRatio: parseFloat(item.focusedRatio.toFixed(1))
+            });
+          });
+          
+          // Sort according to the defined order
+          const chartData = centerOrder
+            .map(center => dataMap.get(center))
+            .filter(item => item !== undefined) as CenterData[];
           
           setData(chartData);
         }
@@ -139,9 +158,6 @@ export function FocusedWorkChart({ visible }: FocusedWorkChartProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis 
                 dataKey="center" 
-                angle={-45}
-                textAnchor="end"
-                height={80}
                 tick={{ fontSize: 12 }}
               />
               <YAxis 
@@ -214,13 +230,25 @@ export function FocusedWorkChart({ visible }: FocusedWorkChartProps) {
           <div className="text-center">
             <p className="text-sm text-gray-600">최고 집중시간</p>
             <p className="text-lg font-semibold text-green-600">
-              {data[0]?.center}: {data[0]?.focusedWorkHours}h
+              {(() => {
+                const maxItem = data.reduce((max, item) => 
+                  item.focusedWorkHours > max.focusedWorkHours ? item : max, 
+                  data[0] || { center: '', focusedWorkHours: 0 }
+                );
+                return `${maxItem.center}: ${maxItem.focusedWorkHours}h`;
+              })()}
             </p>
           </div>
           <div className="text-center">
             <p className="text-sm text-gray-600">최저 집중시간</p>
             <p className="text-lg font-semibold text-orange-600">
-              {data[data.length - 1]?.center}: {data[data.length - 1]?.focusedWorkHours}h
+              {(() => {
+                const minItem = data.reduce((min, item) => 
+                  item.focusedWorkHours < min.focusedWorkHours ? item : min, 
+                  data[0] || { center: '', focusedWorkHours: 0 }
+                );
+                return `${minItem.center}: ${minItem.focusedWorkHours}h`;
+              })()}
             </p>
           </div>
           <div className="text-center">
