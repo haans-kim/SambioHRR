@@ -71,10 +71,28 @@ export async function GET() {
       ORDER BY center, cluster_type
     `).all();
 
+    // 태그 개수 요약 통계
+    const tagSummary = db.prepare(`
+      SELECT 
+        SUM(o_tag_count) as total_o_tags,
+        SUM(knox_total_count) as total_knox,
+        SUM(t1_count) as total_t1,
+        SUM(g3_count) as total_g3,
+        COUNT(DISTINCT team) as total_teams,
+        SUM(employee_count) as total_employees,
+        ROUND(AVG(o_tag_count * 1.0 / NULLIF(employee_count, 0)), 1) as avg_o_per_person,
+        ROUND(AVG(knox_total_count * 1.0 / NULLIF(employee_count, 0)), 1) as avg_knox_per_person,
+        ROUND(AVG(t1_count * 1.0 / NULLIF(employee_count, 0)), 1) as avg_t1_per_person,
+        ROUND(AVG(g3_count * 1.0 / NULLIF(employee_count, 0)), 1) as avg_g3_per_person
+      FROM dept_pattern_analysis_new
+      WHERE is_analysis_target = 1
+    `).get();
+
     return NextResponse.json({
       patterns,
       clusterStats,
       centerDistribution,
+      tagSummary,
       summary: {
         totalTeams: patterns.length,
         totalEmployees: patterns.reduce((sum: number, p: any) => sum + p.employee_count, 0),

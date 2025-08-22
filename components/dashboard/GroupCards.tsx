@@ -437,67 +437,51 @@ export function GroupCards({
       
       <div className="space-y-6">
         {Object.entries(groupedGroups).map(([center, centerGroups]) => {
-          // 항상 전체 기준으로 비교
-          const { top, middle, bottom, localThresholds } = categorizeGroups(centerGroups, false);
           const effectiveThresholds = getCurrentThresholds();
+          
+          // 값에 따라 정렬 (내림차순)
+          const sortedGroups = [...centerGroups].sort((a, b) => {
+            const getGroupValue = (group: OrganizationWithStats) => {
+              switch (selectedMetric) {
+                case 'efficiency':
+                  return group.stats?.avgWorkEfficiency || 0;
+                case 'workHours':
+                  return group.stats?.avgActualWorkHours || 0;
+                case 'claimedHours':
+                  return group.stats?.avgAttendanceHours || 0;
+                case 'weeklyWorkHours':
+                  return group.stats?.avgWeeklyWorkHours || 0;
+                case 'adjustedWeeklyWorkHours':
+                  return group.stats?.avgAdjustedWeeklyWorkHours || 0;
+                case 'weeklyClaimedHours':
+                  return group.stats?.avgWeeklyClaimedHours || 0;
+                case 'focusedWorkHours':
+                  return group.stats?.avgFocusedWorkHours || 0;
+                case 'dataReliability':
+                  return group.stats?.avgDataReliability || 0;
+                default:
+                  return group.stats?.avgWorkEfficiency || 0;
+              }
+            };
+            return getGroupValue(b) - getGroupValue(a);
+          });
           
           return (
             <div key={center} className="border rounded-lg p-4 bg-gray-50">
               <h3 className="text-base font-semibold mb-3 text-gray-900">{center}</h3>
               
-              {/* 상위 20% */}
-              {top.length > 0 && (
-                <div className="mb-3">
-                  <h4 className="text-sm font-medium text-red-600 mb-2">상위 20%</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                    {top.map((group) => (
-                      <GroupCard
-                        key={group.orgCode}
-                        org={group}
-                        selectedMetric={selectedMetric}
-                        thresholds={effectiveThresholds}
-                        onClick={() => handleGroupClick(group.orgCode)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* 중위 60% */}
-              {middle.length > 0 && (
-                <div className="mb-3">
-                  <h4 className="text-sm font-medium text-green-600 mb-2">중위 60%</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                    {middle.map((group) => (
-                      <GroupCard
-                        key={group.orgCode}
-                        org={group}
-                        selectedMetric={selectedMetric}
-                        thresholds={effectiveThresholds}
-                        onClick={() => handleGroupClick(group.orgCode)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* 하위 20% */}
-              {bottom.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-blue-600 mb-2">하위 20%</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                    {bottom.map((group) => (
-                      <GroupCard
-                        key={group.orgCode}
-                        org={group}
-                        selectedMetric={selectedMetric}
-                        thresholds={effectiveThresholds}
-                        onClick={() => handleGroupClick(group.orgCode)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* 모든 그룹을 한 행에 표시 */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                {sortedGroups.map((group) => (
+                  <GroupCard
+                    key={group.orgCode}
+                    org={group}
+                    selectedMetric={selectedMetric}
+                    thresholds={effectiveThresholds}
+                    onClick={() => handleGroupClick(group.orgCode)}
+                  />
+                ))}
+              </div>
             </div>
           );
         })}

@@ -50,6 +50,19 @@ interface ClusterStats {
   avg_movement_hours?: number;
 }
 
+interface TagSummary {
+  total_o_tags: number;
+  total_knox: number;
+  total_t1: number;
+  total_g3: number;
+  total_teams: number;
+  total_employees: number;
+  avg_o_per_person: number;
+  avg_knox_per_person: number;
+  avg_t1_per_person: number;
+  avg_g3_per_person: number;
+}
+
 const CLUSTER_COLORS: { [key: string]: string } = {
   '시스템운영집중형': '#1f77b4',  // 파란색
   '현장이동활발형': '#ff7f0e',  // 주황색
@@ -61,6 +74,7 @@ const CLUSTER_COLORS: { [key: string]: string } = {
 export function Insight2View() {
   const [patterns, setPatterns] = useState<PatternData[]>([]);
   const [clusterStats, setClusterStats] = useState<ClusterStats[]>([]);
+  const [tagSummary, setTagSummary] = useState<TagSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
 
@@ -85,6 +99,7 @@ export function Insight2View() {
       
       setPatterns(data.patterns || []);
       setClusterStats(data.clusterStats || []);
+      setTagSummary(data.tagSummary || null);
     } catch (error) {
       console.error('Failed to fetch pattern analysis:', error);
     } finally {
@@ -212,36 +227,6 @@ export function Insight2View() {
     );
   }
 
-  // 패턴 그룹별 Top 5 팀 계산
-  const getTopTeamsByCluster = () => {
-    const result: { [key: string]: any[] } = {};
-    
-    // 고유한 클러스터 타입 추출
-    const uniqueClusters = [...new Set(patterns.map(p => p.cluster_type))];
-    
-    // 클러스터별로 그룹화하고 직원 수 기준으로 정렬
-    uniqueClusters.forEach(clusterType => {
-      const clusterTeams = patterns
-        .filter(p => p.cluster_type === clusterType)
-        .sort((a, b) => b.employee_count - a.employee_count)
-        .slice(0, 5)
-        .map((team, idx) => ({
-          rank: idx + 1,
-          team: team.team,
-          employees: team.employee_count,
-          equipment: team.equipment_per_person.toFixed(1),
-          mobility: team.movement_per_person.toFixed(1),
-          knox: team.knox_per_person.toFixed(1),
-          meeting: team.meeting_per_person.toFixed(1),
-          teams: team.bu && team.bu !== '-' ? team.bu : ''
-        }));
-      result[clusterType] = clusterTeams;
-    });
-    
-    return result;
-  };
-
-  const topTeamsByCluster = getTopTeamsByCluster();
 
   return (
     <div className="p-6">
@@ -250,35 +235,73 @@ export function Insight2View() {
         <p className="text-lg text-gray-600 mt-1">실시간 업무패턴 분석 및 근무 추정시간 모니터링</p>
       </div>
 
-      {/* Top 5 팀 - 단일 행 표시 */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">패턴별 주요 팀</h2>
-        <div className="flex gap-4 overflow-x-auto">
-          {Object.entries(topTeamsByCluster).map(([clusterType, teams]) => (
-            <Card key={clusterType} className="min-w-[250px] flex-shrink-0">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: CLUSTER_COLORS[clusterType] }}
-                  />
-                  <CardTitle className="text-sm">{clusterType}</CardTitle>
+      {/* 태그 개수 요약 */}
+      {tagSummary && (
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-4">태그 개수 요약</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-gray-600 mb-2">
+                  <Activity className="w-4 h-4" />
+                  <span className="text-sm">O태그 (장비)</span>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2">
-                  {teams.slice(0, 5).map((team: any) => (
-                    <div key={team.team} className="flex justify-between text-xs">
-                      <span className="truncate flex-1">{team.team}</span>
-                      <span className="text-gray-600">{team.employees}명</span>
-                    </div>
-                  ))}
+                <div className="text-2xl font-bold text-gray-900">
+                  {tagSummary.total_o_tags?.toLocaleString() || '0'}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  평균 {tagSummary.avg_o_per_person?.toFixed(1) || '0'}건/인
                 </div>
               </CardContent>
             </Card>
-          ))}
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-gray-600 mb-2">
+                  <BarChart3 className="w-4 h-4" />
+                  <span className="text-sm">Knox (결재·회의·메일)</span>
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {tagSummary.total_knox?.toLocaleString() || '0'}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  평균 {tagSummary.avg_knox_per_person?.toFixed(1) || '0'}건/인
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-gray-600 mb-2">
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="text-sm">T1 (이동공간)</span>
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {tagSummary.total_t1?.toLocaleString() || '0'}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  평균 {tagSummary.avg_t1_per_person?.toFixed(1) || '0'}건/인
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-gray-600 mb-2">
+                  <Users className="w-4 h-4" />
+                  <span className="text-sm">G3 (회의/협업)</span>
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {tagSummary.total_g3?.toLocaleString() || '0'}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  평균 {tagSummary.avg_g3_per_person?.toFixed(1) || '0'}건/인
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 발견된 패턴 그룹 */}
       <Card className="mb-6">
