@@ -34,6 +34,11 @@ export interface OrganizationDailyStats {
   avgDataReliability?: number;
   centerName?: string;
   avgAdjustedWeeklyWorkHours?: number;
+  // 탄력근무제 보정 적용된 필드들
+  avgActualWorkHoursAdjusted?: number;
+  avgAttendanceHoursAdjusted?: number;
+  avgWeeklyWorkHoursAdjusted?: number;
+  avgWeeklyClaimedHoursAdjusted?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

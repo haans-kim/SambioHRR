@@ -35,3 +35,38 @@ export function calculateAdjustedWorkHours(workHours: number, dataReliability: n
   const adjustmentFactor = calculateAIAdjustmentFactor(dataReliability);
   return workHours * adjustmentFactor;
 }
+
+/**
+ * 탄력근무제 보정 계수
+ * 3근4휴, 4근3휴 패턴을 반영하여 실제 근무일 기준으로 환산
+ */
+export const FLEXIBLE_WORK_ADJUSTMENT_FACTOR = 14 / 20; // 0.7
+
+/**
+ * 탄력근무제 보정 적용
+ * @param value - 원본 값 (일간 또는 주간 근무시간)
+ * @param isFlexibleWork - 탄력근무제 여부
+ * @returns 보정된 값
+ */
+export function applyFlexibleWorkAdjustment(value: number, isFlexibleWork: boolean): number {
+  return isFlexibleWork ? value * FLEXIBLE_WORK_ADJUSTMENT_FACTOR : value;
+}
+
+/**
+ * 복합 보정 적용 (AI 보정 + 탄력근무제 보정)
+ * @param workHours - 원본 근무시간
+ * @param dataReliability - 데이터 신뢰도 (0-100)
+ * @param isFlexibleWork - 탄력근무제 여부
+ * @returns 최종 보정된 근무시간
+ */
+export function calculateFullyAdjustedWorkHours(
+  workHours: number, 
+  dataReliability: number, 
+  isFlexibleWork: boolean
+): number {
+  // 먼저 AI 보정 적용
+  let adjustedHours = calculateAdjustedWorkHours(workHours, dataReliability);
+  // 그 다음 탄력근무제 보정 적용
+  adjustedHours = applyFlexibleWorkAdjustment(adjustedHours, isFlexibleWork);
+  return adjustedHours;
+}

@@ -1,6 +1,6 @@
 import db from '../client';
 import type { Organization, OrganizationWithStats, OrgLevel } from '@/lib/types/organization';
-import { calculateAdjustedWorkHours } from '@/lib/utils';
+import { calculateAdjustedWorkHours, FLEXIBLE_WORK_ADJUSTMENT_FACTOR } from '@/lib/utils';
 
 // Helper function to get 30-day date range
 function get30DayDateRange(): { startDate: string; endDate: string } {
@@ -42,9 +42,15 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
   
   if (level === 'center') {
     const centerStats = db.prepare(`
+      WITH flexible_workers AS (
+        SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+        FROM claim_data
+        WHERE WORKSCHDTYPNM = '탄력근무제'
+      )
       SELECT 
         e.center_name as orgName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
+        COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
         COUNT(*) as manDays,
         ROUND(
           SUM(
@@ -53,14 +59,43 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
           ) / SUM(dar.claimed_work_hours) * 100, 
           1
         ) as avgWorkEfficiency,
+        -- 원본 일간 근무시간
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
+        -- 원본 주간 근무시간
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+        -- 탄력근무제 보정 적용 일간 근무시간
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*), 1
+        ) as avgActualWorkHoursAdjusted,
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.claimed_work_hours
+          END) / COUNT(*), 1
+        ) as avgAttendanceHoursAdjusted,
+        -- 탄력근무제 보정 적용 주간 근무시간
+        ROUND(
+          (SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*)) * 5, 1
+        ) as avgWeeklyWorkHoursAdjusted,
+        ROUND(
+          (SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.claimed_work_hours
+          END) / COUNT(*)) * 5, 1
+        ) as avgWeeklyClaimedHoursAdjusted,
         ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
+      LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.center_name IS NOT NULL
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
@@ -74,9 +109,15 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     // Division은 하위 팀들의 데이터를 집계하거나 직접 속한 직원 데이터를 집계
     organizations.forEach(div => {
       const divStats = db.prepare(`
+        WITH flexible_workers AS (
+          SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+          FROM claim_data
+          WHERE WORKSCHDTYPNM = '탄력근무제'
+        )
         SELECT 
           MIN(e.center_name) as centerName,
           COUNT(DISTINCT dar.employee_id) as totalEmployees,
+          COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
           COUNT(*) as manDays,
           ROUND(
             SUM(
@@ -85,14 +126,41 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
             ) / SUM(dar.claimed_work_hours) * 100, 
             1
           ) as avgWorkEfficiency,
+          -- 원본 값
           ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
           ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
           ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
           ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+          -- 보정된 값
+          ROUND(
+            SUM(CASE 
+              WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+              ELSE dar.actual_work_hours
+            END) / COUNT(*), 1
+          ) as avgActualWorkHoursAdjusted,
+          ROUND(
+            SUM(CASE 
+              WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+              ELSE dar.claimed_work_hours
+            END) / COUNT(*), 1
+          ) as avgAttendanceHoursAdjusted,
+          ROUND(
+            (SUM(CASE 
+              WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+              ELSE dar.actual_work_hours
+            END) / COUNT(*)) * 5, 1
+          ) as avgWeeklyWorkHoursAdjusted,
+          ROUND(
+            (SUM(CASE 
+              WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+              ELSE dar.claimed_work_hours
+            END) / COUNT(*)) * 5, 1
+          ) as avgWeeklyClaimedHoursAdjusted,
           ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
           ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
         FROM daily_analysis_results dar
         JOIN employees e ON e.employee_id = dar.employee_id
+        LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
         WHERE dar.analysis_date BETWEEN ? AND ?
           AND (
             e.team_name IN (
@@ -109,10 +177,16 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     });
   } else if (level === 'team') {
     const teamStats = db.prepare(`
+      WITH flexible_workers AS (
+        SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+        FROM claim_data
+        WHERE WORKSCHDTYPNM = '탄력근무제'
+      )
       SELECT 
         e.team_name as orgName,
         e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
+        COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
         COUNT(*) as manDays,
         ROUND(
           SUM(
@@ -121,14 +195,41 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
           ) / SUM(dar.claimed_work_hours) * 100, 
           1
         ) as avgWorkEfficiency,
+        -- 원본 값
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+        -- 보정된 값
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*), 1
+        ) as avgActualWorkHoursAdjusted,
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.claimed_work_hours
+          END) / COUNT(*), 1
+        ) as avgAttendanceHoursAdjusted,
+        ROUND(
+          (SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*)) * 5, 1
+        ) as avgWeeklyWorkHoursAdjusted,
+        ROUND(
+          (SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.claimed_work_hours
+          END) / COUNT(*)) * 5, 1
+        ) as avgWeeklyClaimedHoursAdjusted,
         ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
+      LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.team_name IS NOT NULL
       GROUP BY e.team_name, e.center_name
@@ -139,10 +240,16 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     });
   } else if (level === 'group') {
     const groupStats = db.prepare(`
+      WITH flexible_workers AS (
+        SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+        FROM claim_data
+        WHERE WORKSCHDTYPNM = '탄력근무제'
+      )
       SELECT 
         e.group_name as orgName,
         e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
+        COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
         COUNT(*) as manDays,
         ROUND(
           SUM(
@@ -151,14 +258,41 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
           ) / SUM(dar.claimed_work_hours) * 100, 
           1
         ) as avgWorkEfficiency,
+        -- 원본 값
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+        -- 보정된 값
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*), 1
+        ) as avgActualWorkHoursAdjusted,
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.claimed_work_hours
+          END) / COUNT(*), 1
+        ) as avgAttendanceHoursAdjusted,
+        ROUND(
+          (SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*)) * 5, 1
+        ) as avgWeeklyWorkHoursAdjusted,
+        ROUND(
+          (SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.claimed_work_hours
+          END) / COUNT(*)) * 5, 1
+        ) as avgWeeklyClaimedHoursAdjusted,
         ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
+      LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.group_name IS NOT NULL
       GROUP BY e.group_name, e.center_name
@@ -188,8 +322,13 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         avgWorkEfficiency: stats.avgWorkEfficiency || 0,
         avgActualWorkHours: stats.avgActualWorkHours || 0,
         avgAttendanceHours: stats.avgAttendanceHours || 0,
+        // 탄력근무제 보정 적용된 값들
+        avgActualWorkHoursAdjusted: stats.avgActualWorkHoursAdjusted || stats.avgActualWorkHours || 0,
+        avgAttendanceHoursAdjusted: stats.avgAttendanceHoursAdjusted || stats.avgAttendanceHours || 0,
+        avgWeeklyWorkHoursAdjusted: stats.avgWeeklyWorkHoursAdjusted || stats.avgWeeklyWorkHours || 0,
+        avgWeeklyClaimedHoursAdjusted: stats.avgWeeklyClaimedHoursAdjusted || stats.avgWeeklyClaimedHours || 0,
         totalEmployees: stats.totalEmployees || 0,
-        flexibleWorkCount: 0, // 추후 구현 필요 시 계산
+        flexibleWorkCount: stats.flexibleWorkCount || 0, // 이제 실제 값 사용
         elasticWorkCount: 0, // 추후 구현 필요 시 계산
         avgMeetingHours: 0, // 추후 구현 필요 시 계산
         avgMealHours: 0, // 추후 구현 필요 시 계산

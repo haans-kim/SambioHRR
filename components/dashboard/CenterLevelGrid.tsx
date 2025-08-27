@@ -78,41 +78,8 @@ interface MetricIndicatorProps {
 function MetricIndicator({ value, label, metricType, thresholds, onClick }: MetricIndicatorProps) {
   const getStatusIcon = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
     if (!thresholds) {
-      // Fallback to hardcoded values if thresholds are not available
-      if (metricType === 'efficiency') {
-        if (value >= 88.4) return "▲";
-        if (value > 73.2) return "●";
-        return "▼";
-      } else if (metricType === 'workHours') {
-        if (value >= 8.0) return "▲";
-        if (value >= 6.0) return "●";
-        return "▼";
-      } else if (metricType === 'claimedHours') {
-        if (value >= 9.0) return "▲";
-        if (value >= 7.0) return "●";
-        return "▼";
-      } else if (metricType === 'weeklyWorkHours') {
-        if (value >= 45.0) return "▲";
-        if (value >= 35.0) return "●";
-        return "▼";
-      } else if (metricType === 'weeklyClaimedHours') {
-        if (value >= 48.0) return "▲";
-        if (value >= 38.0) return "●";
-        return "▼";
-      } else if (metricType === 'adjustedWeeklyWorkHours') {
-        if (value >= 42.0) return "▲";
-        if (value >= 35.0) return "●";
-        return "▼";
-      } else if (metricType === 'focusedWorkHours') {
-        if (value >= 5.0) return "▲";
-        if (value >= 2.0) return "●";
-        return "▼";
-      } else {
-        // dataReliability
-        if (value >= 85.0) return "▲";
-        if (value >= 70.0) return "●";
-        return "▼";
-      }
+      // thresholds가 없으면 아이콘 표시하지 않음
+      return "";
     }
     
     // Use dynamic thresholds - 상위 20% (high) 이상은 ▲, 하위 20% (low) 이하는 ▼
@@ -123,41 +90,8 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
 
   const getIconColor = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
     if (!thresholds) {
-      // Fallback to hardcoded values if thresholds are not available
-      if (metricType === 'efficiency') {
-        if (value >= 88.4) return "text-blue-600";
-        if (value > 73.2) return "text-green-600";
-        return "text-red-600";
-      } else if (metricType === 'workHours') {
-        if (value >= 8.0) return "text-blue-600";
-        if (value >= 6.0) return "text-green-600";
-        return "text-red-600";
-      } else if (metricType === 'claimedHours') {
-        if (value >= 9.0) return "text-blue-600";
-        if (value >= 7.0) return "text-green-600";
-        return "text-red-600";
-      } else if (metricType === 'weeklyWorkHours') {
-        if (value >= 45.0) return "text-blue-600";
-        if (value >= 35.0) return "text-green-600";
-        return "text-red-600";
-      } else if (metricType === 'weeklyClaimedHours') {
-        if (value >= 48.0) return "text-blue-600";
-        if (value >= 38.0) return "text-green-600";
-        return "text-red-600";
-      } else if (metricType === 'adjustedWeeklyWorkHours') {
-        if (value >= 42.0) return "text-blue-600";
-        if (value >= 35.0) return "text-green-600";
-        return "text-red-600";
-      } else if (metricType === 'focusedWorkHours') {
-        if (value >= 5.0) return "text-blue-600";
-        if (value >= 2.0) return "text-green-600";
-        return "text-red-600";
-      } else {
-        // dataReliability
-        if (value >= 85.0) return "text-blue-600";
-        if (value >= 70.0) return "text-green-600";
-        return "text-red-600";
-      }
+      // thresholds가 없으면 기본 회색
+      return "text-gray-400";
     }
     
     // Use dynamic thresholds
@@ -171,29 +105,12 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
     let isCircle = false;
     
     if (!thresholds) {
-      // Fallback to hardcoded values if thresholds are not available
-      if (metricType === 'efficiency') {
-        isCircle = value > 73.2 && value < 88.4;
-      } else if (metricType === 'workHours') {
-        isCircle = value >= 6.0 && value < 8.0;
-      } else if (metricType === 'claimedHours') {
-        isCircle = value >= 7.0 && value < 9.0;
-      } else if (metricType === 'weeklyWorkHours') {
-        isCircle = value >= 35.0 && value < 45.0;
-      } else if (metricType === 'weeklyClaimedHours') {
-        isCircle = value >= 38.0 && value < 48.0;
-      } else if (metricType === 'adjustedWeeklyWorkHours') {
-        isCircle = value >= 35.0 && value < 42.0;
-      } else if (metricType === 'focusedWorkHours') {
-        isCircle = value >= 2.0 && value < 5.0;
-      } else {
-        // dataReliability
-        isCircle = value >= 70.0 && value < 85.0;
-      }
-    } else {
-      // Use dynamic thresholds
-      isCircle = value > thresholds.low && value < thresholds.high;
+      // thresholds가 없으면 기본 스타일
+      return "text-base";
     }
+    
+    // Use dynamic thresholds
+    isCircle = value > thresholds.low && value < thresholds.high;
     
     if (isCircle) {
       return "text-lg scale-[1.35]"; // 중간 60% 원형 크게
@@ -343,13 +260,17 @@ export function CenterLevelGrid({
                 if (selectedMetric === 'efficiency') {
                   value = center.stats?.avgWorkEfficiency || 0;
                 } else if (selectedMetric === 'workHours') {
-                  value = center.stats?.avgActualWorkHours || 0;
+                  // 탄력근무제 보정된 일간 값 사용
+                  value = center.stats?.avgActualWorkHoursAdjusted || center.stats?.avgActualWorkHours || 0;
                 } else if (selectedMetric === 'claimedHours') {
-                  value = center.stats?.avgAttendanceHours || 0;
+                  // 탄력근무제 보정된 일간 값 사용
+                  value = center.stats?.avgAttendanceHoursAdjusted || center.stats?.avgAttendanceHours || 0;
                 } else if (selectedMetric === 'weeklyWorkHours') {
-                  value = center.stats?.avgWeeklyWorkHours || 0;
+                  // 탄력근무제 보정된 값 사용
+                  value = center.stats?.avgWeeklyWorkHoursAdjusted || center.stats?.avgWeeklyWorkHours || 0;
                 } else if (selectedMetric === 'weeklyClaimedHours') {
-                  value = center.stats?.avgWeeklyClaimedHours || 0;
+                  // 탄력근무제 보정된 값 사용
+                  value = center.stats?.avgWeeklyClaimedHoursAdjusted || center.stats?.avgWeeklyClaimedHours || 0;
                 } else if (selectedMetric === 'adjustedWeeklyWorkHours') {
                   value = center.stats?.avgAdjustedWeeklyWorkHours || 0;
                 } else if (selectedMetric === 'focusedWorkHours') {
@@ -363,10 +284,10 @@ export function CenterLevelGrid({
                 const centerValuesWithIndex = centers.map((c, idx) => ({
                   value: (() => {
                     if (selectedMetric === 'efficiency') return c.stats?.avgWorkEfficiency || 0;
-                    else if (selectedMetric === 'workHours') return c.stats?.avgActualWorkHours || 0;
-                    else if (selectedMetric === 'claimedHours') return c.stats?.avgAttendanceHours || 0;
-                    else if (selectedMetric === 'weeklyWorkHours') return c.stats?.avgWeeklyWorkHours || 0;
-                    else if (selectedMetric === 'weeklyClaimedHours') return c.stats?.avgWeeklyClaimedHours || 0;
+                    else if (selectedMetric === 'workHours') return c.stats?.avgActualWorkHoursAdjusted || c.stats?.avgActualWorkHours || 0;
+                    else if (selectedMetric === 'claimedHours') return c.stats?.avgAttendanceHoursAdjusted || c.stats?.avgAttendanceHours || 0;
+                    else if (selectedMetric === 'weeklyWorkHours') return c.stats?.avgWeeklyWorkHoursAdjusted || c.stats?.avgWeeklyWorkHours || 0;
+                    else if (selectedMetric === 'weeklyClaimedHours') return c.stats?.avgWeeklyClaimedHoursAdjusted || c.stats?.avgWeeklyClaimedHours || 0;
                     else if (selectedMetric === 'adjustedWeeklyWorkHours') return c.stats?.avgAdjustedWeeklyWorkHours || 0;
                     else if (selectedMetric === 'focusedWorkHours') return c.stats?.avgFocusedWorkHours || 0;
                     else return c.stats?.avgDataReliability || 0;
