@@ -344,8 +344,11 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         avgFocusedWorkHours: stats.avgFocusedWorkHours || 0,
         avgDataReliability: stats.avgDataReliability || 0,
         centerName: stats.centerName || null,
-        avgAdjustedWeeklyWorkHours: stats.avgWeeklyWorkHours && stats.avgDataReliability 
-          ? calculateAdjustedWorkHours(stats.avgWeeklyWorkHours, stats.avgDataReliability)
+        avgAdjustedWeeklyWorkHours: stats.avgDataReliability 
+          ? calculateAdjustedWorkHours(
+              stats.avgWeeklyWorkHoursAdjusted || stats.avgWeeklyWorkHours || 0, 
+              stats.avgDataReliability
+            )
           : 0
       }
     };
