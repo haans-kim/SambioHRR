@@ -1,6 +1,6 @@
 import db from '../client';
 import { getLatestAnalysisDate } from './analytics';
-import { calculateAdjustedWorkHours } from '@/lib/utils';
+import { calculateAdjustedWorkHours, FLEXIBLE_WORK_ADJUSTMENT_FACTOR } from '@/lib/utils';
 
 interface TeamStats {
   orgCode: string;
@@ -14,6 +14,8 @@ interface TeamStats {
   totalEmployees: number;
   centerName?: string;
   avgAdjustedWeeklyWorkHours?: number;
+  flexibleWorkCount?: number;
+  avgWeeklyWorkHoursAdjusted?: number;
 }
 
 // Get aggregated stats for teams under a center
@@ -40,9 +42,15 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
     
     // Get team summaries for 30-day period
     const teamSummaries = db.prepare(`
+      WITH flexible_workers AS (
+        SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+        FROM claim_data
+        WHERE WORKSCHDTYPNM = '탄력근무제'
+      )
       SELECT 
         e.team_name as teamName,
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
+        COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
         ROUND(
           SUM(
             dar.actual_work_hours * 
@@ -50,12 +58,33 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
           ) / SUM(dar.claimed_work_hours) * 100, 
           1
         ) as avgEfficiencyRatio,
+        -- 원본 값
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours,
+        -- 탄력근무제 보정 적용 값
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*), 1
+        ) as avgActualWorkHoursAdjusted,
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.claimed_work_hours
+          END) / COUNT(*), 1
+        ) as avgClaimedHoursAdjusted,
+        ROUND(
+          (SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*)) * 5, 1
+        ) as avgWeeklyWorkHoursAdjusted,
         ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours,
         ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
+      LEFT JOIN flexible_workers fw ON fw.employee_id = dar.employee_id
       WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
       ${centerFilter ? "AND e.center_name = ?" : ""}
         AND dar.actual_work_hours IS NOT NULL
@@ -93,20 +122,24 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
       // Use org_code from organization_master if available, otherwise use teamId
       const orgCode = nameToCodeMap.get(summary.teamName) || summary.teamId;
       
-      const weeklyWorkHours = (summary.avgActualWorkHours * 5) || 0;
+      // 탄력근무제 보정된 값 사용
+      const weeklyWorkHours = summary.avgWeeklyWorkHoursAdjusted || (summary.avgActualWorkHours * 5) || 0;
+      const weeklyClaimedHours = (summary.avgClaimedHoursAdjusted * 5) || (summary.avgClaimedHours * 5) || 0;
       const dataReliability = summary.avgConfidenceScore || 0;
       
       statsMap.set(orgCode, {
         orgCode: orgCode,
         avgWorkEfficiency: summary.avgEfficiencyRatio || 0,
-        avgActualWorkHours: summary.avgActualWorkHours || 0,
-        avgAttendanceHours: summary.avgClaimedHours || 0,  // Using avgClaimedHours as attendance hours
+        avgActualWorkHours: summary.avgActualWorkHoursAdjusted || summary.avgActualWorkHours || 0,
+        avgAttendanceHours: summary.avgClaimedHoursAdjusted || summary.avgClaimedHours || 0,
         avgWeeklyWorkHours: weeklyWorkHours,
-        avgWeeklyClaimedHours: (summary.avgClaimedHours * 5) || 0,
+        avgWeeklyClaimedHours: weeklyClaimedHours,
         avgFocusedWorkHours: summary.avgFocusedHours || 0,
         avgDataReliability: dataReliability,
         totalEmployees: teamUnique.get(summary.teamName) || summary.analyzedEmployees || 0,
-        avgAdjustedWeeklyWorkHours: weeklyWorkHours && dataReliability 
+        flexibleWorkCount: summary.flexibleWorkCount || 0,
+        avgWeeklyWorkHoursAdjusted: weeklyWorkHours,
+        avgAdjustedWeeklyWorkHours: dataReliability 
           ? calculateAdjustedWorkHours(weeklyWorkHours, dataReliability)
           : 0
       });
@@ -143,10 +176,16 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
     
     // Get group summaries for 30-day period
     const groupSummaries = db.prepare(`
+      WITH flexible_workers AS (
+        SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+        FROM claim_data
+        WHERE WORKSCHDTYPNM = '탄력근무제'
+      )
       SELECT 
         e.group_name as groupName,
         e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
+        COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
         ROUND(
           SUM(
             dar.actual_work_hours * 
@@ -154,12 +193,33 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
           ) / SUM(dar.claimed_work_hours) * 100, 
           1
         ) as avgEfficiencyRatio,
+        -- 원본 값
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgClaimedHours,
+        -- 탄력근무제 보정 적용 값
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*), 1
+        ) as avgActualWorkHoursAdjusted,
+        ROUND(
+          SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.claimed_work_hours
+          END) / COUNT(*), 1
+        ) as avgClaimedHoursAdjusted,
+        ROUND(
+          (SUM(CASE 
+            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+            ELSE dar.actual_work_hours
+          END) / COUNT(*)) * 5, 1
+        ) as avgWeeklyWorkHoursAdjusted,
         ROUND(AVG(dar.focused_work_minutes / 60.0), 1) as avgFocusedHours,
         ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
+      LEFT JOIN flexible_workers fw ON fw.employee_id = dar.employee_id
       WHERE dar.analysis_date >= (SELECT date(MAX(analysis_date), '-30 days') FROM daily_analysis_results)
       ${teamFilter ? "AND e.team_name = ?" : ""}
         AND dar.actual_work_hours IS NOT NULL
@@ -211,21 +271,25 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         return; // Skip this group if no org_code found
       }
       
-      const weeklyWorkHours = (summary.avgActualWorkHours * 5) || 0;
+      // 탄력근무제 보정된 값 사용
+      const weeklyWorkHours = summary.avgWeeklyWorkHoursAdjusted || (summary.avgActualWorkHours * 5) || 0;
+      const weeklyClaimedHours = (summary.avgClaimedHoursAdjusted * 5) || (summary.avgClaimedHours * 5) || 0;
       const dataReliability = summary.avgConfidenceScore || 0;
       
       statsMap.set(orgCode, {
         orgCode: orgCode,
         avgWorkEfficiency: summary.avgEfficiencyRatio || 0,
-        avgActualWorkHours: summary.avgActualWorkHours || 0,
-        avgAttendanceHours: summary.avgClaimedHours || 0,  // Using avgClaimedHours as attendance hours
+        avgActualWorkHours: summary.avgActualWorkHoursAdjusted || summary.avgActualWorkHours || 0,
+        avgAttendanceHours: summary.avgClaimedHoursAdjusted || summary.avgClaimedHours || 0,
         avgWeeklyWorkHours: weeklyWorkHours,
-        avgWeeklyClaimedHours: (summary.avgClaimedHours * 5) || 0,
+        avgWeeklyClaimedHours: weeklyClaimedHours,
         avgFocusedWorkHours: summary.avgFocusedHours || 0,
         avgDataReliability: dataReliability,
         totalEmployees: groupUnique.get(summary.groupName) || summary.analyzedEmployees || 0,
         centerName: summary.centerName || null,
-        avgAdjustedWeeklyWorkHours: weeklyWorkHours && dataReliability 
+        flexibleWorkCount: summary.flexibleWorkCount || 0,
+        avgWeeklyWorkHoursAdjusted: weeklyWorkHours,
+        avgAdjustedWeeklyWorkHours: dataReliability 
           ? calculateAdjustedWorkHours(weeklyWorkHours, dataReliability)
           : 0
       });

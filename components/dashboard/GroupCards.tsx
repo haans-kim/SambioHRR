@@ -43,8 +43,9 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
   const efficiency = org.stats?.avgWorkEfficiency || 0;
   const workHours = org.stats?.avgActualWorkHours || 0;
   const claimedHours = org.stats?.avgAttendanceHours || 0;
-  const weeklyWorkHours = org.stats?.avgWeeklyWorkHours || (workHours * 5);
-  const weeklyClaimedHours = org.stats?.avgWeeklyClaimedHours || (claimedHours * 5);
+  // 탄력근무제가 적용된 팀은 보정된 주간 근무시간을 사용
+  const weeklyWorkHours = org.stats?.avgWeeklyWorkHoursAdjusted || org.stats?.avgWeeklyWorkHours || (workHours * 5);
+  const weeklyClaimedHours = org.stats?.avgWeeklyClaimedHoursAdjusted || org.stats?.avgWeeklyClaimedHours || (claimedHours * 5);
   const focusedWorkHours = org.stats?.avgFocusedWorkHours || 0;
   const dataReliability = org.stats?.avgDataReliability || 0;
   const employees = org.stats?.totalEmployees || 0;

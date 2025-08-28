@@ -8,7 +8,7 @@ import { getGroupStats } from '@/lib/db/queries/teamStats';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
 import { get30DayDateRange } from '@/lib/db/queries/analytics';
-import { calculateAdjustedWorkHours, calculateAIAdjustmentFactor } from '@/lib/utils';
+import { calculateAdjustedWorkHours, calculateAIAdjustmentFactor, FLEXIBLE_WORK_ADJUSTMENT_FACTOR } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -105,15 +105,30 @@ export async function GET(request: NextRequest) {
     }
 
     const row = db.prepare(
-      `SELECT 
+      `WITH flexible_workers AS (
+         SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+         FROM claim_data
+         WHERE WORKSCHDTYPNM = '탄력근무제'
+       )
+       SELECT 
          COUNT(DISTINCT dar.employee_id) as unique_employees,
+         COUNT(DISTINCT fw.employee_id) as flexible_count,
          COUNT(*) as man_days,
          SUM(dar.actual_work_hours) as sum_actual,
          SUM(dar.claimed_work_hours) as sum_claimed,
+         SUM(CASE 
+           WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+           ELSE dar.actual_work_hours
+         END) as sum_actual_adjusted,
+         SUM(CASE 
+           WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+           ELSE dar.claimed_work_hours
+         END) as sum_claimed_adjusted,
          AVG(dar.focused_work_minutes / 60.0) as avg_focused_hours,
          AVG(dar.confidence_score) as avg_confidence
        FROM daily_analysis_results dar
        JOIN employees e ON e.employee_id = dar.employee_id
+       LEFT JOIN flexible_workers fw ON fw.employee_id = dar.employee_id
        WHERE ${where}
          AND (dar.actual_work_hours > 0 OR dar.claimed_work_hours > 0)`
     ).get(...params) as any;
@@ -121,10 +136,13 @@ export async function GET(request: NextRequest) {
     const manDays = row?.man_days || 0;
     const sumActual = row?.sum_actual || 0;
     const sumClaimed = row?.sum_claimed || 0;
+    const sumActualAdjusted = row?.sum_actual_adjusted || sumActual;
+    const sumClaimedAdjusted = row?.sum_claimed_adjusted || sumClaimed;
     totalEmployees = row?.unique_employees || 0;
     avgEfficiency = sumClaimed > 0 ? Math.round((sumActual / sumClaimed) * 1000) / 10 : 0;
-    avgWorkHours = manDays > 0 ? Math.round((sumActual / manDays) * 10) / 10 : 0;
-    avgClaimedHours = manDays > 0 ? Math.round((sumClaimed / manDays) * 10) / 10 : 0;
+    // 탄력근무제 보정 적용된 평균 사용
+    avgWorkHours = manDays > 0 ? Math.round((sumActualAdjusted / manDays) * 10) / 10 : 0;
+    avgClaimedHours = manDays > 0 ? Math.round((sumClaimedAdjusted / manDays) * 10) / 10 : 0;
     avgFocusedWorkHours = row?.avg_focused_hours ? Math.round(row.avg_focused_hours * 10) / 10 : 0;
     avgDataReliability = row?.avg_confidence ? Math.round(row.avg_confidence * 10) / 10 : 0;
   } catch (e) {
