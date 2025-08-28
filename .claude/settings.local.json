@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(sqlite3:*)",
+      "Bash(npm run dev:*)",
+      "Bash(find:*)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(ls:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(for i in {1..5})",
+      "Bash(do echo \"=== 조회 $i ===\")",
+      "Bash(done)",
+      "Bash(git restore:*)",
+      "Bash(npm run build:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm install:*)",
+      "Bash(rmdir:*)"
+    ],
+    "deny": []
+  }
+}
