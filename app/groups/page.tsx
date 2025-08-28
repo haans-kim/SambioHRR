@@ -16,6 +16,7 @@ interface GroupData {
   avgClaimedHours: number;
   avgWeeklyWorkHours: number;
   avgWeeklyClaimedHours: number;
+  avgAdjustedWeeklyWorkHours?: number;
   avgFocusedWorkHours: number;
   avgDataReliability: number;
   breadcrumb?: { label: string; href?: string }[];

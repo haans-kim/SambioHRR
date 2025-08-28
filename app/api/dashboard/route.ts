@@ -43,7 +43,8 @@ export async function GET() {
     const avgWeeklyClaimedHours = weeklyStats?.avgWeeklyClaimedHours || 42.5;
     const avgFocusedWorkHours = focusedStats?.avgFocusedWorkHours || 4.2;
     const avgDataReliability = dataReliabilityStats?.avgDataReliability || 83.6;
-    const avgAdjustedWeeklyWorkHours = avgWeeklyWorkHours && avgDataReliability 
+    // avgWeeklyWorkHours already has flexible work adjustment applied from weeklyStats
+    const avgAdjustedWeeklyWorkHours = avgDataReliability 
       ? calculateAdjustedWorkHours(avgWeeklyWorkHours, avgDataReliability)
       : 0;
     

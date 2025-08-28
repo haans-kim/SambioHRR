@@ -1,4 +1,5 @@
 import db from '../client';
+import { FLEXIBLE_WORK_ADJUSTMENT_FACTOR } from '@/lib/utils';
 
 // Types for analytics data
 export interface CenterSummary {
@@ -301,6 +302,11 @@ export function getOrganizationWeeklyStats30Days() {
   const { startDate, endDate } = get30DayDateRange();
   
   const query = `
+    WITH flexible_workers AS (
+      SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+      FROM claim_data
+      WHERE WORKSCHDTYPNM = '탄력근무제'
+    )
     SELECT 
       COUNT(DISTINCT dar.employee_id) as totalEmployees,
       ROUND(
@@ -310,11 +316,23 @@ export function getOrganizationWeeklyStats30Days() {
         ) / SUM(dar.claimed_work_hours) * 100, 
         1
       ) as avgEfficiencyRatio,
-      ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
-      ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+      -- 탄력근무제 보정 적용
+      ROUND(
+        (SUM(CASE 
+          WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+          ELSE dar.actual_work_hours
+        END) / COUNT(*)) * 5, 1
+      ) as avgWeeklyWorkHours,
+      ROUND(
+        (SUM(CASE 
+          WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+          ELSE dar.claimed_work_hours
+        END) / COUNT(*)) * 5, 1
+      ) as avgWeeklyClaimedHours,
       ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore
     FROM daily_analysis_results dar
     LEFT JOIN employees e ON e.employee_id = dar.employee_id
+    LEFT JOIN flexible_workers fw ON fw.employee_id = dar.employee_id
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
       AND dar.actual_work_hours IS NOT NULL
@@ -451,13 +469,25 @@ export function getGradeWorkHoursMatrix30Days() {
   const { startDate, endDate } = get30DayDateRange();
   
   const query = `
+    WITH flexible_workers AS (
+      SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+      FROM claim_data
+      WHERE WORKSCHDTYPNM = '탄력근무제'
+    )
     SELECT 
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
-      ROUND(AVG(dar.actual_work_hours), 1) as avgWorkHours
+      -- 탄력근무제 보정 적용
+      ROUND(
+        SUM(CASE 
+          WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+          ELSE dar.actual_work_hours
+        END) / COUNT(*), 1
+      ) as avgWorkHours
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
+    LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
@@ -548,13 +578,25 @@ export function getGradeWeeklyClaimedHoursMatrix30Days() {
   const { startDate, endDate } = get30DayDateRange();
   
   const query = `
+    WITH flexible_workers AS (
+      SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+      FROM claim_data
+      WHERE WORKSCHDTYPNM = '탄력근무제'
+    )
     SELECT 
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
-      ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours
+      -- 탄력근무제 보정 적용
+      ROUND(
+        (SUM(CASE 
+          WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+          ELSE dar.claimed_work_hours
+        END) / COUNT(*)) * 5, 1
+      ) as avgWeeklyClaimedHours
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
+    LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
@@ -592,13 +634,25 @@ export function getGradeWeeklyWorkHoursMatrix30Days() {
   const { startDate, endDate } = get30DayDateRange();
   
   const query = `
+    WITH flexible_workers AS (
+      SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+      FROM claim_data
+      WHERE WORKSCHDTYPNM = '탄력근무제'
+    )
     SELECT 
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
-      ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours
+      -- 탄력근무제 보정 적용
+      ROUND(
+        (SUM(CASE 
+          WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+          ELSE dar.actual_work_hours
+        END) / COUNT(*)) * 5, 1
+      ) as avgWeeklyWorkHours
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
+    LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL
@@ -636,13 +690,25 @@ export function getGradeClaimedHoursMatrix30Days() {
   const { startDate, endDate } = get30DayDateRange();
   
   const query = `
+    WITH flexible_workers AS (
+      SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
+      FROM claim_data
+      WHERE WORKSCHDTYPNM = '탄력근무제'
+    )
     SELECT 
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
-      ROUND(AVG(dar.claimed_work_hours), 1) as avgClaimedHours
+      -- 탄력근무제 보정 적용
+      ROUND(
+        SUM(CASE 
+          WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
+          ELSE dar.claimed_work_hours
+        END) / COUNT(*), 1
+      ) as avgClaimedHours
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
+    LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
     WHERE dar.analysis_date BETWEEN ? AND ?
       AND e.job_grade IS NOT NULL
       AND e.center_name IS NOT NULL

@@ -119,7 +119,7 @@ export async function GET() {
       
       // 직급 데이터 추가
       levelData.grades.push({
-        grade: row.grade,
+        grade: (row as any).grade || row.job_grade,
         avg_weekly_work_hours: row.avg_weekly_work_hours,
         total_members: row.employee_count,
         level_salary: levelSalaryMap[level as keyof typeof levelSalaryMap]
