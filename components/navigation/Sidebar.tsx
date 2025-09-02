@@ -40,6 +40,24 @@ export function Sidebar() {
     }
   ];
 
+  const devMenuItems = [
+    { 
+      name: "개인분석", 
+      href: "/individual", 
+      description: "개인별 근무 분석"
+    },
+    { 
+      name: "조직분석", 
+      href: "/organization", 
+      description: "조직별 근무 분석"
+    },
+    { 
+      name: "Excel 업로드", 
+      href: "/excel-upload", 
+      description: "데이터 업로드"
+    }
+  ];
+
   return (
     <div className="w-56 bg-white border-r border-gray-200 h-screen fixed left-0 top-0 overflow-y-auto">
       {/* Logo/Brand */}
@@ -76,14 +94,45 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Developer Menu Items - Only shown in dev mode */}
+        {isDevMode && (
+          <>
+            <div className="border-t border-gray-200 my-4"></div>
+            {devMenuItems.map((item) => {
+              const isActive = pathname.startsWith(item.href);
+              
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "block px-4 py-3 rounded-lg text-base font-medium transition-all",
+                    isActive
+                      ? "bg-blue-50 text-blue-700 border border-blue-200"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  )}
+                >
+                  <div className="font-medium">{item.name}</div>
+                  <div className={cn(
+                    "text-sm mt-1",
+                    isActive ? "text-blue-600" : "text-gray-400"
+                  )}>
+                    {item.description}
+                  </div>
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* Footer Info */}
       <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-gray-50">
         {/* Developer Mode Toggle */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">개발자 모드</span>
+            <span className="text-sm font-medium text-gray-700">관리자 모드</span>
             <button
               onClick={() => {
                 if (isDevMode) {
@@ -109,22 +158,15 @@ export function Sidebar() {
             </button>
           </div>
         </div>
-        
-        <div className="p-4">
-          <div className="text-sm text-gray-500">
-            <div>데이터 기준: 2025.06.01~30</div>
-            <div className="mt-1">30일 집계 분석</div>
-          </div>
-        </div>
       </div>
 
       {/* Password Dialog */}
       {showPasswordDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-80">
-            <h3 className="text-lg font-semibold mb-4">개발자 모드 활성화</h3>
+            <h3 className="text-lg font-semibold mb-4">관리자 모드 활성화</h3>
             <p className="text-sm text-gray-600 mb-4">
-              개발자 모드를 활성화하려면 패스워드를 입력하세요.
+              관리자 모드를 활성화하려면 패스워드를 입력하세요.
             </p>
             <input
               type="password"

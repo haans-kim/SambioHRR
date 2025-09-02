@@ -1,6 +1,5 @@
 "use client";
 
-import { Sidebar } from "@/components/navigation/Sidebar";
 import { Breadcrumb } from "@/components/navigation/Breadcrumb";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { cn } from "@/lib/utils";
@@ -53,12 +52,9 @@ export function DashboardLayout({
   }
   const breadcrumbItems = breadcrumb && breadcrumb.length > 0 ? breadcrumb : defaultBreadcrumb;
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <Sidebar />
-
+    <div className="min-h-screen bg-gray-50">
       {/* Main Content Area */}
-      <div className="flex-1 ml-56">
+      <div className="flex-1">
         {/* Title Section */}
         <div className="bg-gradient-to-br from-blue-50 to-white border-b border-gray-200">
           <div className="max-w-[1600px] mx-auto px-6 py-6">

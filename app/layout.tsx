@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { DevModeProvider } from "@/contexts/DevModeContext";
-import { MainNav } from "@/components/navigation/MainNav";
+import { Sidebar } from "@/components/navigation/Sidebar";
 import Providers from "./providers";
 
 export const dynamic = 'force-dynamic';
@@ -26,8 +26,8 @@ export default function RootLayout({
         <Providers>
           <DevModeProvider>
             <div className="min-h-screen bg-gray-50">
-              <MainNav />
-              <main className="pt-4">
+              <Sidebar />
+              <main className="ml-56">
                 {children}
               </main>
             </div>
