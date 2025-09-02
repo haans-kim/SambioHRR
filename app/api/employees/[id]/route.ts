@@ -3,10 +3,10 @@ import db from '@/lib/db'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const employeeId = params.id
+    const { id: employeeId } = await params
     
     // Get employee information from employees table
     const employee = db.prepare(`
@@ -16,7 +16,7 @@ export async function GET(
         center_name as center,
         group_name as department,
         team_name as team,
-        grade as position
+        position
       FROM employees
       WHERE employee_id = ?
       LIMIT 1
