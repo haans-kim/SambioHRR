@@ -21,6 +21,8 @@ interface EmployeeInfo {
 export default function RecentSearches() {
   const [recentSearches, setRecentSearches] = useState<SearchRecord[]>([])
   const { setEmployee, setDate, selectedEmployee, selectedDate } = useAppStore()
+  
+  console.log('RecentSearches render, searches:', recentSearches.length)
 
   // Fetch employee info when selected
   const { data: employeeInfo } = useQuery<EmployeeInfo>({
@@ -49,11 +51,11 @@ export default function RecentSearches() {
 
   // Save to localStorage when employee is selected
   useEffect(() => {
-    if (selectedEmployee && employeeInfo) {
+    if (selectedEmployee) {
       const dateStr = selectedDate.toISOString().split('T')[0]
       const newSearch: SearchRecord = {
         employeeId: selectedEmployee.employee_id,
-        employeeName: employeeInfo.EMP_NAME,
+        employeeName: selectedEmployee.name || employeeInfo?.EMP_NAME || `사원 ${selectedEmployee.employee_id}`,
         date: dateStr,
         timestamp: Date.now()
       }
@@ -91,42 +93,51 @@ export default function RecentSearches() {
     localStorage.removeItem('recentSearches')
   }
 
-  if (recentSearches.length === 0) {
-    return null
-  }
+  // Always show the component, even if empty
+  // if (recentSearches.length === 0) {
+  //   return null
+  // }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-500 shadow-sm p-4">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-sm font-semibold text-gray-700">최근 조회 기록</h3>
-        <button
-          onClick={handleClearHistory}
-          className="text-xs text-gray-500 hover:text-gray-700"
-        >
-          기록 삭제
-        </button>
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="px-4 py-3 border-b border-gray-200">
+        <div className="flex justify-between items-center">
+          <h3 className="text-sm font-medium text-gray-900">최근 조회 기록</h3>
+          <button
+            onClick={handleClearHistory}
+            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            기록 삭제
+          </button>
+        </div>
       </div>
-      <div className="space-y-1">
-        {recentSearches.map((search, idx) => (
+      <div className="p-2">
+        {recentSearches.length === 0 ? (
+          <div className="text-sm text-gray-500 text-center py-4">
+            조회 기록이 없습니다
+          </div>
+        ) : (
+          recentSearches.map((search, idx) => (
           <button
             key={`${search.employeeId}-${search.date}-${idx}`}
             onClick={() => handleSelectSearch(search)}
-            className={`w-full text-left px-3 py-2 rounded hover:bg-gray-50 transition-colors ${
-              selectedEmployee === search.employeeId && 
+            className={`w-full text-left px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors ${
+              selectedEmployee?.employee_id === search.employeeId && 
               selectedDate.toISOString().split('T')[0] === search.date
-                ? 'bg-blue-50 border border-blue-200'
+                ? 'bg-blue-50 hover:bg-blue-100'
                 : ''
             }`}
           >
             <div className="flex justify-between items-center">
-              <div className="flex-1">
-                <span className="font-medium text-sm">{search.employeeName}</span>
-                <span className="text-gray-500 text-xs ml-2">({search.employeeId})</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-900">{search.employeeName}</span>
+                <span className="text-xs text-gray-500">({search.employeeId})</span>
               </div>
-              <span className="text-xs text-gray-600">{search.date}</span>
+              <span className="text-xs text-gray-400">{search.date}</span>
             </div>
           </button>
-        ))}
+        ))
+        )}
       </div>
     </div>
   )

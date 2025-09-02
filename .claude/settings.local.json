@@ -17,7 +17,8 @@
       "Bash(git checkout:*)",
       "Bash(npm uninstall:*)",
       "Bash(npm install:*)",
-      "Bash(rmdir:*)"
+      "Bash(rmdir:*)",
+      "Bash(gh repo create:*)"
     ],
     "deny": []
   }
