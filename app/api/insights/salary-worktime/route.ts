@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 interface CenterLevelData {
   center_name: string;
-  job_grade: string;
+  grade: string;
   employee_count: number;
   avg_weekly_work_hours: number;
 }

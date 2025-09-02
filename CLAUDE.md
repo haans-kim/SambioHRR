@@ -3,55 +3,21 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-HR Dashboard for organizational work analysis and rebalancing, built with React + Next.js and SQLite database.
+SambioHRR - HR analytics dashboard for organizational work analysis and rebalancing, built with Next.js and SQLite.
 
 ## Tech Stack
-- **Frontend**: React + Next.js (App Router)
-- **UI Framework**: 
-  - shadcn/ui (base components)
-  - Magic UI (interactive components)
-    - bento-grid (layout system)
-    - magic-card (spotlight effects)
-    - number-ticker (animated numbers)
-    - animated-circular-progress-bar (performance gauges)
-    - neon-gradient-card (alerts)
+- **Framework**: Next.js 15.4 (App Router) with TypeScript
+- **UI Components**: 
+  - shadcn/ui components
+  - Magic UI components (bento-grid, magic-card, number-ticker, animated-circular-progress-bar, neon-gradient-card)
 - **Database**: SQLite with better-sqlite3
-- **Language**: TypeScript
-
-## Key Database Tables
-- `daily_work_data`: Individual employee daily work metrics
-- `shift_work_data`: Employee shift timing data  
-- `organization_summary`: Aggregated organization-level metrics
-- `organization_master`: Organization hierarchy (center → team → group)
-- `organization_daily_stats`: Daily organization statistics
-- `organization_monthly_stats`: Monthly organization statistics
-
-## Organization Hierarchy
-```
-center (센터)
-  └── division (담당) - optional, some centers have this level
-      └── team (팀)
-          └── group (그룹)
-```
-
-Note: The database currently uses 3 levels (center/team/group) where "담당" appears as names within team/group levels. The application should handle both 3-level and 4-level hierarchies flexibly.
-
-## Core Metrics
-- **근태기록시간** (Clock-in/out time)
-- **실제 근무시간** (Actual work time)
-- **근무시간 추정률** (Work time efficiency ratio)
-- **회의시간** (Meeting time)
-- **식사시간** (Meal time)
-- **이동시간** (Travel time)
-- **휴식시간** (Rest time)
-- **데이터 신뢰도** (Data reliability score)
+- **State Management**: Zustand
+- **Data Fetching**: React Query (TanStack Query)
+- **Styling**: Tailwind CSS v4
 
 ## Development Commands
 ```bash
-# Install dependencies
-npm install
-
-# Run development server
+# Run development server (default port 3003)
 npm run dev
 
 # Build for production
@@ -60,112 +26,71 @@ npm run build
 # Start production server
 npm start
 
-# Database operations
-sqlite3 sambio_human.db
-
-# Type checking
-npm run type-check
-
-# Linting
+# Run linting
 npm run lint
 ```
 
-## Project Structure
+## Database Configuration
+- Database file: `sambio_human.db` (symlinked from `../NewAnalysis/data/`)
+- Connection configured in `/lib/db.ts` with optimizations
+- Key tables:
+  - `daily_work_data`: Individual employee daily metrics
+  - `daily_analysis_results`: Analyzed work patterns
+  - `organization_master`: Organization hierarchy
+  - `organization_monthly_stats`: Monthly aggregated stats
+  - `employee_info`: Employee details
+  - `tag_data`: Activity tracking data
+
+## Project Architecture
+
+### Organization Hierarchy
 ```
-HR_Dashboard/
-├── app/                    # Next.js app router pages
-│   ├── layout.tsx         # Root layout with navigation
-│   ├── page.tsx           # Center view (default)
-│   ├── division/[id]/page.tsx # Division detail view (optional level)
-│   ├── team/[id]/page.tsx # Team detail view
-│   └── group/[id]/page.tsx # Group detail view
-├── components/
-│   ├── ui/                # shadcn/ui components
-│   ├── dashboard/         # Dashboard-specific components
-│   │   ├── CenterView.tsx
-│   │   ├── DivisionView.tsx
-│   │   ├── TeamView.tsx
-│   │   └── GroupView.tsx
-│   └── navigation/
-│       └── Breadcrumb.tsx # Center > Division > Team > Group navigation
-├── lib/
-│   ├── db.ts              # Database connection and utilities
-│   └── queries/           # SQL query functions
-│       ├── organization.ts
-│       └── workData.ts
-└── types/                 # TypeScript type definitions
+center (센터)
+  └── division (담당) - optional level
+      └── team (팀) 
+          └── group (그룹)
 ```
 
-## Key Features & UI Requirements
-1. **Four-level hierarchy views** with drill-down navigation:
-   - Center view: Stock market-style display with markers and colors
-   - Division view: Shows divisions within selected center (optional level)
-   - Team view: Shows teams within selected division or center
-   - Group view: Shows groups within selected team
+### Core Features
+1. **Individual Analysis** (`/individual`): Employee-level work pattern analysis
+2. **Organization Analysis** (`/organization`): Batch analysis with Miller column navigation
+3. **Dashboard Views**: Center, Division, Team, Group hierarchical displays
+4. **Insights**: Salary-worktime analysis, pattern analysis
 
-2. **Color-coded performance indicators**:
-   - Based on work hours
-   - Based on efficiency ratio (actual work time / clocked time)
-   - User-selectable metric display
+### API Routes Structure
+- `/api/organization/`: Organization data and batch analysis
+- `/api/employees/`: Individual employee analytics
+- `/api/insights/`: Advanced analytics and patterns
+- `/api/statistics/`: Aggregated statistics
 
-3. **Breadcrumb navigation**: Easy navigation between center/division/team/group levels (handles both 3 and 4 level hierarchies)
+### Key Analysis Metrics
+- 총 체류시간 (Total presence time)
+- 실제 작업시간 (Actual work time)  
+- 추정작업시간 (Estimated work time)
+- 작업추정률 (Work efficiency ratio)
+- 집중작업시간 (Focused work time)
+- 회의시간 (Meeting time)
+- 식사시간 (Meal time)
+- 이동시간 (Transit time)
+- 비업무시간 (Rest/non-work time)
+- 데이터 신뢰도 (Data reliability score)
 
-4. **Data aggregation**: 
-   - Daily and monthly aggregation
-   - Selective organization analysis
-   - Real-time database updates
+## Analysis Components
 
-## Database Connection Example
-```typescript
-import Database from 'better-sqlite3';
+### WorkHourCalculator (`/lib/analytics/WorkHourCalculator.ts`)
+Core analysis engine that processes tag data to calculate work metrics using state machine logic.
 
-const db = new Database('./sambio_human.db', { readonly: false });
+### Miller Column Navigation
+Interactive organization selector with breadcrumb navigation supporting 3-4 level hierarchies.
 
-// Get organization data
-const getOrganizationData = (orgLevel: 'center' | 'division' | 'team' | 'group') => {
-  return db.prepare(`
-    SELECT * FROM organization_master 
-    WHERE org_level = ? AND is_active = 1
-    ORDER BY display_order
-  `).all(orgLevel);
-};
-```
+### Batch Analysis Features
+- Resumable analysis with DB checkpointing
+- Progress tracking and elapsed time display
+- Excel export functionality
+- Handles large datasets with chunked processing
 
-## API Routes Structure
-```
-/api/
-├── organizations/
-│   ├── centers/       # GET all centers
-│   ├── divisions/[id] # GET divisions by center (optional)
-│   ├── teams/[id]     # GET teams by division or center
-│   └── groups/[id]    # GET groups by team
-└── work-data/
-    ├── daily/         # GET daily aggregated data
-    └── monthly/       # GET monthly aggregated data
-```
-
-## Component Patterns
-- Use server components for data fetching
-- Client components for interactive elements (metric selection, drill-down)
-- Implement loading states with React Suspense
-- Use shadcn/ui components consistently (no custom styling)
-
-## Performance Considerations
-- Implement database indices on frequently queried columns
-- Use SQL aggregation instead of JavaScript for large datasets
-- Cache organization hierarchy data
-- Implement pagination for historical data views
-
-## Data Flow
-1. SQLite database → better-sqlite3 queries
-2. Server components fetch data via db utilities
-3. Pass data to client components as props
-4. User interactions trigger navigation or metric changes
-5. Breadcrumb maintains navigation state
-
-## Testing Approach
-- Unit tests for database queries
-- Component tests for UI elements
-- E2E tests for navigation flow
-- Performance tests for large dataset handling
-- 1,과 같이 순위의 윗부분에 공간이 너무 많이 남아. 주간업무시간 아래의 공간도 너무 많이 남고. 카드의 높이를 좀 줄여줘.
+## Important Configuration
+- Server components fetch data directly via database queries
+- Client components use React Query for data fetching
+- All pages set to `force-dynamic` for real-time data
+- Database uses DELETE journal mode (not WAL) for better compatibility

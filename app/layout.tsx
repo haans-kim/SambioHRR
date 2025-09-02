@@ -3,14 +3,16 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { DevModeProvider } from "@/contexts/DevModeContext";
+import { MainNav } from "@/components/navigation/MainNav";
+import Providers from "./providers";
 
 export const dynamic = 'force-dynamic';
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "HR Dashboard",
-  description: "조직별 근무 데이터 분석 대시보드",
+  title: "SambioHRR - 통합 HR 분석 시스템",
+  description: "개인별 및 조직별 근무 데이터 통합 분석 대시보드",
 };
 
 export default function RootLayout({
@@ -21,11 +23,16 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${inter.className} antialiased`}>
-        <DevModeProvider>
-          <main className="min-h-screen bg-gray-50">
-            {children}
-          </main>
-        </DevModeProvider>
+        <Providers>
+          <DevModeProvider>
+            <div className="min-h-screen bg-gray-50">
+              <MainNav />
+              <main className="pt-4">
+                {children}
+              </main>
+            </div>
+          </DevModeProvider>
+        </Providers>
       </body>
     </html>
   );
