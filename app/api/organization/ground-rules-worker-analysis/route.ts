@@ -206,31 +206,38 @@ export async function POST(request: Request) {
     }
     console.log(`📊 Pre-loaded ${employeeDataMap.size} employee records`)
     
-    // Create single shared calculator
+    // Path for analytics DB
     const analyticsDbPath = path.join(process.cwd(), 'sambio_analytics.db')
-    const calculator = new EnhancedWorkHourCalculator(analyticsDbPath)
     
     try {
-      // Process ALL employees at once with Promise.all (maximum parallelization)
-      console.log(`🚀 Processing ALL ${employees.length} employees in FULL PARALLEL mode`)
+      // Process ALL employees with INDEPENDENT calculators (true parallelization)
+      console.log(`🚀 Processing ALL ${employees.length} employees with INDEPENDENT DB connections`)
       const startTime = Date.now()
       
       const employeePromises = employees.map(async (emp, index) => {
         const empStartTime = Date.now()
-        console.log(`⚡ Starting employee ${emp.employeeId} (${index + 1}/${employees.length})`)
+        console.log(`⚡ Starting employee ${emp.employeeId} (${index + 1}/${employees.length}) with INDEPENDENT calculator`)
         
-        const results = await processEmployeeAsync(
-          emp.employeeId,
-          emp.employeeName,
-          startDate,
-          endDate,
-          calculator,
-          employeeDataMap
-        )
+        // Create completely independent calculator for this employee
+        const independentCalculator = new EnhancedWorkHourCalculator(analyticsDbPath)
         
-        const empDuration = Date.now() - empStartTime
-        console.log(`✅ Employee ${emp.employeeId} completed in ${empDuration}ms`)
-        return results
+        try {
+          const results = await processEmployeeAsync(
+            emp.employeeId,
+            emp.employeeName,
+            startDate,
+            endDate,
+            independentCalculator,
+            employeeDataMap
+          )
+          
+          const empDuration = Date.now() - empStartTime
+          console.log(`✅ Employee ${emp.employeeId} completed in ${empDuration}ms with independent resources`)
+          return results
+        } finally {
+          // Clean up independent calculator immediately
+          independentCalculator.close()
+        }
       })
       
       // Wait for ALL employees to complete simultaneously
@@ -238,7 +245,7 @@ export async function POST(request: Request) {
       const workerResults = allResults.flat()
       
       const totalDuration = Date.now() - startTime
-      console.log(`🎉 ALL ${employees.length} employees completed in ${totalDuration}ms`)
+      console.log(`🎉 ALL ${employees.length} employees completed in ${totalDuration}ms with independent calculators`)
     
     // Transform worker results to standard format
     const results = workerResults
@@ -317,7 +324,7 @@ export async function POST(request: Request) {
         employeeCount: employees.length,
         workerCount,
         groundRulesEnabled: true,
-        processingMode: 'worker-batched',
+        processingMode: 'independent-parallel',
         groundRulesStats: {
           averageConfidence: results.reduce((sum, r) => 
             sum + (r.metrics.groundRulesMetrics?.groundRulesConfidence || 0), 0
@@ -333,8 +340,8 @@ export async function POST(request: Request) {
     })
     
     } finally {
-      // Clean up shared calculator
-      calculator.close()
+      // All independent calculators already cleaned up
+      console.log(`🧹 All independent calculators cleaned up`)
     }
     
   } catch (error) {
