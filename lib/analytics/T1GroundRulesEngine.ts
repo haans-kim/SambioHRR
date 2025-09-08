@@ -172,8 +172,10 @@ export class T1GroundRulesEngine {
     if (t1ToORatio >= 100) return 'VERY_HIGH'       // 인프라복지팀 (1156), HR Strategy그룹 (1101)
     if (t1ToORatio >= 50) return 'HIGH'             // 대외협력팀 (185), Sales&Operation팀 (56)
     if (t1ToORatio >= 30) return 'MEDIUM'           // AI Lab (41), E&F담당 (34)
-    if (t1ToORatio >= 1.0) return 'LOW'             // 기타 관리팀
-    return 'VERY_LOW'                               // T1/O 비율이 1 미만인 팀 (데이터 부족)
+    if (t1ToORatio >= 5.0) return 'HIGH'            // 안전환경팀 (6.334), 현장직 특성
+    if (t1ToORatio >= 2.0) return 'MEDIUM'          // 중이동성 팀들
+    if (t1ToORatio >= 0.5) return 'LOW'             // 저이동성 관리팀
+    return 'VERY_LOW'                               // T1/O 비율이 0.5 미만인 팀 (극저이동성)
   }
 
   /**

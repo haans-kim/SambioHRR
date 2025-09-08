@@ -30,17 +30,20 @@ export const getEmployeeById = (employeeId: number) => {
   try {
     const stmt = db.getDb().prepare(`
       SELECT 
-        사번 as employee_id,
-        성명 as name,
-        부서명 as department,
-        직급명 as position,
-        입사년도 as hire_date,
-        성별 as gender,
-        '일반' as shift_type
-      FROM organization_data
-      WHERE 사번 = ?
+        e.employee_id,
+        e.employee_name as name,
+        e.group_name as department,
+        COALESCE(o.직급명, 'G' || e.job_grade || '(Senior Specialist)') as position,
+        COALESCE(o.입사년도, '2021년') as hire_date,
+        COALESCE(o.성별, '남') as gender,
+        '일반' as shift_type,
+        e.team_name,
+        e.group_name
+      FROM employees e
+      LEFT JOIN organization_data o ON e.employee_id = CAST(o.사번 AS TEXT)
+      WHERE e.employee_id = ?
     `)
-    return stmt.get(employeeId) as Employee | undefined
+    return stmt.get(employeeId.toString()) as Employee | undefined
   } catch (error) {
     console.error('Error fetching employee:', error)
     return undefined
