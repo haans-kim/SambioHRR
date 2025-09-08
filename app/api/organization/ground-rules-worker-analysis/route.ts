@@ -183,7 +183,7 @@ async function processEmployeeAsync(
 export async function POST(request: Request) {
   try {
     const body: WorkerAnalysisRequest = await request.json()
-    const { employees, startDate, endDate, saveToDb = true, workerCount = 4 } = body
+    const { employees, startDate, endDate, saveToDb = true, workerCount = 8 } = body
     
     if (!employees || employees.length === 0) {
       return NextResponse.json(
@@ -224,7 +224,8 @@ export async function POST(request: Request) {
           emp.employeeName,
           startDate,
           endDate,
-          calculator
+          calculator,
+          employeeDataMap
         )
         
         const empDuration = Date.now() - empStartTime
@@ -251,9 +252,10 @@ export async function POST(request: Request) {
         groundRulesAnalysis: result.groundRulesAnalysis
       }))
     
-    // Save to database if requested
+    // Save to database AFTER all processing is complete (no contention)
     if (saveToDb) {
-      console.log(`💾 Saving ${results.length} results to database...`)
+      console.log(`💾 Saving ${results.length} results to database in SINGLE THREAD...`)
+      const saveStartTime = Date.now()
       
       for (const result of results) {
         try {
@@ -286,9 +288,11 @@ export async function POST(request: Request) {
           saveDailyAnalysisResult(saveData)
         } catch (dbError) {
           console.error(`❌ DB save error for employee ${result.employeeId}:`, dbError)
-          // Continue processing even if DB save fails
         }
       }
+      
+      const saveDuration = Date.now() - saveStartTime
+      console.log(`✅ DB save completed in ${saveDuration}ms`)
     }
     
     // Collect errors
