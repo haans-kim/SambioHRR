@@ -4,8 +4,8 @@ export type JobGroup = 'PRODUCTION' | 'RESEARCH' | 'OFFICE' | 'MANAGEMENT'
 
 export class JobGroupClassifier {
   classifyEmployee(employee: Employee): JobGroup {
-    const dept = employee.department.toLowerCase()
-    const position = employee.position.toLowerCase()
+    const dept = (employee.department || '').toLowerCase()
+    const position = (employee.position || '').toLowerCase()
     
     // Check position first for management
     if (position.includes('팀장') || 
