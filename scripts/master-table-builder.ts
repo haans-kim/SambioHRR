@@ -295,7 +295,7 @@ class MasterTableBuilder {
       WHERE t.ENTE_DT >= ? AND t.ENTE_DT <= ?
         AND t.사번 IS NOT NULL
         AND t.출입시각 IS NOT NULL
-        AND t.출입시각 >= 100000
+        AND t.출입시각 >= 0
       ORDER BY t.사번, t.ENTE_DT, t.출입시각
     `
     
