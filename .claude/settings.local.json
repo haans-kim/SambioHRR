@@ -19,7 +19,12 @@
       "Bash(npm install:*)",
       "Bash(rmdir:*)",
       "Bash(gh repo create:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "WebFetch(domain:claude.ai)",
+      "Bash(for table in eam_data equis_data lams_data mdm_data mes_data)",
+      "Bash(do echo \"=== $table ===\")",
+      "Bash(for table in eam_data equis_data mdm_data)",
+      "Bash(do echo \"=== $table - 2025년 6월 데이터 ===\")"
     ],
     "deny": []
   }
