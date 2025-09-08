@@ -237,6 +237,7 @@ class MasterTableBuilder {
 
   private async processTagData(): Promise<void> {
     console.log('🏷️ 태그 데이터 처리...')
+    console.log(`📅 날짜 범위: ${this.config.startDate} ~ ${this.config.endDate}`)
     
     const query = `
       INSERT INTO master_events_table (
@@ -246,15 +247,16 @@ class MasterTableBuilder {
         data_source, original_id, processing_batch
       )
       SELECT 
-        datetime(t.ENTE_DT || ' ' || printf('%02d:%02d:00', 
+        datetime(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2) || ' ' || printf('%02d:%02d:%02d', 
           CAST(t.출입시각 / 10000 AS INTEGER), 
-          CAST((t.출입시각 % 10000) / 100 AS INTEGER)
+          CAST((t.출입시각 % 10000) / 100 AS INTEGER),
+          CAST(t.출입시각 % 100 AS INTEGER)
         )) as timestamp,
-        date(t.ENTE_DT) as date,
-        cast(strftime('%Y', t.ENTE_DT) as integer) as year,
-        cast(strftime('%m', t.ENTE_DT) as integer) as month,
-        cast(strftime('%W', t.ENTE_DT) as integer) as week,
-        cast(strftime('%w', t.ENTE_DT) as integer) as day_of_week,
+        date(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2)) as date,
+        cast(substr(t.ENTE_DT, 1, 4) as integer) as year,
+        cast(substr(t.ENTE_DT, 5, 2) as integer) as month,
+        cast(strftime('%W', date(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2))) as integer) as week,
+        cast(strftime('%w', date(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2))) as integer) as day_of_week,
         CAST(t.출입시각 / 10000 AS INTEGER) as hour,
         CAST((t.출입시각 % 10000) / 100 AS INTEGER) as minute,
         
@@ -289,19 +291,21 @@ class MasterTableBuilder {
         '${new Date().toISOString()}' as processing_batch
         
       FROM operational.tag_data t
-      LEFT JOIN operational.tag_location_master tlm ON (
-        t.DR_NM = tlm.게이트명 OR 
-        t.DR_NO = tlm.DR_NO OR
-        t.DR_NM = tlm.표기명
-      )
+      LEFT JOIN operational.tag_location_master tlm ON t.DR_NM = tlm.게이트명
       WHERE t.ENTE_DT >= ? AND t.ENTE_DT <= ?
         AND t.사번 IS NOT NULL
         AND t.출입시각 IS NOT NULL
+        AND t.출입시각 >= 100000
       ORDER BY t.사번, t.ENTE_DT, t.출입시각
     `
     
     const stmt = this.analyticsDb.prepare(query)
-    const result = stmt.run(this.config.startDate, this.config.endDate)
+    // tag_data의 ENTE_DT는 integer 형식 (YYYYMMDD)이므로 변환
+    const startDateInt = parseInt(this.config.startDate.replace(/-/g, ''))
+    const endDateInt = parseInt(this.config.endDate.replace(/-/g, ''))
+    console.log(`🔢 변환된 날짜: ${startDateInt} ~ ${endDateInt}`)
+    const result = stmt.run(startDateInt, endDateInt)
+    console.log(`📊 처리된 레코드: ${result.changes}건`)
     
     this.updateStats('tag', result.changes, 0)
   }
