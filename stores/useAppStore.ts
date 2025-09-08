@@ -30,6 +30,9 @@ interface AppStore {
   
   selectedDate: Date
   setDate: (date: Date) => void
+  
+  useGroundRules: boolean
+  setUseGroundRules: (enabled: boolean) => void
 }
 
 const useAppStore = create<AppStore>((set) => ({
@@ -42,6 +45,9 @@ const useAppStore = create<AppStore>((set) => ({
   
   selectedDate: new Date('2025-06-30'),  // Default to a date with data
   setDate: (date) => set({ selectedDate: date }),
+  
+  useGroundRules: false,  // Default to false for backward compatibility
+  setUseGroundRules: (enabled) => set({ useGroundRules: enabled }),
 }))
 
 export default useAppStore

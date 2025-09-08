@@ -8,6 +8,18 @@ interface AnalyticsData {
   metrics: any
   comparison: any
   statistics: any
+  groundRulesAnalysis?: {
+    teamUsed: string
+    workScheduleUsed: string
+    accuracyImprovement: number
+    anomalyReport: {
+      hasAnomalies: boolean
+      anomalyLevel: 'none' | 'low' | 'medium' | 'high'
+      summary: string
+      recommendations: string[]
+    }
+    comparison: any
+  }
   claimData: {
     date: string
     employeeId: number
@@ -40,16 +52,20 @@ function formatMinutes(minutes: number): string {
 }
 
 export default function MetricsDashboard() {
-  const { selectedEmployee, selectedDate } = useAppStore()
+  const { selectedEmployee, selectedDate, useGroundRules, setUseGroundRules } = useAppStore()
   
   const { data, isLoading } = useQuery<AnalyticsData>({
-    queryKey: ['analytics', selectedEmployee, selectedDate],
+    queryKey: ['analytics', selectedEmployee, selectedDate, useGroundRules],
     queryFn: async () => {
       if (!selectedEmployee) throw new Error('No employee selected')
       
+      const params = new URLSearchParams({
+        date: selectedDate.toISOString().split('T')[0],
+        ...(useGroundRules && { useGroundRules: 'true' })
+      })
+      
       const res = await fetch(
-        `/api/employees/${selectedEmployee.employee_id}/analytics?` + 
-        `date=${selectedDate.toISOString().split('T')[0]}`
+        `/api/employees/${selectedEmployee.employee_id}/analytics?${params}`
       )
       
       if (!res.ok) throw new Error('Failed to fetch analytics')
@@ -84,6 +100,33 @@ export default function MetricsDashboard() {
   
   return (
     <div className="space-y-6">
+      {/* Ground Rules Toggle */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useGroundRules}
+              onChange={(e) => setUseGroundRules(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              Ground Rules 분석 활성화
+            </span>
+          </label>
+          {useGroundRules && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              🎯 Enhanced
+            </span>
+          )}
+        </div>
+        {data?.statistics?.groundRulesEnabled && (
+          <div className="text-sm text-gray-600">
+            Ground Rules 분석 적용됨
+          </div>
+        )}
+      </div>
+
       {/* Employee Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex justify-between items-start">
@@ -261,6 +304,67 @@ export default function MetricsDashboard() {
              data.metrics.reliabilityScore >= 60 ? '보통' : '낮음'}
           </div>
         </div>
+
+        {/* Ground Rules Metrics - Only show when enabled and available */}
+        {data.metrics.groundRulesMetrics && (
+          <>
+            {/* Ground Rules Work Time Card */}
+            <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
+              <div className="text-xs font-medium text-emerald-600 uppercase tracking-wider mb-1">
+                Ground Rules 작업시간
+              </div>
+              <div className="text-2xl font-bold text-emerald-700">
+                {Math.floor(data.metrics.groundRulesMetrics.groundRulesWorkTime / 60)}h{' '}
+                {data.metrics.groundRulesMetrics.groundRulesWorkTime % 60}m
+              </div>
+              <div className="text-xs text-emerald-600 mt-1">
+                팀 맥락 기반 분석
+              </div>
+            </div>
+
+            {/* Ground Rules Confidence Card */}
+            <div className="bg-teal-50 rounded-lg p-4 border border-teal-200">
+              <div className="text-xs font-medium text-teal-600 uppercase tracking-wider mb-1">
+                T1 이동 신뢰도
+              </div>
+              <div className="text-2xl font-bold text-teal-700">
+                {data.metrics.groundRulesMetrics.groundRulesConfidence}%
+              </div>
+              <div className="text-xs text-teal-600 mt-1">
+                {data.metrics.groundRulesMetrics.groundRulesConfidence >= 70 ? '높음' : 
+                 data.metrics.groundRulesMetrics.groundRulesConfidence >= 50 ? '보통' : '낮음'}
+              </div>
+            </div>
+
+            {/* Work Movement Card */}
+            <div className="bg-cyan-50 rounded-lg p-4 border border-cyan-200">
+              <div className="text-xs font-medium text-cyan-600 uppercase tracking-wider mb-1">
+                업무 관련 이동
+              </div>
+              <div className="text-2xl font-bold text-cyan-700">
+                {Math.floor(data.metrics.groundRulesMetrics.t1WorkMovement / 60)}h{' '}
+                {data.metrics.groundRulesMetrics.t1WorkMovement % 60}m
+              </div>
+              <div className="text-xs text-cyan-600 mt-1">
+                T1 태그 분석
+              </div>
+            </div>
+
+            {/* Anomaly Score Card */}
+            <div className="bg-rose-50 rounded-lg p-4 border border-rose-200">
+              <div className="text-xs font-medium text-rose-600 uppercase tracking-wider mb-1">
+                이상치 점수
+              </div>
+              <div className="text-2xl font-bold text-rose-700">
+                {data.metrics.groundRulesMetrics.anomalyScore}%
+              </div>
+              <div className="text-xs text-rose-600 mt-1">
+                {data.metrics.groundRulesMetrics.anomalyScore === 0 ? '정상' : 
+                 data.metrics.groundRulesMetrics.anomalyScore <= 20 ? '낮음' : '높음'}
+              </div>
+            </div>
+          </>
+        )}
       </div>
       
       
@@ -288,8 +392,89 @@ export default function MetricsDashboard() {
               {data.statistics.t1WorkReturns}
             </span>
           </div>
+          {data.metrics.groundRulesMetrics && (
+            <>
+              <div className="flex justify-between">
+                <span className="text-gray-600">팀 기준선 사용</span>
+                <span className="font-medium text-teal-600">
+                  {data.metrics.groundRulesMetrics.teamBaselineUsed}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">적용된 규칙</span>
+                <span className="font-medium text-emerald-600">
+                  {data.metrics.groundRulesMetrics.appliedRulesCount}개
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Ground Rules Analysis - Only show when enabled and available */}
+      {data.groundRulesAnalysis && (
+        <div className="bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-green-800 mb-2 flex items-center">
+            🎯 Ground Rules 분석 결과
+          </h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Analysis Info */}
+            <div className="space-y-2">
+              <div className="text-sm">
+                <span className="font-medium text-gray-700">적용 팀:</span>
+                <span className="ml-2 text-green-700">{data.groundRulesAnalysis.teamUsed}</span>
+              </div>
+              <div className="text-sm">
+                <span className="font-medium text-gray-700">근무제도:</span>
+                <span className="ml-2 text-green-700">{data.groundRulesAnalysis.workScheduleUsed}</span>
+              </div>
+              <div className="text-sm">
+                <span className="font-medium text-gray-700">정확도 개선:</span>
+                <span className="ml-2 text-green-700 font-semibold">
+                  +{data.groundRulesAnalysis.accuracyImprovement}%
+                </span>
+              </div>
+            </div>
+
+            {/* Anomaly Report */}
+            <div className="space-y-2">
+              <div className="text-sm">
+                <span className="font-medium text-gray-700">이상치 상태:</span>
+                <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
+                  data.groundRulesAnalysis.anomalyReport.anomalyLevel === 'none' 
+                    ? 'bg-green-100 text-green-800'
+                    : data.groundRulesAnalysis.anomalyReport.anomalyLevel === 'low'
+                    ? 'bg-yellow-100 text-yellow-800' 
+                    : data.groundRulesAnalysis.anomalyReport.anomalyLevel === 'medium'
+                    ? 'bg-orange-100 text-orange-800'
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {data.groundRulesAnalysis.anomalyReport.anomalyLevel === 'none' ? '정상' :
+                   data.groundRulesAnalysis.anomalyReport.anomalyLevel === 'low' ? '낮음' :
+                   data.groundRulesAnalysis.anomalyReport.anomalyLevel === 'medium' ? '중간' : '높음'}
+                </span>
+              </div>
+              <div className="text-sm text-gray-600">
+                {data.groundRulesAnalysis.anomalyReport.summary}
+              </div>
+              {data.groundRulesAnalysis.anomalyReport.recommendations.length > 0 && (
+                <div className="mt-2">
+                  <div className="text-xs font-medium text-gray-700 mb-1">권장사항:</div>
+                  <ul className="text-xs text-gray-600 space-y-1">
+                    {data.groundRulesAnalysis.anomalyReport.recommendations.slice(0, 2).map((rec, idx) => (
+                      <li key={idx} className="flex items-start">
+                        <span className="text-green-600 mr-1">•</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

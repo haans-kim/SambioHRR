@@ -72,7 +72,17 @@ export interface WorkMetrics {
   transitTime: number         // 이동시간 (분)
   restTime: number            // 휴식시간 (분)
   reliabilityScore: number    // 데이터 신뢰도 (0-100)
+  groundRulesMetrics?: {      // Ground Rules 기반 확장 메트릭 (선택적)
+    groundRulesWorkTime: number        // Ground Rules 기반 업무시간 (분)
+    groundRulesConfidence: number      // 평균 T1 신뢰도 (0-100)
+    t1WorkMovement: number            // 업무 관련 이동시간 (분)
+    t1NonWorkMovement: number         // 비업무 이동시간 (분)
+    teamBaselineUsed: number          // 적용된 팀 기준선 (0-100)
+    anomalyScore: number              // 조직 대비 이상치 점수 (0-100)
+    appliedRulesCount: number         // 적용된 특별 규칙 수
+  }
 }
+
 
 // T1 tag configuration by job group
 export interface JobGroupT1Config {

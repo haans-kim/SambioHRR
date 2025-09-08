@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { getEmployeeById, getClaimData, saveDailyAnalysisResult } from '@/lib/database/queries'
 import { TagEnricher } from '@/lib/classifier/TagEnricher'
 import { ActivityStateMachine } from '@/lib/classifier/StateMachine'
-import { WorkHourCalculator } from '@/lib/analytics/WorkHourCalculator'
 import { EnhancedWorkHourCalculator } from '@/lib/analytics/EnhancedWorkHourCalculator'
 import { JobGroupClassifier } from '@/lib/classifier/JobGroupClassifier'
 import type { WorkMetrics } from '@/types/analytics'
@@ -17,30 +16,41 @@ interface BatchAnalysisRequest {
   startDate: string
   endDate: string
   saveToDb?: boolean  // Optional flag to save results to DB
-  useGroundRules?: boolean  // Optional flag to enable Ground Rules (experimental)
+  useGroundRules?: boolean  // Optional flag to enable Ground Rules
 }
 
-interface BatchAnalysisResult {
+interface EnhancedBatchAnalysisResult {
   date: string
   employeeId: number
   employeeName: string
   metrics: WorkMetrics
   claimedHours?: number
+  groundRulesAnalysis?: {
+    teamUsed: string
+    workScheduleUsed: string
+    accuracyImprovement: number
+    anomalyReport: {
+      hasAnomalies: boolean
+      anomalyLevel: 'none' | 'low' | 'medium' | 'high'
+      summary: string
+      recommendations: string[]
+    }
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const body: BatchAnalysisRequest = await request.json()
-    const { employees, startDate, endDate, saveToDb = true, useGroundRules = false } = body
+    const { employees, startDate, endDate, saveToDb = true, useGroundRules = true } = body
     
-    const results: BatchAnalysisResult[] = []
+    const results: EnhancedBatchAnalysisResult[] = []
     const errors: any[] = []
     
     // Initialize Enhanced Calculator if Ground Rules enabled
-    let enhancedCalculator: EnhancedWorkHourCalculator | null = null
+    let calculator: EnhancedWorkHourCalculator | null = null
     if (useGroundRules) {
       const analyticsDbPath = path.join(process.cwd(), 'sambio_analytics.db')
-      enhancedCalculator = new EnhancedWorkHourCalculator(analyticsDbPath)
+      calculator = new EnhancedWorkHourCalculator(analyticsDbPath)
       console.log('🎯 Ground Rules enabled - Enhanced Calculator initialized')
     }
     
@@ -146,9 +156,11 @@ export async function POST(request: Request) {
             timeline.push(entry)
           }
           
-          // Calculate metrics with Ground Rules if enabled
           let metrics: WorkMetrics
-          if (enhancedCalculator && useGroundRules) {
+          let groundRulesAnalysis: any = undefined
+          
+          // Calculate metrics with Ground Rules if enabled
+          if (calculator && useGroundRules) {
             // Extract team and work schedule info from employee data
             const employeeInfo = {
               employeeId: emp.employeeId,
@@ -156,13 +168,35 @@ export async function POST(request: Request) {
               workScheduleType: employee.work_schedule_type || '선택근무제'
             }
             
-            metrics = enhancedCalculator.calculateEnhancedMetrics(timeline, employeeInfo, dateStr)
+            metrics = calculator.calculateEnhancedMetrics(timeline, employeeInfo, dateStr)
+            
+            // Generate Ground Rules analysis
+            if (metrics.groundRulesMetrics) {
+              const claimData = getClaimData(emp.employeeId, dateStr) as any
+              const claimedHours = claimData?.근무시간 || 8.0 // Default to 8 hours if no claim
+              
+              const comparison = calculator.compareWithGroundRules(metrics, claimedHours)
+              const anomalyReport = calculator.generateAnomalyReport(metrics)
+              
+              groundRulesAnalysis = {
+                teamUsed: employeeInfo.teamName,
+                workScheduleUsed: employeeInfo.workScheduleType,
+                accuracyImprovement: comparison.improvement,
+                anomalyReport
+              }
+            }
           } else {
-            // Use traditional calculator
-            const calculator = new WorkHourCalculator()
-            metrics = calculator.calculateMetrics(timeline)
-            metrics.employeeId = emp.employeeId
-            metrics.date = dateStr
+            // Fall back to traditional calculation
+            const { WorkHourCalculator } = await import('@/lib/analytics/WorkHourCalculator')
+            const traditionalCalculator = new WorkHourCalculator()
+            const basicMetrics = traditionalCalculator.calculateMetrics(timeline)
+            
+            metrics = {
+              ...basicMetrics,
+              employeeId: emp.employeeId,
+              date: dateStr,
+              groundRulesMetrics: undefined
+            }
           }
           
           // Get claimed hours
@@ -174,7 +208,8 @@ export async function POST(request: Request) {
             employeeId: emp.employeeId,
             employeeName: emp.employeeName,
             metrics,
-            claimedHours
+            claimedHours,
+            groundRulesAnalysis
           })
           
           // Save to DB if requested
@@ -183,8 +218,8 @@ export async function POST(request: Request) {
               const saveData = {
                 employeeId: emp.employeeId,
                 analysisDate: dateStr,
-                totalHours: metrics.totalTime / 60,  // Convert minutes to hours
-                actualWorkHours: metrics.workTime / 60,  // Convert minutes to hours
+                totalHours: metrics.totalTime / 60,
+                actualWorkHours: metrics.workTime / 60,
                 claimedWorkHours: claimedHours,
                 efficiencyRatio: metrics.workRatio,
                 focusedWorkMinutes: metrics.focusTime,
@@ -227,8 +262,8 @@ export async function POST(request: Request) {
     }
     
     // Clean up calculator
-    if (enhancedCalculator) {
-      enhancedCalculator.close()
+    if (calculator) {
+      calculator.close()
     }
     
     return NextResponse.json({
@@ -248,10 +283,10 @@ export async function POST(request: Request) {
               sum + (r.metrics.groundRulesMetrics?.groundRulesConfidence || 0), 0
             ) / Math.max(results.length, 1),
             anomalyCount: results.filter(r => 
-              (r.metrics.groundRulesMetrics?.anomalyScore || 0) > 0
+              r.groundRulesAnalysis?.anomalyReport.hasAnomalies
             ).length,
-            totalAppliedRules: results.reduce((sum, r) => 
-              sum + (r.metrics.groundRulesMetrics?.appliedRulesCount || 0), 0
+            accuracyImprovements: results.map(r => 
+              r.groundRulesAnalysis?.accuracyImprovement || 0
             )
           }
         })
@@ -259,9 +294,9 @@ export async function POST(request: Request) {
     })
     
   } catch (error) {
-    console.error('Batch analysis error:', error)
+    console.error('Enhanced batch analysis error:', error)
     return NextResponse.json(
-      { error: 'Failed to process batch analysis' },
+      { error: 'Failed to process enhanced batch analysis' },
       { status: 500 }
     )
   }

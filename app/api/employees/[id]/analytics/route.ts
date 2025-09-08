@@ -3,8 +3,10 @@ import { getEmployeeById, getClaimData, getNonWorkTimeData } from '@/lib/databas
 import { TagEnricher } from '@/lib/classifier/TagEnricher'
 import { ActivityStateMachine } from '@/lib/classifier/StateMachine'
 import { WorkHourCalculator } from '@/lib/analytics/WorkHourCalculator'
+import { EnhancedWorkHourCalculator } from '@/lib/analytics/EnhancedWorkHourCalculator'
 import { JobGroupClassifier } from '@/lib/classifier/JobGroupClassifier'
 import type { TimelineEntry, WorkMetrics } from '@/types/analytics'
+import path from 'path'
 
 export async function GET(
   request: Request,
@@ -19,8 +21,17 @@ export async function GET(
     const url = new URL(request.url)
     const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0]
     const shift = url.searchParams.get('shift') as 'day' | 'night' || 'day'
+    const useGroundRules = url.searchParams.get('useGroundRules') === 'true'
     
     const employeeId = parseInt(id)
+    
+    // Initialize Enhanced Calculator if Ground Rules enabled
+    let enhancedCalculator: EnhancedWorkHourCalculator | null = null
+    if (useGroundRules) {
+      const analyticsDbPath = path.join(process.cwd(), 'sambio_analytics.db')
+      enhancedCalculator = new EnhancedWorkHourCalculator(analyticsDbPath)
+      console.log('🎯 Ground Rules enabled for individual analysis')
+    }
     
     // Get employee data
     const employeeQueryStart = performance.now()
@@ -107,20 +118,61 @@ export async function GET(
     }
     timings.stateClassification = performance.now() - classificationStart
     
-    // Calculate work metrics
+    // Calculate work metrics with Ground Rules if enabled
     const metricsStart = performance.now()
-    const calculator = new WorkHourCalculator()
-    const metrics = calculator.calculateMetrics(timeline)
-    metrics.employeeId = employeeId
-    metrics.date = date
+    let metrics: WorkMetrics
+    let groundRulesAnalysis: any = undefined
+    
+    if (enhancedCalculator && useGroundRules) {
+      // Extract team and work schedule info from employee data
+      const employeeInfo = {
+        employeeId: employeeId,
+        teamName: employee.team_name || employee.group_name || 'Unknown Team',
+        workScheduleType: employee.work_schedule_type || '선택근무제'
+      }
+      
+      metrics = enhancedCalculator.calculateEnhancedMetrics(timeline, employeeInfo, date)
+      
+      // Generate Ground Rules analysis
+      if (metrics.groundRulesMetrics) {
+        const claimData = getClaimData(employeeId, date) as any
+        const claimedHours = claimData?.근무시간 || 8.0 // Default to 8 hours if no claim
+        
+        const comparison = enhancedCalculator.compareWithGroundRules(metrics, claimedHours)
+        const anomalyReport = enhancedCalculator.generateAnomalyReport(metrics)
+        
+        groundRulesAnalysis = {
+          teamUsed: employeeInfo.teamName,
+          workScheduleUsed: employeeInfo.workScheduleType,
+          accuracyImprovement: comparison.improvement,
+          anomalyReport,
+          comparison
+        }
+      }
+    } else {
+      // Use traditional calculator
+      const calculator = new WorkHourCalculator()
+      metrics = calculator.calculateMetrics(timeline)
+      metrics.employeeId = employeeId
+      metrics.date = date
+    }
     timings.metricsCalculation = performance.now() - metricsStart
     
     // Get claimed hours for comparison
     const claimStart = performance.now()
     const claimData = getClaimData(employeeId, date) as any
-    const comparison = claimData && claimData.근무시간
-      ? calculator.compareWithClaim(metrics, claimData.근무시간)
-      : null
+    let comparison = null
+    
+    if (claimData && claimData.근무시간) {
+      if (enhancedCalculator && useGroundRules) {
+        comparison = enhancedCalculator.compareWithGroundRules(metrics, claimData.근무시간)
+      } else {
+        // Use traditional calculator for comparison
+        const traditionalCalculator = new WorkHourCalculator()
+        comparison = traditionalCalculator.compareWithClaim(metrics, claimData.근무시간)
+      }
+    }
+    
     timings.claimDataQuery = performance.now() - claimStart
     
     // Get non-work time data
@@ -135,6 +187,10 @@ export async function GET(
     // Calculate total time
     timings.totalTime = performance.now() - startTime
     
+    // Clean up calculator
+    if (enhancedCalculator) {
+      enhancedCalculator.close()
+    }
     
     return NextResponse.json({
       employee: {
@@ -168,6 +224,7 @@ export async function GET(
         status: item.반영여부
       })),
       timeline: timeline.slice(0, 100), // Limit for initial response
+      groundRulesAnalysis, // Ground Rules analysis if enabled
       statistics: {
         totalEvents: events.length,
         totalEntries: timeline.length,
@@ -175,7 +232,8 @@ export async function GET(
         t1WorkReturns: t1WorkReturns.length,
         t1DefaultProbability: defaultProbability,
         oTags: timeline.filter(e => e.tagCode === 'O').length,
-        shift: detectedShift
+        shift: detectedShift,
+        groundRulesEnabled: useGroundRules
       },
       performance: {
         totalTimeMs: timings.totalTime,
@@ -193,6 +251,12 @@ export async function GET(
     })
   } catch (error) {
     console.error('Analytics API Error:', error)
+    
+    // Clean up calculator in case of error
+    if (typeof enhancedCalculator !== 'undefined' && enhancedCalculator) {
+      enhancedCalculator.close()
+    }
+    
     return NextResponse.json(
       { error: 'Failed to generate analytics', details: error },
       { status: 500 }

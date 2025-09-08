@@ -249,6 +249,12 @@ export const saveDailyAnalysisResult = (data: {
   movementMinutes: number
   restMinutes: number
   confidenceScore: number
+  // Ground Rules 메트릭 (선택적)
+  groundRulesWorkHours?: number
+  groundRulesConfidence?: number
+  workMovementMinutes?: number
+  nonWorkMovementMinutes?: number
+  anomalyScore?: number
 }) => {
   try {
     const stmt = db.getDb().prepare(`
@@ -266,8 +272,13 @@ export const saveDailyAnalysisResult = (data: {
         rest_minutes,
         confidence_score,
         work_minutes,
+        ground_rules_work_hours,
+        ground_rules_confidence,
+        work_movement_minutes,
+        non_work_movement_minutes,
+        anomaly_score,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `)
     
     // Calculate work_minutes (actual_work_hours * 60)
@@ -286,11 +297,95 @@ export const saveDailyAnalysisResult = (data: {
       data.movementMinutes,
       data.restMinutes,
       data.confidenceScore,
-      workMinutes
+      workMinutes,
+      data.groundRulesWorkHours || 0,
+      data.groundRulesConfidence || 0,
+      data.workMovementMinutes || 0,
+      data.nonWorkMovementMinutes || 0,
+      data.anomalyScore || 0
     )
   } catch (error) {
     console.error('Error saving daily analysis result:', error)
     throw error
+  }
+}
+
+// Get daily analysis results with Ground Rules metrics
+export const getDailyAnalysisResultsWithGroundRules = (employeeId: number, startDate: string, endDate: string) => {
+  try {
+    const stmt = db.getDb().prepare(`
+      SELECT 
+        employee_id,
+        analysis_date,
+        total_hours,
+        actual_work_hours,
+        claimed_work_hours,
+        efficiency_ratio,
+        focused_work_minutes,
+        meeting_minutes,
+        meal_minutes,
+        movement_minutes,
+        rest_minutes,
+        confidence_score,
+        work_minutes,
+        ground_rules_work_hours,
+        ground_rules_confidence,
+        work_movement_minutes,
+        non_work_movement_minutes,
+        anomaly_score,
+        created_at,
+        updated_at
+      FROM daily_analysis_results
+      WHERE employee_id = ? AND analysis_date BETWEEN ? AND ?
+      ORDER BY analysis_date DESC
+    `)
+    return stmt.all(employeeId, startDate, endDate)
+  } catch (error) {
+    console.error('Error fetching daily analysis results with Ground Rules:', error)
+    return []
+  }
+}
+
+// Get organization statistics with Ground Rules metrics
+export const getOrganizationStatsWithGroundRules = (organizationType: 'center' | 'division' | 'team' | 'group', organizationName: string, startDate: string, endDate: string) => {
+  try {
+    let joinCondition = ''
+    switch (organizationType) {
+      case 'center':
+        joinCondition = 'om.center_name = ?'
+        break
+      case 'division': 
+        joinCondition = 'om.division_name = ?'
+        break
+      case 'team':
+        joinCondition = 'om.team_name = ?'
+        break
+      case 'group':
+        joinCondition = 'om.group_name = ?'
+        break
+    }
+
+    const stmt = db.getDb().prepare(`
+      SELECT 
+        COUNT(*) as total_records,
+        AVG(dar.actual_work_hours) as avg_work_hours,
+        AVG(dar.efficiency_ratio) as avg_efficiency,
+        AVG(dar.confidence_score) as avg_confidence,
+        AVG(dar.ground_rules_work_hours) as avg_ground_rules_work_hours,
+        AVG(dar.ground_rules_confidence) as avg_ground_rules_confidence,
+        AVG(dar.work_movement_minutes) as avg_work_movement,
+        AVG(dar.non_work_movement_minutes) as avg_non_work_movement,
+        AVG(dar.anomaly_score) as avg_anomaly_score,
+        SUM(CASE WHEN dar.anomaly_score > 0 THEN 1 ELSE 0 END) as anomaly_count
+      FROM daily_analysis_results dar
+      JOIN organization_monthly_stats om ON dar.employee_id = om.employee_id
+      WHERE ${joinCondition} AND dar.analysis_date BETWEEN ? AND ?
+    `)
+    
+    return stmt.get(organizationName, startDate, endDate)
+  } catch (error) {
+    console.error('Error fetching organization stats with Ground Rules:', error)
+    return null
   }
 }
 
