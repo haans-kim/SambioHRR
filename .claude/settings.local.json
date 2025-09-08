@@ -24,7 +24,8 @@
       "Bash(for table in eam_data equis_data lams_data mdm_data mes_data)",
       "Bash(do echo \"=== $table ===\")",
       "Bash(for table in eam_data equis_data mdm_data)",
-      "Bash(do echo \"=== $table - 2025년 6월 데이터 ===\")"
+      "Bash(do echo \"=== $table - 2025년 6월 데이터 ===\")",
+      "Read(//var/folders/cg/hnykq8n5159dxh1w7lmpmcsc0000gn/T/TemporaryItems/NSIRD_screencaptureui_xTNC11/**)"
     ],
     "deny": []
   }

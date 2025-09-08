@@ -511,7 +511,10 @@ class MasterTableBuilder {
   private async processKnoxData(): Promise<void> {
     console.log('📧 Knox 데이터 처리 (회의, 결재, 메일)...')
     
-    // Knox PIMS (회의) 데이터
+    const batch = new Date().toISOString()
+    let totalRecords = 0
+    
+    // 1. Knox PIMS (회의) 데이터 - G3 태그
     const pimsQuery = `
       INSERT INTO master_events_table (
         timestamp, date, year, month, week, day_of_week, hour, minute,
@@ -550,11 +553,97 @@ class MasterTableBuilder {
         AND k.employee_id IS NOT NULL
     `
     
-    const batch = new Date().toISOString()
-    const stmt = this.analyticsDb.prepare(pimsQuery)
-    const result = stmt.run(batch, this.config.startDate + ' 00:00:00', this.config.endDate + ' 23:59:59')
+    const pimsStmt = this.analyticsDb.prepare(pimsQuery)
+    const pimsResult = pimsStmt.run(batch, this.config.startDate + ' 00:00:00', this.config.endDate + ' 23:59:59')
+    totalRecords += pimsResult.changes
     
-    this.updateStats('knox', result.changes, 0)
+    // 2. Knox Approval (결재) 데이터 - O 태그
+    const approvalQuery = `
+      INSERT INTO master_events_table (
+        timestamp, date, year, month, week, day_of_week, hour, minute,
+        employee_id, tag_code, tag_name, tag_type,
+        state, judgment, base_confidence, final_confidence,
+        duration_minutes,
+        data_source, original_id, processing_batch
+      )
+      SELECT 
+        a.Timestamp as timestamp,
+        date(a.Timestamp) as date,
+        cast(strftime('%Y', a.Timestamp) as integer) as year,
+        cast(strftime('%m', a.Timestamp) as integer) as month,
+        cast(strftime('%W', a.Timestamp) as integer) as week,
+        cast(strftime('%w', a.Timestamp) as integer) as day_of_week,
+        cast(strftime('%H', a.Timestamp) as integer) as hour,
+        cast(strftime('%M', a.Timestamp) as integer) as minute,
+        
+        cast(a.UserNo as integer) as employee_id,
+        'O' as tag_code,
+        'Knox 결재: ' || COALESCE(a.Task, '문서결재') as tag_name,
+        'Approval' as tag_type,
+        
+        '결재' as state,
+        'Knox결재처리' as judgment,
+        0.90 as base_confidence,
+        0.90 as final_confidence,
+        5 as duration_minutes,  -- 결재는 평균 5분 소요로 가정
+        
+        'knox_approval_data' as data_source,
+        a.APID as original_id,
+        ? as processing_batch
+        
+      FROM operational.knox_approval_data a
+      WHERE a.Timestamp >= ? AND a.Timestamp <= ?
+        AND a.UserNo IS NOT NULL
+    `
+    
+    const approvalStmt = this.analyticsDb.prepare(approvalQuery)
+    const approvalResult = approvalStmt.run(batch, this.config.startDate + ' 00:00:00', this.config.endDate + ' 23:59:59')
+    totalRecords += approvalResult.changes
+    
+    // 3. Knox Mail (메일) 데이터 - O 태그  
+    const mailQuery = `
+      INSERT INTO master_events_table (
+        timestamp, date, year, month, week, day_of_week, hour, minute,
+        employee_id, tag_code, tag_name, tag_type,
+        state, judgment, base_confidence, final_confidence,
+        duration_minutes,
+        data_source, original_id, processing_batch
+      )
+      SELECT 
+        m.발신일시_GMT9 as timestamp,
+        date(m.발신일시_GMT9) as date,
+        cast(strftime('%Y', m.발신일시_GMT9) as integer) as year,
+        cast(strftime('%m', m.발신일시_GMT9) as integer) as month,
+        cast(strftime('%W', m.발신일시_GMT9) as integer) as week,
+        cast(strftime('%w', m.발신일시_GMT9) as integer) as day_of_week,
+        cast(strftime('%H', m.발신일시_GMT9) as integer) as hour,
+        cast(strftime('%M', m.발신일시_GMT9) as integer) as minute,
+        
+        cast(m.발신인사번_text as integer) as employee_id,
+        'O' as tag_code,
+        'Knox 메일발송' as tag_name,
+        'Mail' as tag_type,
+        
+        '메일' as state,
+        'Knox메일발송' as judgment,
+        0.85 as base_confidence,
+        0.85 as final_confidence,
+        3 as duration_minutes,  -- 메일 발송은 평균 3분 소요로 가정
+        
+        'knox_mail_data' as data_source,
+        m.메일key as original_id,
+        ? as processing_batch
+        
+      FROM operational.knox_mail_data m
+      WHERE m.발신일시_GMT9 >= ? AND m.발신일시_GMT9 <= ?
+        AND m.발신인사번_text IS NOT NULL
+    `
+    
+    const mailStmt = this.analyticsDb.prepare(mailQuery)
+    const mailResult = mailStmt.run(batch, this.config.startDate + ' 00:00:00', this.config.endDate + ' 23:59:59')
+    totalRecords += mailResult.changes
+    
+    this.updateStats('knox', totalRecords, 0)
   }
 
   private async processMealData(): Promise<void> {

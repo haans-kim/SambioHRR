@@ -134,7 +134,7 @@ export class T1GroundRulesEngine {
    */
   private classifyTeamCharacteristics(stats: TeamStatistics): TeamCharacteristics {
     // 이동성 레벨 결정
-    const mobilityLevel = this.determineMobilityLevel(stats.t1ToORatio || 0)
+    const mobilityLevel = this.determineMobilityLevel(stats.t1ToORatio || 0, stats.teamName)
     
     // 기준 신뢰도 계산
     const baselineConfidence = this.calculateBaselineConfidence(mobilityLevel, stats)
@@ -166,16 +166,65 @@ export class T1GroundRulesEngine {
   }
 
   /**
-   * T1/O 비율을 기반으로 이동성 레벨 결정 (실제 데이터 기반 조정)
+   * T1/O 비율을 기반으로 이동성 레벨 결정 (팀 특성 고려)
    */
-  private determineMobilityLevel(t1ToORatio: number): MobilityLevel {
-    if (t1ToORatio >= 100) return 'VERY_HIGH'       // 인프라복지팀 (1156), HR Strategy그룹 (1101)
-    if (t1ToORatio >= 50) return 'HIGH'             // 대외협력팀 (185), Sales&Operation팀 (56)
-    if (t1ToORatio >= 30) return 'MEDIUM'           // AI Lab (41), E&F담당 (34)
-    if (t1ToORatio >= 5.0) return 'HIGH'            // 안전환경팀 (6.334), 현장직 특성
-    if (t1ToORatio >= 2.0) return 'MEDIUM'          // 중이동성 팀들
-    if (t1ToORatio >= 0.5) return 'LOW'             // 저이동성 관리팀
-    return 'VERY_LOW'                               // T1/O 비율이 0.5 미만인 팀 (극저이동성)
+  private determineMobilityLevel(t1ToORatio: number, teamName?: string): MobilityLevel {
+    // 팀 이름 기반 현장직/사무직 구분
+    const teamType = this.classifyTeamByName(teamName || '')
+    
+    // 극고이동성: 특수한 경우들
+    if (t1ToORatio >= 200) return 'VERY_HIGH'       // 인프라복지팀 (1156)
+    
+    // 사무직 특별 처리 - 높은 T1/O 비율이더라도 상한선 적용
+    if (teamType === 'OFFICE') {
+      if (t1ToORatio >= 50) return 'HIGH'           // 사무직 최대 HIGH
+      if (t1ToORatio >= 10) return 'MEDIUM'         // 사무직 중이동성
+      if (t1ToORatio >= 2.0) return 'LOW'           // 사무직 저이동성
+      return 'VERY_LOW'
+    }
+    
+    // 현장직 특별 처리 - 낮은 T1/O 비율이더라도 하한선 적용
+    if (teamType === 'FIELD') {
+      if (t1ToORatio >= 50) return 'VERY_HIGH'      // 현장직 극고이동성
+      if (t1ToORatio >= 5.0) return 'HIGH'          // 안전환경팀 (6.334)
+      if (t1ToORatio >= 1.0) return 'MEDIUM'        // QC Operations팀 (1.5), 현장직 최소 MEDIUM
+      return 'MEDIUM'                               // Plant팀들, 현장직 최소 보장
+    }
+    
+    // 일반적인 분류 (팀 타입 불명확한 경우)
+    if (t1ToORatio >= 100) return 'VERY_HIGH'
+    if (t1ToORatio >= 50) return 'HIGH'
+    if (t1ToORatio >= 30) return 'MEDIUM'
+    if (t1ToORatio >= 5.0) return 'HIGH'
+    if (t1ToORatio >= 2.0) return 'MEDIUM'
+    if (t1ToORatio >= 0.5) return 'LOW'
+    return 'VERY_LOW'
+  }
+
+  /**
+   * 팀 이름으로 업무 특성 분류
+   */
+  private classifyTeamByName(teamName: string): 'OFFICE' | 'FIELD' | 'UNKNOWN' {
+    const name = teamName.toLowerCase()
+    
+    // 현장직 키워드
+    if (name.includes('plant') || name.includes('제조') || name.includes('생산') ||
+        name.includes('qc') || name.includes('qa') || name.includes('품질') ||
+        name.includes('안전') || name.includes('환경') || name.includes('시설') ||
+        name.includes('maintenance') || name.includes('operations')) {
+      return 'FIELD'
+    }
+    
+    // 사무직 키워드
+    if (name.includes('hr') || name.includes('인사') || name.includes('전략') ||
+        name.includes('기획') || name.includes('재무') || name.includes('회계') ||
+        name.includes('법무') || name.includes('감사') || name.includes('개발') ||
+        name.includes('연구') || name.includes('r&d') || name.includes('dev') ||
+        name.includes('lab') || name.includes('strategy')) {
+      return 'OFFICE'
+    }
+    
+    return 'UNKNOWN'
   }
 
   /**
