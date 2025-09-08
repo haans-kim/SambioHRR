@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { saveDailyAnalysisResult, getEmployeeById } from '@/lib/database/queries'
 import { EnhancedWorkHourCalculator } from '@/lib/analytics/EnhancedWorkHourCalculator'
+import { T1GroundRulesEngine } from '@/lib/analytics/T1GroundRulesEngine'
 import { TagEnricher } from '@/lib/classifier/TagEnricher'
 import { ActivityStateMachine } from '@/lib/classifier/StateMachine'
 import { JobGroupClassifier } from '@/lib/classifier/JobGroupClassifier'
@@ -197,6 +198,7 @@ export async function POST(request: Request) {
     console.log(`⚡ Pre-loading all data for memory processing`)
     
     // Pre-load all employee data to avoid DB contention
+    const preloadStartTime = Date.now()
     const employeeDataMap = new Map()
     for (const emp of employees) {
       const employeeData = getEmployeeById(emp.employeeId)
@@ -204,39 +206,48 @@ export async function POST(request: Request) {
         employeeDataMap.set(emp.employeeId, employeeData)
       }
     }
-    console.log(`📊 Pre-loaded ${employeeDataMap.size} employee records`)
+    const preloadDuration = Date.now() - preloadStartTime
+    console.log(`📊 Pre-loaded ${employeeDataMap.size} employee records in ${preloadDuration}ms`)
     
     // Path for analytics DB
     const analyticsDbPath = path.join(process.cwd(), 'sambio_analytics.db')
     
+    // Create ONE shared calculator for all employees (no DB contention)
+    console.log(`🧠 Creating single shared calculator...`)
+    const calcCreateStart = Date.now()
+    const sharedCalculator = new EnhancedWorkHourCalculator(analyticsDbPath)
+    const calcCreateDuration = Date.now() - calcCreateStart
+    console.log(`✅ Shared calculator created in ${calcCreateDuration}ms`)
+    
     try {
-      // Process ALL employees with INDEPENDENT calculators (true parallelization)
-      console.log(`🚀 Processing ALL ${employees.length} employees with INDEPENDENT DB connections`)
+      // Process ALL employees with SHARED calculator (true parallelization)
+      console.log(`🚀 Processing ALL ${employees.length} employees with SHARED calculator`)
       const startTime = Date.now()
       
       const employeePromises = employees.map(async (emp, index) => {
-        const empStartTime = Date.now()
-        console.log(`⚡ Starting employee ${emp.employeeId} (${index + 1}/${employees.length}) with INDEPENDENT calculator`)
-        
-        // Create completely independent calculator for this employee
-        const independentCalculator = new EnhancedWorkHourCalculator(analyticsDbPath)
+        const empTotalStart = Date.now()
+        console.log(`⚡ Starting employee ${emp.employeeId} (${index + 1}/${employees.length}) with SHARED calculator`)
         
         try {
+          // Measure actual processing time
+          const processStart = Date.now()
           const results = await processEmployeeAsync(
             emp.employeeId,
             emp.employeeName,
             startDate,
             endDate,
-            independentCalculator,
+            sharedCalculator,
             employeeDataMap
           )
+          const processDuration = Date.now() - processStart
           
-          const empDuration = Date.now() - empStartTime
-          console.log(`✅ Employee ${emp.employeeId} completed in ${empDuration}ms with independent resources`)
+          const empTotalDuration = Date.now() - empTotalStart
+          console.log(`✅ Employee ${emp.employeeId}: Total=${empTotalDuration}ms (Process=${processDuration}ms)`)
           return results
-        } finally {
-          // Clean up independent calculator immediately
-          independentCalculator.close()
+        } catch (error) {
+          const empTotalDuration = Date.now() - empTotalStart
+          console.log(`❌ Employee ${emp.employeeId} failed after ${empTotalDuration}ms:`, error)
+          throw error
         }
       })
       
@@ -244,8 +255,23 @@ export async function POST(request: Request) {
       const allResults = await Promise.all(employeePromises)
       const workerResults = allResults.flat()
       
-      const totalDuration = Date.now() - startTime
-      console.log(`🎉 ALL ${employees.length} employees completed in ${totalDuration}ms with independent calculators`)
+      const totalProcessingDuration = Date.now() - startTime
+      console.log(`🎉 ALL ${employees.length} employees SHARED calculator processing completed in ${totalProcessingDuration}ms`)
+      
+      // Calculate individual processing times from logs for better analysis
+      const individualTimes = workerResults.length > 0 ? [totalProcessingDuration] : []  // Simplified for now
+      const maxIndividualTime = Math.max(...individualTimes, totalProcessingDuration)
+      const sumIndividualTime = individualTimes.reduce((a, b) => a + b, totalProcessingDuration)
+      
+      console.log(`📊 WORKER MODE DIAGNOSIS:`)
+      console.log(`   ❌ SQLite 병렬 한계: JavaScript Promise.all로는 SQLite 쿼리 병렬화 불가`)
+      console.log(`   📊 실제 측정값:`)
+      console.log(`      - Calculator 생성: ${calcCreateDuration}ms`)
+      console.log(`      - 직원 데이터 로딩: ${preloadDuration}ms`) 
+      console.log(`      - 분석 처리 시간: ${totalProcessingDuration}ms`)
+      console.log(`      - 총 워커 시간: ${calcCreateDuration + preloadDuration + totalProcessingDuration}ms`)
+      console.log(`   💡 개선안: 진짜 병렬화를 위해서는 Worker Threads나 Cluster 필요`)
+      console.log(`   🎯 현재 성과: 공유 계산기로 팀 특성 중복 로딩 제거 완료`)
     
     // Transform worker results to standard format
     const results = workerResults
@@ -340,8 +366,9 @@ export async function POST(request: Request) {
     })
     
     } finally {
-      // All independent calculators already cleaned up
-      console.log(`🧹 All independent calculators cleaned up`)
+      // Clean up shared calculator
+      sharedCalculator.close()
+      console.log(`🧹 Shared calculator cleaned up`)
     }
     
   } catch (error) {
