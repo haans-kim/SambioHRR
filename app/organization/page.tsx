@@ -436,6 +436,7 @@ export default function OrganizationAnalysisPage() {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Single Thread Ground Rules Analysis */}
               <button
                 onClick={async () => {
                   if (!organizationPath.center) {
@@ -520,7 +521,7 @@ export default function OrganizationAnalysisPage() {
                     const elapsedTime = Date.now() - analysisStartTime
                     setAnalysisInfo(prev => ({ ...prev, elapsedTime }))
                     
-                    alert(`Ground Rules 분석 완료!\n분석된 항목: ${allResults.length}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초`)
+                    alert(`Ground Rules 분석 완료!\n분석된 항목: ${allResults.length}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초\n처리 모드: 싱글 스레드`)
 
                     setTimeout(() => {
                       setIsAnalyzing(false)
@@ -536,13 +537,108 @@ export default function OrganizationAnalysisPage() {
                   }
                 }}
                 disabled={isAnalyzing || !organizationPath.center}
-                className={`px-12 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors ${
+                className={`px-8 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors ${
                   isAnalyzing || !organizationPath.center
                     ? 'bg-gray-600 cursor-not-allowed' 
                     : 'bg-gray-900 hover:bg-gray-800'
                 }`}
               >
-                {isAnalyzing ? 'Ground Rules 분석 중...' : 'Ground Rules 분석'}
+                {isAnalyzing ? 'Ground Rules 분석 중...' : 'Ground Rules 분석 (싱글)'}
+              </button>
+
+              {/* Multi-Thread Worker Ground Rules Analysis */}
+              <button
+                onClick={async () => {
+                  if (!organizationPath.center) {
+                    alert('조직을 선택해주세요.')
+                    return
+                  }
+
+                  try {
+                    setIsAnalyzing(true)
+                    setProgress(0)
+                    setAnalysisInfo({})
+
+                    const analysisStartTime = Date.now()
+                    
+                    // Step 1: Extract employees from selected organization
+                    setProgress(10)
+                    const extractRes = await fetch('/api/organization/extract-employees', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ organizationPath })
+                    })
+                    
+                    const extractData = await extractRes.json()
+                    
+                    if (!extractData.employees || extractData.employees.length === 0) {
+                      alert('선택한 조직에 직원이 없습니다.')
+                      setIsAnalyzing(false)
+                      setProgress(0)
+                      return
+                    }
+                    
+                    // Calculate total records to analyze
+                    const startTime = startDate.getTime()
+                    const endTime = endDate.getTime()
+                    const dayCount = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24)) + 1)
+                    const totalRecords = extractData.employees.length * dayCount
+                    setAnalysisInfo(prev => ({ ...prev, totalRecords }))
+                    
+                    // Step 2: Perform Ground Rules analysis using Workers
+                    setProgress(20)
+                    const response = await fetch('/api/organization/ground-rules-worker-analysis', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        employees: extractData.employees.map((emp: any) => ({
+                          employeeId: emp.employeeId,
+                          employeeName: emp.employeeName
+                        })),
+                        startDate: startDate.toISOString().split('T')[0],
+                        endDate: endDate.toISOString().split('T')[0],
+                        saveToDb: true
+                      })
+                    })
+
+                    if (!response.ok) {
+                      throw new Error(`HTTP ${response.status}`)
+                    }
+
+                    const data = await response.json()
+                    
+                    if (data.results) {
+                      setAnalysisResults(data.results)
+                      setProgress(100)
+                      
+                      const elapsedTime = Date.now() - analysisStartTime
+                      setAnalysisInfo(prev => ({ ...prev, elapsedTime }))
+                      
+                      const workerCount = data.summary?.workerCount || 'Unknown'
+                      alert(`Ground Rules 워커 분석 완료!\n분석된 항목: ${data.results.length}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초\n처리 모드: ${workerCount}개 워커 멀티스레드`)
+                    }
+
+                    setTimeout(() => {
+                      setIsAnalyzing(false)
+                    }, 500)
+
+                  } catch (error) {
+                    console.error('Ground Rules worker analysis error:', error)
+                    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
+                    alert(`Ground Rules 워커 분석 중 오류가 발생했습니다: ${errorMessage}`)
+                    setIsAnalyzing(false)
+                    setProgress(0)
+                    setAnalysisInfo({})
+                  }
+                }}
+                disabled={isAnalyzing || !organizationPath.center}
+                className={`px-8 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors ${
+                  isAnalyzing || !organizationPath.center
+                    ? 'bg-gray-600 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {isAnalyzing ? '워커 분석 중...' : 'Ground Rules 분석 (워커)'}
               </button>
               
               {/* Progress Bar for Ground Rules Analysis */}
