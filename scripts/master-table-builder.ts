@@ -260,17 +260,7 @@ class MasterTableBuilder {
         
         t.사번 as employee_id,
         t.NAME as employee_name,
-        CASE 
-          WHEN t.DR_NM LIKE '%T2%' OR t.DR_NM LIKE '%GATE%' THEN 'T2'
-          WHEN t.DR_NM LIKE '%T3%' THEN 'T3'
-          WHEN t.DR_NM LIKE '%복도%' OR t.DR_NM LIKE '%계단%' OR t.DR_NM LIKE '%연결%' THEN 'T1'
-          WHEN t.DR_NM LIKE '%휴게%' OR t.DR_NM LIKE '%대기%' THEN 'N1'
-          WHEN t.DR_NM LIKE '%피트니스%' OR t.DR_NM LIKE '%편의%' THEN 'N2'
-          WHEN t.DR_NM LIKE '%회의%' THEN 'G3'
-          WHEN t.DR_NM LIKE '%교육%' THEN 'G4'
-          WHEN t.DR_NM LIKE '%락커%' OR t.DR_NM LIKE '%가우닝%' THEN 'G2'
-          ELSE 'G1'
-        END as tag_code,
+        COALESCE(tlm.Tag_Code, 'UNKNOWN') as tag_code,
         t.DR_NM as tag_name,
         'TagLog' as tag_type,
         t.DR_NM as tag_location,
@@ -299,6 +289,11 @@ class MasterTableBuilder {
         '${new Date().toISOString()}' as processing_batch
         
       FROM operational.tag_data t
+      LEFT JOIN operational.tag_location_master tlm ON (
+        t.DR_NM = tlm.게이트명 OR 
+        t.DR_NO = tlm.DR_NO OR
+        t.DR_NM = tlm.표기명
+      )
       WHERE t.ENTE_DT >= ? AND t.ENTE_DT <= ?
         AND t.사번 IS NOT NULL
         AND t.출입시각 IS NOT NULL
