@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack --port ${PORT:-3003}",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "update-org-stats": "npx tsx scripts/update-organization-stats-with-ground-rules.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

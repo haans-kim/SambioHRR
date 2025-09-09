@@ -45,6 +45,16 @@ interface CenterLevelGridProps {
     centers: string[];
     matrix: Record<string, Record<string, number>>;
   };
+  groundRulesWorkHoursMatrix?: {
+    grades: string[];
+    centers: string[];
+    matrix: Record<string, Record<string, number>>;
+  };
+  groundRulesReliabilityMatrix?: {
+    grades: string[];
+    centers: string[];
+    matrix: Record<string, Record<string, number>>;
+  };
   avgEfficiency?: number;
   avgWorkHours?: number;
   avgClaimedHours?: number;
@@ -199,6 +209,8 @@ export function CenterLevelGrid({
   weeklyClaimedHoursMatrix,
   focusedWorkHoursMatrix,
   dataReliabilityMatrix,
+  groundRulesWorkHoursMatrix,
+  groundRulesReliabilityMatrix,
   avgEfficiency = 88, 
   avgWorkHours = 8.2,
   avgClaimedHours = 8.5,
@@ -379,28 +391,9 @@ export function CenterLevelGrid({
                       value = 0; // 데이터 없음을 명확히 표시
                     }
                   } else if (selectedMetric === 'adjustedWeeklyWorkHours') {
-                    // Use adjusted weekly work hours data (AI보정)
-                    // weeklyWorkHours와 dataReliability를 조합하여 계산
-                    const weeklyHours = weeklyWorkHoursMatrix?.matrix[level]?.[center.orgName] || 0;
-                    const reliability = dataReliabilityMatrix?.matrix[level]?.[center.orgName] || 0;
-                    
-                    if (weeklyHours > 0 && reliability > 0) {
-                      // AI adjustment factor 계산 - 시그모이드 함수 사용
-                      const normalized = reliability / 100;
-                      const sigmoid = 1 / (1 + Math.exp(-12 * (normalized - 0.65)));
-                      const adjustmentFactor = 0.92 + (sigmoid * 0.08);
-                      value = weeklyHours * adjustmentFactor;
-                      
-                      // 디버깅용 로그
-                      if (levelIndex === 0) { // 첫 번째 레벨에서만 로그
-                        console.log(`[${center.orgName}] ${level}:`, {
-                          weeklyHours,
-                          reliability,
-                          adjustmentFactor,
-                          adjustedValue: value,
-                          thresholds: thresholds?.[selectedMetric]?.thresholds
-                        });
-                      }
+                    // Use Ground Rules work hours data (AI보정)
+                    if (groundRulesWorkHoursMatrix?.matrix[level]?.[center.orgName]) {
+                      value = groundRulesWorkHoursMatrix.matrix[level][center.orgName];
                     } else {
                       value = 0; // 데이터 없음을 명확히 표시
                     }
