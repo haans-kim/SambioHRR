@@ -211,6 +211,7 @@ export class MemoryCalculator {
   private calculateBasicMetrics(timeline: TimelineEntry[]): Omit<WorkMetrics, 'employeeId' | 'date' | 'groundRulesMetrics'> {
     let totalTime = 0
     let workTime = 0
+    let estimatedWorkTime = 0
     let focusTime = 0
     let meetingTime = 0
     let mealTime = 0
@@ -221,6 +222,11 @@ export class MemoryCalculator {
       const duration = current.duration || 0
 
       totalTime += duration
+
+      // T1 work return assumptions count as estimated work
+      if (current.assumption === 'T1_WORK_RETURN') {
+        estimatedWorkTime += duration * (current.confidence || 0.5)
+      }
 
       switch (current.state) {
         case ActivityState.WORK:
@@ -250,7 +256,7 @@ export class MemoryCalculator {
     return {
       totalTime,
       workTime,
-      estimatedWorkTime: workTime, // For now, same as workTime
+      estimatedWorkTime,
       workRatio,
       focusTime,
       meetingTime,

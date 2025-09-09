@@ -727,13 +727,13 @@ export default function OrganizationAnalysisPage() {
                       총 체류시간
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      실제 작업시간
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       신고 근무시간
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      추정작업시간
+                      실제 작업시간
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      추정T1작업시간
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       작업추정률
@@ -803,10 +803,10 @@ export default function OrganizationAnalysisPage() {
                           {formatMinutes(Math.round(result.metrics.totalTime))}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                          {formatMinutes(Math.round(result.metrics.workTime))}
+                          {result.claimedHours || '-'}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                          {result.claimedHours || '-'}
+                          {formatMinutes(Math.round(result.metrics.workTime))}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                           {formatMinutes(Math.round(result.metrics.estimatedWorkTime))}
