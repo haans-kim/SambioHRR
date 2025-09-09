@@ -7,6 +7,7 @@ import {
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
 import { calculateAdjustedWorkHours, FLEXIBLE_WORK_ADJUSTMENT_FACTOR } from '@/lib/utils';
+import { getMetricThresholdsForGrid } from '@/lib/db/queries/analytics';
 
 // Helper function to get 30-day date range
 function get30DayDateRange(): { startDate: string; endDate: string } {
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
-  const cacheKey = `teams:v5:center=${centerCode || ''}:division=${divisionCode || ''}`;
+  const cacheKey = `teams:v7:center=${centerCode || ''}:division=${divisionCode || ''}`;
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
@@ -179,7 +180,7 @@ export async function GET(request: NextRequest) {
     ? calculateAdjustedWorkHours(avgWeeklyWorkHours, avgDataReliability)
     : 0;
   
-  // Calculate thresholds (20th and 80th percentiles) - 현재 화면에 표시되는 조직들을 기준으로 계산
+  // Use local thresholds for drill-down views (relative comparison within organization)
   const efficiencyValues = teams.map((org: any) => org.stats?.avgWorkEfficiency || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const workHoursValues = teams.map((org: any) => org.stats?.avgActualWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const claimedHoursValues = teams.map((org: any) => org.stats?.avgAttendanceHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
@@ -188,26 +189,6 @@ export async function GET(request: NextRequest) {
   const weeklyClaimedHoursValues = teams.map((org: any) => org.stats?.avgWeeklyClaimedHours || (org.stats?.avgAttendanceHours || 0) * 5).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const focusedHoursValues = teams.map((org: any) => org.stats?.avgFocusedWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const dataReliabilityValues = teams.map((org: any) => org.stats?.avgDataReliability || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
-  
-  // Ensure we have valid values for thresholds
-  if (efficiencyValues.length === 0) {
-    efficiencyValues.push(73.2, 88.4);
-  }
-  if (workHoursValues.length === 0) {
-    workHoursValues.push(6.0, 8.0);
-  }
-  if (claimedHoursValues.length === 0) {
-    claimedHoursValues.push(7.0, 9.0);
-  }
-  if (focusedHoursValues.length === 0) {
-    focusedHoursValues.push(2.0, 5.0);
-  }
-  if (dataReliabilityValues.length === 0) {
-    dataReliabilityValues.push(70.0, 85.0);
-  }
-  if (adjustedWeeklyWorkHoursValues.length === 0) {
-    adjustedWeeklyWorkHoursValues.push(35.0, 45.0);
-  }
   
   const getPercentile = (arr: number[], percentile: number) => {
     if (arr.length === 0) return 0;
@@ -227,82 +208,50 @@ export async function GET(request: NextRequest) {
   const thresholds = {
     efficiency: {
       low: `≤${getPercentile(efficiencyValues, 20).toFixed(1)}%`,
-      lowValue: getPercentile(efficiencyValues, 20),
       middle: `${getPercentile(efficiencyValues, 20).toFixed(1)}-${getPercentile(efficiencyValues, 80).toFixed(1)}%`,
-      midLow: getPercentile(efficiencyValues, 20),
-      midHigh: getPercentile(efficiencyValues, 80),
       high: `≥${getPercentile(efficiencyValues, 80).toFixed(1)}%`,
-      highValue: getPercentile(efficiencyValues, 80),
       thresholds: { low: getPercentile(efficiencyValues, 20), high: getPercentile(efficiencyValues, 80) }
     },
     workHours: {
       low: `≤${getPercentile(workHoursValues, 20).toFixed(1)}h`,
-      lowValue: getPercentile(workHoursValues, 20),
       middle: `${getPercentile(workHoursValues, 20).toFixed(1)}-${getPercentile(workHoursValues, 80).toFixed(1)}h`,
-      midLow: getPercentile(workHoursValues, 20),
-      midHigh: getPercentile(workHoursValues, 80),
       high: `≥${getPercentile(workHoursValues, 80).toFixed(1)}h`,
-      highValue: getPercentile(workHoursValues, 80),
       thresholds: { low: getPercentile(workHoursValues, 20), high: getPercentile(workHoursValues, 80) }
     },
     claimedHours: {
       low: `≤${getPercentile(claimedHoursValues, 20).toFixed(1)}h`,
-      lowValue: getPercentile(claimedHoursValues, 20),
       middle: `${getPercentile(claimedHoursValues, 20).toFixed(1)}-${getPercentile(claimedHoursValues, 80).toFixed(1)}h`,
-      midLow: getPercentile(claimedHoursValues, 20),
-      midHigh: getPercentile(claimedHoursValues, 80),
       high: `≥${getPercentile(claimedHoursValues, 80).toFixed(1)}h`,
-      highValue: getPercentile(claimedHoursValues, 80),
       thresholds: { low: getPercentile(claimedHoursValues, 20), high: getPercentile(claimedHoursValues, 80) }
     },
     weeklyWorkHours: {
       low: `≤${getPercentile(weeklyWorkHoursValues, 20).toFixed(0)}h`,
-      lowValue: getPercentile(weeklyWorkHoursValues, 20),
       middle: `${getPercentile(weeklyWorkHoursValues, 20).toFixed(0)}-${getPercentile(weeklyWorkHoursValues, 80).toFixed(0)}h`,
-      midLow: getPercentile(weeklyWorkHoursValues, 20),
-      midHigh: getPercentile(weeklyWorkHoursValues, 80),
       high: `≥${getPercentile(weeklyWorkHoursValues, 80).toFixed(0)}h`,
-      highValue: getPercentile(weeklyWorkHoursValues, 80),
       thresholds: { low: getPercentile(weeklyWorkHoursValues, 20), high: getPercentile(weeklyWorkHoursValues, 80) }
     },
     adjustedWeeklyWorkHours: {
       low: `≤${getPercentile(adjustedWeeklyWorkHoursValues, 20).toFixed(0)}h`,
-      lowValue: getPercentile(adjustedWeeklyWorkHoursValues, 20),
       middle: `${getPercentile(adjustedWeeklyWorkHoursValues, 20).toFixed(0)}-${getPercentile(adjustedWeeklyWorkHoursValues, 80).toFixed(0)}h`,
-      midLow: getPercentile(adjustedWeeklyWorkHoursValues, 20),
-      midHigh: getPercentile(adjustedWeeklyWorkHoursValues, 80),
       high: `≥${getPercentile(adjustedWeeklyWorkHoursValues, 80).toFixed(0)}h`,
-      highValue: getPercentile(adjustedWeeklyWorkHoursValues, 80),
       thresholds: { low: getPercentile(adjustedWeeklyWorkHoursValues, 20), high: getPercentile(adjustedWeeklyWorkHoursValues, 80) }
     },
     weeklyClaimedHours: {
       low: `≤${getPercentile(weeklyClaimedHoursValues, 20).toFixed(0)}h`,
-      lowValue: getPercentile(weeklyClaimedHoursValues, 20),
       middle: `${getPercentile(weeklyClaimedHoursValues, 20).toFixed(0)}-${getPercentile(weeklyClaimedHoursValues, 80).toFixed(0)}h`,
-      midLow: getPercentile(weeklyClaimedHoursValues, 20),
-      midHigh: getPercentile(weeklyClaimedHoursValues, 80),
       high: `≥${getPercentile(weeklyClaimedHoursValues, 80).toFixed(0)}h`,
-      highValue: getPercentile(weeklyClaimedHoursValues, 80),
       thresholds: { low: getPercentile(weeklyClaimedHoursValues, 20), high: getPercentile(weeklyClaimedHoursValues, 80) }
     },
     focusedWorkHours: {
       low: `≤${getPercentile(focusedHoursValues, 20).toFixed(1)}h`,
-      lowValue: getPercentile(focusedHoursValues, 20),
       middle: `${getPercentile(focusedHoursValues, 20).toFixed(1)}-${getPercentile(focusedHoursValues, 80).toFixed(1)}h`,
-      midLow: getPercentile(focusedHoursValues, 20),
-      midHigh: getPercentile(focusedHoursValues, 80),
       high: `≥${getPercentile(focusedHoursValues, 80).toFixed(1)}h`,
-      highValue: getPercentile(focusedHoursValues, 80),
       thresholds: { low: getPercentile(focusedHoursValues, 20), high: getPercentile(focusedHoursValues, 80) }
     },
     dataReliability: {
       low: `≤${getPercentile(dataReliabilityValues, 20).toFixed(0)}%`,
-      lowValue: getPercentile(dataReliabilityValues, 20),
       middle: `${getPercentile(dataReliabilityValues, 20).toFixed(0)}-${getPercentile(dataReliabilityValues, 80).toFixed(0)}%`,
-      midLow: getPercentile(dataReliabilityValues, 20),
-      midHigh: getPercentile(dataReliabilityValues, 80),
       high: `≥${getPercentile(dataReliabilityValues, 80).toFixed(0)}%`,
-      highValue: getPercentile(dataReliabilityValues, 80),
       thresholds: { low: getPercentile(dataReliabilityValues, 20), high: getPercentile(dataReliabilityValues, 80) }
     }
   };
