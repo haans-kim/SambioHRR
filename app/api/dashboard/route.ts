@@ -20,7 +20,7 @@ import { calculateAdjustedWorkHours } from '@/lib/utils';
 
 export async function GET() {
   try {
-    const cacheKey = 'dashboard:v14'; // Fixed avgAdjustedWeeklyWorkHours to use flexible work adjusted values
+    const cacheKey = 'dashboard:v15'; // 자연 평균화 방식 적용 - 탄력근무제 보정 제거
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
