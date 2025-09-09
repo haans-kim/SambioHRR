@@ -48,3 +48,4 @@ sambio_human.db
 sambio_human_backup.db
 sambio_analytics.db
 DB Backup.2025.09.08/sambio_analytics_clean.db-shm
+*.db.backup.*
