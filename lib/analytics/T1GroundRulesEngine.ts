@@ -16,7 +16,8 @@ export class T1GroundRulesEngine {
   constructor(dbPath: string = './sambio_analytics.db') {
     this.db = new Database(dbPath, { readonly: true })
     this.loadTeamCharacteristics()
-    this.initializeSpecialRules()
+    // 85% baseline 접근을 위해 제한적인 특별규칙 비활성화
+    // this.initializeSpecialRules()
   }
 
   /**

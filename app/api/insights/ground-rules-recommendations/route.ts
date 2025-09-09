@@ -91,7 +91,7 @@ export async function POST(request: Request) {
 
     if (employeeId) {
       // Individual employee analysis
-      analysisData = getDailyAnalysisResultsWithGroundRules(startDate, endDate, employeeId) as any[]
+      analysisData = getDailyAnalysisResultsWithGroundRules(employeeId, startDate, endDate) as any[]
     } else if (organizationName) {
       // Organization-specific analysis
       organizationStats = getOrganizationStatsWithGroundRules(
@@ -100,11 +100,11 @@ export async function POST(request: Request) {
         startDate,
         endDate
       )
-      analysisData = getDailyAnalysisResultsWithGroundRules(startDate, endDate) as any[]
+      analysisData = getDailyAnalysisResultsWithGroundRules(null, startDate, endDate) as any[]
       // Note: Would need proper filtering by organization in real implementation
     } else {
       // System-wide analysis
-      analysisData = getDailyAnalysisResultsWithGroundRules(startDate, endDate) as any[]
+      analysisData = getDailyAnalysisResultsWithGroundRules(null, startDate, endDate) as any[]
     }
 
     if (!analysisData || analysisData.length === 0) {
@@ -153,6 +153,7 @@ export async function POST(request: Request) {
 
     // Filter Ground Rules records
     const groundRulesRecords = analysisData.filter(r => r.ground_rules_confidence !== null)
+    const anomalyRecords = groundRulesRecords.filter(r => (r.anomaly_score || 0) > 20)
     const insights: Insight[] = []
 
     // Analysis 1: Confidence Analysis
@@ -202,7 +203,6 @@ export async function POST(request: Request) {
 
     // Analysis 2: Anomaly Detection
     if (focusAreas.includes('anomalies')) {
-      const anomalyRecords = groundRulesRecords.filter(r => (r.anomaly_score || 0) > 20)
       const anomalyRate = (anomalyRecords.length / groundRulesRecords.length) * 100
       
       if (anomalyRate > 15) {

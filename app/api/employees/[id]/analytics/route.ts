@@ -12,6 +12,9 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Initialize Enhanced Calculator outside try block for proper cleanup
+  let enhancedCalculator: EnhancedWorkHourCalculator | null = null
+  
   try {
     // Performance timing start
     const startTime = performance.now()
@@ -26,7 +29,6 @@ export async function GET(
     const employeeId = parseInt(id)
     
     // Initialize Enhanced Calculator if Ground Rules enabled
-    let enhancedCalculator: EnhancedWorkHourCalculator | null = null
     try {
       if (useGroundRules) {
         const analyticsDbPath = path.join(process.cwd(), 'sambio_analytics.db')

@@ -18,6 +18,13 @@ export interface MemoryCalculationResult {
   claimedHours?: number
   groundRulesAnalysis?: any
   error?: string
+  // 조직 정보 추가
+  centerId?: string
+  centerName?: string
+  teamId?: string
+  teamName?: string
+  groupId?: string
+  groupName?: string
 }
 
 export class MemoryCalculator {
@@ -42,7 +49,13 @@ export class MemoryCalculator {
           employeeName: 'Unknown',
           date,
           metrics: this.createEmptyMetrics(),
-          error: 'Employee not found in memory dataset'
+          error: 'Employee not found in memory dataset',
+          centerId: '',
+          centerName: '',
+          teamId: '',
+          teamName: '',
+          groupId: '',
+          groupName: ''
         }
       }
 
@@ -56,7 +69,13 @@ export class MemoryCalculator {
           employeeName: employee.employeeName,
           date,
           metrics: this.createEmptyMetrics(),
-          error: 'No events found for this date'
+          error: 'No events found for this date',
+          centerId: employee.groupName || '',
+          centerName: employee.groupName || '',
+          teamId: employee.teamName ? employee.teamName.split(' ')[0] : '',
+          teamName: employee.teamName || '',
+          groupId: employee.groupName || '',
+          groupName: employee.groupName || ''
         }
       }
 
@@ -103,7 +122,13 @@ export class MemoryCalculator {
         employeeName: employee.employeeName,
         date,
         metrics,
-        claimedHours
+        claimedHours,
+        centerId: employee.groupName || '',
+        centerName: employee.groupName || '',
+        teamId: employee.teamName ? employee.teamName.split(' ')[0] : '',
+        teamName: employee.teamName || '',
+        groupId: employee.groupName || '',
+        groupName: employee.groupName || ''
       }
 
     } catch (error) {
@@ -112,7 +137,13 @@ export class MemoryCalculator {
         employeeName: 'Unknown',
         date,
         metrics: this.createEmptyMetrics(),
-        error: error instanceof Error ? error.message : 'Unknown calculation error'
+        error: error instanceof Error ? error.message : 'Unknown calculation error',
+        centerId: '',
+        centerName: '',
+        teamId: '',
+        teamName: '',
+        groupId: '',
+        groupName: ''
       }
     }
   }
@@ -311,8 +342,9 @@ export class MemoryCalculator {
         sequenceMultiplier = 2.2  // O-T1-X 또는 X-T1-O 패턴
       }
       
-      // 팀 기반 기본 신뢰도 (T1 default confidence)
-      const baseConfidence = 0.5 // Default T1 confidence baseline
+      // 85% baseline 접근: 팀별 기본 신뢰도 상향 조정
+      const baseConfidence = teamCharacteristics?.tagRatio ? 
+        Math.min(0.75, teamCharacteristics.tagRatio + 0.15) : 0.65 // 85% 목표를 위한 상향 조정
       
       // 최종 신뢰도 계산
       const eventConfidence = Math.min(0.95, Math.max(0.05, 
@@ -332,9 +364,9 @@ export class MemoryCalculator {
     }
 
     // Ground Rules 기반 작업시간 재계산
-    // 기존 방식: T1도 WORK state면 100% 업무시간으로 계산
-    // Ground Rules: T1의 confidence를 실제로 반영하여 확률적 업무시간 계산
+    // 목표: 업무상 합리적인 이동 Loss 반영 (5-15% 감소, 85-95% 효율)
     let groundRulesWorkTime = 0
+    let t1TotalTime = 0  // T1 태그 총 시간
     
     for (let i = 0; i < timeline.length - 1; i++) {
       const current = timeline[i]
@@ -343,48 +375,60 @@ export class MemoryCalculator {
       
       if (current.state === ActivityState.WORK) {
         if (current.tagCode === 'T1') {
-          // T1 태그: Ground Rules 신뢰도를 실제 업무시간에 반영
-          // 기존에는 T1도 100% 업무시간으로 계산했지만, 이제는 신뢰도만큼만 반영
-          
-          // Ground Rules 신뢰도 재계산 (위에서 계산된 로직 사용)
+          // T1 태그: 합리적인 이동 Loss 적용 (보수적 접근)
           const hour = current.timestamp.getHours()
           const prevEvent = i > 0 ? timeline[i - 1] : null
           const nextEvent = next
           
-          // 시간대별 가중치
-          let timeWeight = 1.0
-          if (hour >= 6 && hour <= 8) timeWeight = 1.2
-          else if (hour >= 12 && hour <= 13) timeWeight = 0.8
-          else if (hour >= 17 && hour <= 19) timeWeight = 1.1
+          // 85% baseline 접근: 팀 기반 기본 신뢰도 상향 조정
+          const baseConfidence = teamCharacteristics?.tagRatio ? 
+            Math.min(0.75, teamCharacteristics.tagRatio + 0.15) : 0.65
           
-          // 시퀀스 기반 multiplier
-          let sequenceMultiplier = 1.0
-          if (prevEvent?.tagCode === 'O' && nextEvent?.tagCode === 'O') {
-            sequenceMultiplier = 2.5
-          } else if ((prevEvent?.tagCode === 'O' && nextEvent?.tagCode !== 'O') || 
-                     (prevEvent?.tagCode !== 'O' && nextEvent?.tagCode === 'O')) {
-            sequenceMultiplier = 2.2
+          // 시간대별 가중치 (탄력근무제 야간근무 포함)
+          let timeWeight = 1.0
+          if (hour >= 22 || hour <= 6) {
+            // 야간시간: 탄력근무제 야간근무 (22:00-06:00)
+            timeWeight = 1.1  // 야간 작업 이동에 높은 가중치
+          } else if (hour >= 6 && hour <= 8) {
+            // 출근시간
+            timeWeight = 1.1
+          } else if (hour >= 12 && hour <= 13) {
+            // 점심시간
+            timeWeight = 0.95
+          } else if (hour >= 17 && hour <= 19) {
+            // 퇴근시간  
+            timeWeight = 1.05
           }
           
-          // 팀 기반 기본 신뢰도
-          const baseConfidence = teamCharacteristics?.tagRatio || 0.5
+          // 시퀀스 기반 multiplier (85% baseline 제한)
+          let sequenceMultiplier = 1.0
+          if (prevEvent?.tagCode === 'O' && nextEvent?.tagCode === 'O') {
+            sequenceMultiplier = 1.15  // O-T1-O: 업무간 이동으로 높은 신뢰도
+          } else if ((prevEvent?.tagCode === 'O' && nextEvent?.tagCode !== 'O') || 
+                     (prevEvent?.tagCode !== 'O' && nextEvent?.tagCode === 'O')) {
+            sequenceMultiplier = 1.1   // 부분적 업무 이동
+          }
+          
+          // 85% baseline 제한: 최종 신뢰도가 0.85를 넘지 않도록 조정
+          const tentativeConfidence = baseConfidence * sequenceMultiplier * timeWeight
+          if (tentativeConfidence > 0.85) {
+            sequenceMultiplier = 0.85 / (baseConfidence * timeWeight)
+          }
           
           // Ground Rules 신뢰도 계산
           const t1Confidence = Math.min(0.95, Math.max(0.05, 
             baseConfidence * sequenceMultiplier * timeWeight
           ))
           
-          // 신뢰도만큼만 업무시간으로 반영 (핵심!)
+          // T1 이동시간도 85% 이상은 업무시간으로 인정 (합리적 Loss만 적용)
           groundRulesWorkTime += duration * t1Confidence
+          t1TotalTime += duration
         } else {
-          // O, G1 등 다른 업무 태그는 100% 업무시간으로 인정
+          // O, G1, G2, G3 등 모든 업무 태그는 100% 업무시간으로 인정
           groundRulesWorkTime += duration
         }
       }
     }
-
-    // 평균 신뢰도 계산
-    const groundRulesConfidence = confidenceCount > 0 ? totalConfidence / confidenceCount : 0
 
     // 기존 작업시간 계산 (비교용)
     const baselineWorkTime = timeline.reduce((total, entry, index) => {
@@ -394,6 +438,9 @@ export class MemoryCalculator {
       }
       return total
     }, 0)
+
+    // 평균 신뢰도 계산
+    const groundRulesConfidence = confidenceCount > 0 ? totalConfidence / confidenceCount : 0
 
     // 이상치 점수 계산 (Ground Rules 작업시간 vs 기존 작업시간 차이)
     const anomalyScore = baselineWorkTime > 0 ? 

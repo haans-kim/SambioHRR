@@ -26,7 +26,12 @@
       "Bash(for table in eam_data equis_data mdm_data)",
       "Bash(do echo \"=== $table - 2025년 6월 데이터 ===\")",
       "Read(//var/folders/cg/hnykq8n5159dxh1w7lmpmcsc0000gn/T/TemporaryItems/NSIRD_screencaptureui_xTNC11/**)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Read(//var/folders/cg/hnykq8n5159dxh1w7lmpmcsc0000gn/T/TemporaryItems/NSIRD_screencaptureui_IGceb1/**)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_snapshot"
     ],
     "deny": []
   }

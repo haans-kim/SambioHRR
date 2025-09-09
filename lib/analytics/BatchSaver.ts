@@ -86,6 +86,13 @@ export class BatchSaver {
       const saveData = {
         employeeId: result.employeeId,
         analysisDate: result.date,
+        // 조직 정보 추가
+        centerId: result.centerId,
+        centerName: result.centerName,
+        teamId: result.teamId,
+        teamName: result.teamName,
+        groupId: result.groupId,
+        groupName: result.groupName,
         totalHours: metrics.totalTime / 60,
         // 🔄 기존 지표들을 Ground Rules 값으로 대체
         actualWorkHours: groundRulesWorkHours,           // ← Ground Rules 업무시간
@@ -112,6 +119,13 @@ export class BatchSaver {
     const saveData = {
       employeeId: result.employeeId,
       analysisDate: result.date,
+      // 조직 정보 추가
+      centerId: result.centerId,
+      centerName: result.centerName,
+      teamId: result.teamId,
+      teamName: result.teamName,
+      groupId: result.groupId,
+      groupName: result.groupName,
       totalHours: metrics.totalTime / 60,
       actualWorkHours: metrics.workTime / 60,
       claimedWorkHours: result.claimedHours,

@@ -226,6 +226,7 @@ export class MemoryDataLoader {
         FROM claim_data
         WHERE 사번 IN (${placeholders})
           AND DATE(근무일) BETWEEN ? AND ?
+          AND 실제근무시간 >= 1.0
       `)
       
       const rows = stmt.all(...employeeIds, startDate, endDate) as any[]

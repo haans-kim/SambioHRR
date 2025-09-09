@@ -242,6 +242,13 @@ export const getEmployeesByOrganization = (orgCode: string) => {
 export const saveDailyAnalysisResult = (data: {
   employeeId: number
   analysisDate: string
+  // 조직 정보 추가
+  centerId?: string
+  centerName?: string
+  teamId?: string
+  teamName?: string
+  groupId?: string
+  groupName?: string
   totalHours: number
   actualWorkHours: number
   claimedWorkHours: number | null
@@ -264,6 +271,12 @@ export const saveDailyAnalysisResult = (data: {
       INSERT OR REPLACE INTO daily_analysis_results (
         employee_id,
         analysis_date,
+        center_id,
+        center_name,
+        team_id,
+        team_name,
+        group_id,
+        group_name,
         total_hours,
         actual_work_hours,
         claimed_work_hours,
@@ -281,15 +294,21 @@ export const saveDailyAnalysisResult = (data: {
         non_work_movement_minutes,
         anomaly_score,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `)
     
     // Calculate work_minutes (actual_work_hours * 60)
     const workMinutes = Math.round(data.actualWorkHours * 60)
     
     return stmt.run(
-      data.employeeId,
+      data.employeeId.toString().split('.')[0],  // Remove decimal part if present
       data.analysisDate,
+      data.centerId || null,
+      data.centerName || null,
+      data.teamId || null,
+      data.teamName || null,
+      data.groupId || null,
+      data.groupName || null,
       data.totalHours,
       data.actualWorkHours,
       data.claimedWorkHours,
@@ -314,9 +333,9 @@ export const saveDailyAnalysisResult = (data: {
 }
 
 // Get daily analysis results with Ground Rules metrics
-export const getDailyAnalysisResultsWithGroundRules = (employeeId: number, startDate: string, endDate: string) => {
+export const getDailyAnalysisResultsWithGroundRules = (employeeId: number | null, startDate: string, endDate: string) => {
   try {
-    const stmt = db.getDb().prepare(`
+    let query = `
       SELECT 
         employee_id,
         analysis_date,
@@ -339,10 +358,19 @@ export const getDailyAnalysisResultsWithGroundRules = (employeeId: number, start
         created_at,
         updated_at
       FROM daily_analysis_results
-      WHERE employee_id = ? AND analysis_date BETWEEN ? AND ?
-      ORDER BY analysis_date DESC
-    `)
-    return stmt.all(employeeId, startDate, endDate)
+      WHERE analysis_date BETWEEN ? AND ?`
+    
+    let params: any[] = [startDate, endDate]
+    
+    if (employeeId) {
+      query += ` AND employee_id = ?`
+      params.push(employeeId)
+    }
+    
+    query += ` ORDER BY analysis_date DESC`
+    
+    const stmt = db.getDb().prepare(query)
+    return stmt.all(...params)
   } catch (error) {
     console.error('Error fetching daily analysis results with Ground Rules:', error)
     return []

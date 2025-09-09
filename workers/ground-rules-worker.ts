@@ -72,6 +72,31 @@ async function processEmployee(task: WorkerTask): Promise<WorkerResult[]> {
           continue
         }
         
+        // 1시간 미만 Claim은 Ground Rules 분석에서 제외 (의미 없는 극단적 효율성 방지)
+        const { getClaimData } = await import('../lib/database/queries')
+        let totalClaimedForValidation = 0
+        if (detectedShift === 'night') {
+          // 야간근무: 전날+당일 합산으로 검사
+          const prevDate = new Date(dateStr)
+          prevDate.setDate(prevDate.getDate() - 1)
+          const prevDateStr = prevDate.toISOString().split('T')[0]
+          
+          const currentClaimData = getClaimData(task.employeeId, dateStr) as any
+          const prevClaimData = getClaimData(task.employeeId, prevDateStr) as any
+          
+          const currentHours = currentClaimData?.근무시간 || 0
+          const prevHours = prevClaimData?.근무시간 || 0
+          totalClaimedForValidation = currentHours + prevHours
+        } else {
+          // 주간근무: 해당 날짜만
+          const preliminaryClaimData = getClaimData(task.employeeId, dateStr) as any
+          totalClaimedForValidation = preliminaryClaimData?.근무시간 || 0
+        }
+        
+        if (totalClaimedForValidation < 1.0) {
+          continue
+        }
+        
         // Find first and last T tags
         const firstTTagIndex = events.findIndex(e => 
           e.tagCode === 'T1' || e.tagCode === 'T2' || e.tagCode === 'T3'
@@ -129,7 +154,25 @@ async function processEmployee(task: WorkerTask): Promise<WorkerResult[]> {
         // Generate Ground Rules analysis
         let groundRulesAnalysis = undefined
         if (metrics.groundRulesMetrics) {
-          const comparison = calculator.compareWithGroundRules(metrics, 8.0) // Default 8 hours
+          // 야간근무일 때는 전날+당일 Claim 데이터 사용
+          let analysisClaimedHours = 8.0 // Default
+          if (detectedShift === 'night') {
+            const prevDate = new Date(dateStr)
+            prevDate.setDate(prevDate.getDate() - 1)
+            const prevDateStr = prevDate.toISOString().split('T')[0]
+            
+            const currentClaimData = getClaimData(task.employeeId, dateStr) as any
+            const prevClaimData = getClaimData(task.employeeId, prevDateStr) as any
+            
+            const currentHours = currentClaimData?.근무시간 || 0
+            const prevHours = prevClaimData?.근무시간 || 0
+            analysisClaimedHours = (currentHours + prevHours) || 8.0
+          } else {
+            const claimData = getClaimData(task.employeeId, dateStr) as any
+            analysisClaimedHours = claimData?.근무시간 || 8.0
+          }
+          
+          const comparison = calculator.compareWithGroundRules(metrics, analysisClaimedHours)
           const anomalyReport = calculator.generateAnomalyReport(metrics)
           
           groundRulesAnalysis = {
