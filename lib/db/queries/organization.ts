@@ -185,16 +185,10 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     });
   } else if (level === 'team') {
     const teamStats = db.prepare(`
-      WITH flexible_workers AS (
-        SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
-        FROM claim_data
-        WHERE WORKSCHDTYPNM = '탄력근무제'
-      )
       SELECT 
         e.team_name as orgName,
         e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
-        COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
         COUNT(*) as manDays,
         ROUND(
           SUM(
@@ -203,45 +197,20 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
           ) / SUM(dar.claimed_work_hours) * 100, 
           1
         ) as avgWorkEfficiency,
-        -- 원본 값
+        -- Natural averaging (SUM / COUNT)
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
-        -- Ground Rules 보정 값
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
-        -- Ground Rules 보정 주간 근무시간
-        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
-        -- 보정된 값
-        ROUND(
-          SUM(CASE 
-            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-            ELSE dar.actual_work_hours
-          END) / COUNT(*), 1
-        ) as avgActualWorkHoursAdjusted,
-        ROUND(
-          SUM(CASE 
-            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-            ELSE dar.claimed_work_hours
-          END) / COUNT(*), 1
-        ) as avgAttendanceHoursAdjusted,
-        ROUND(
-          (SUM(CASE 
-            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-            ELSE dar.actual_work_hours
-          END) / COUNT(*)) * 5, 1
-        ) as avgWeeklyWorkHoursAdjusted,
-        ROUND(
-          (SUM(CASE 
-            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-            ELSE dar.claimed_work_hours
-          END) / COUNT(*)) * 5, 1
-        ) as avgWeeklyClaimedHoursAdjusted,
+        -- Same values for adjusted (no flexible work factor applied)
+        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHoursAdjusted,
+        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHoursAdjusted,
+        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHoursAdjusted,
+        ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHoursAdjusted,
         ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
-      LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.team_name IS NOT NULL
       GROUP BY e.team_name, e.center_name
@@ -252,16 +221,10 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     });
   } else if (level === 'group') {
     const groupStats = db.prepare(`
-      WITH flexible_workers AS (
-        SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
-        FROM claim_data
-        WHERE WORKSCHDTYPNM = '탄력근무제'
-      )
       SELECT 
         e.group_name as orgName,
         e.center_name as centerName,
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
-        COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
         COUNT(*) as manDays,
         ROUND(
           SUM(
@@ -270,45 +233,20 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
           ) / SUM(dar.claimed_work_hours) * 100, 
           1
         ) as avgWorkEfficiency,
-        -- 원본 값
+        -- Natural averaging (SUM / COUNT)
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
-        -- Ground Rules 보정 값
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
-        -- Ground Rules 보정 주간 근무시간
-        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
-        -- 보정된 값
-        ROUND(
-          SUM(CASE 
-            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-            ELSE dar.actual_work_hours
-          END) / COUNT(*), 1
-        ) as avgActualWorkHoursAdjusted,
-        ROUND(
-          SUM(CASE 
-            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-            ELSE dar.claimed_work_hours
-          END) / COUNT(*), 1
-        ) as avgAttendanceHoursAdjusted,
-        ROUND(
-          (SUM(CASE 
-            WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-            ELSE dar.actual_work_hours
-          END) / COUNT(*)) * 5, 1
-        ) as avgWeeklyWorkHoursAdjusted,
-        ROUND(
-          (SUM(CASE 
-            WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-            ELSE dar.claimed_work_hours
-          END) / COUNT(*)) * 5, 1
-        ) as avgWeeklyClaimedHoursAdjusted,
+        -- Same values for adjusted (no flexible work factor applied)
+        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHoursAdjusted,
+        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHoursAdjusted,
+        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHoursAdjusted,
+        ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHoursAdjusted,
         ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
-      LEFT JOIN flexible_workers fw ON dar.employee_id = fw.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.group_name IS NOT NULL
       GROUP BY e.group_name, e.center_name
@@ -438,4 +376,38 @@ export function getTotalEmployees(): number {
   
   const result = stmt.get(startDate, endDate) as { total: number } | undefined;
   return result?.total || 0;
+}
+
+// Helper function to resolve organization name to org code
+export function getOrganizationByName(orgName: string, orgLevel?: string): Organization | null {
+  let query = `
+    SELECT 
+      org_code as orgCode,
+      org_name as orgName,
+      org_level as orgLevel,
+      parent_org_code as parentOrgCode,
+      display_order as displayOrder,
+      is_active as isActive
+    FROM organization_master
+    WHERE org_name = ? AND is_active = 1
+  `;
+  
+  const params: any[] = [orgName];
+  
+  if (orgLevel) {
+    query += ' AND org_level = ?';
+    params.push(orgLevel);
+  }
+  
+  const stmt = db.prepare(query);
+  const result = stmt.get(...params) as any;
+  
+  return result ? {
+    orgCode: result.orgCode,
+    orgName: result.orgName,
+    orgLevel: result.orgLevel as any,
+    parentOrgCode: result.parentOrgCode,
+    displayOrder: result.displayOrder,
+    isActive: Boolean(result.isActive)
+  } : null;
 }

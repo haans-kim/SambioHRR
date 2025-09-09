@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { 
   getOrganizationsWithStats,
   getOrganizationById,
-  getChildOrganizations
+  getChildOrganizations,
+  getOrganizationByName
 } from '@/lib/db/queries/organization';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
-  const cacheKey = `teams:v7:center=${centerCode || ''}:division=${divisionCode || ''}`;
+  const cacheKey = `teams:v9:center=${centerCode || ''}:division=${divisionCode || ''}`;
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
@@ -42,8 +43,22 @@ export async function GET(request: NextRequest) {
   
   if (divisionCode) {
     // Show teams under a specific division
+    // First try to get by orgCode, then by orgName if not found
     parentOrg = getOrganizationById(divisionCode);
-    teams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
+    let resolvedDivisionCode = divisionCode;
+    
+    if (!parentOrg) {
+      // Try to find by orgName and get the orgCode
+      const orgByName = getOrganizationByName(divisionCode, 'division');
+      if (orgByName) {
+        parentOrg = orgByName;
+        resolvedDivisionCode = orgByName.orgCode;
+      }
+    }
+    
+    if (parentOrg) {
+      teams = getChildOrganizations(resolvedDivisionCode).filter((org: any) => org.orgLevel === 'team');
+    }
     
     // 통합 함수로 팀 통계 가져오기
     const teamsWithStats = getOrganizationsWithStats('team');
@@ -111,9 +126,10 @@ export async function GET(request: NextRequest) {
     let where = 'dar.analysis_date BETWEEN ? AND ?';
     const params: any[] = [startDate, endDate];
     
-    if (divisionCode) {
-      // Filter by teams under division
-      const divisionTeams = getChildOrganizations(divisionCode).filter((org: any) => org.orgLevel === 'team');
+    if (parentOrg && parentOrg.orgLevel === 'division') {
+      // Filter by teams under division - use the resolved orgCode
+      const resolvedDivisionCode = parentOrg.orgCode;
+      const divisionTeams = getChildOrganizations(resolvedDivisionCode).filter((org: any) => org.orgLevel === 'team');
       const teamNames = divisionTeams.map((t: any) => t.orgName).filter(Boolean);
       if (teamNames.length > 0) {
         where += ` AND e.team_name IN (${teamNames.map(() => '?').join(',')})`;
@@ -121,7 +137,7 @@ export async function GET(request: NextRequest) {
       } else {
         // Division에 직접 속한 직원도 포함
         where += ' AND (e.team_name = ? OR e.team_name IN (SELECT org_name FROM organization_master WHERE parent_org_code = ?))';
-        params.push(parentOrg?.orgName, divisionCode);
+        params.push(parentOrg?.orgName, resolvedDivisionCode);
       }
     } else if (centerCode && parentOrg) {
       where += ' AND e.center_name = ?';
