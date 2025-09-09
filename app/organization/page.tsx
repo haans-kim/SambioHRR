@@ -806,7 +806,7 @@ export default function OrganizationAnalysisPage() {
                           {formatMinutes(Math.round(result.metrics.workTime))}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                          {result.claimedHours ? `${result.claimedHours}시간` : '-'}
+                          {result.claimedHours || '-'}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                           {formatMinutes(Math.round(result.metrics.estimatedWorkTime))}

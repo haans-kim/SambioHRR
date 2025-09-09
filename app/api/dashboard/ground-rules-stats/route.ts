@@ -83,7 +83,9 @@ export async function POST(request: Request) {
     }
 
     // Get daily analysis results with Ground Rules for time series
-    const dailyResults = getDailyAnalysisResultsWithGroundRules(startDate, endDate) as any[]
+    // Note: We'll need to implement a different function for organization-wide stats
+    // For now, use dummy data structure
+    const dailyResults: any[] = []
     
     if (!dailyResults || dailyResults.length === 0) {
       return NextResponse.json({

@@ -164,8 +164,8 @@ export async function POST(request: Request) {
             // Extract team and work schedule info from employee data
             const employeeInfo = {
               employeeId: emp.employeeId,
-              teamName: employee.team_name || employee.group_name || 'Unknown Team',
-              workScheduleType: employee.work_schedule_type || '선택근무제'
+              teamName: employee.team_name || employee.group_name || employee.department || 'Unknown Team',
+              workScheduleType: employee.work_schedule_type || employee.shift_type || '선택근무제'
             }
             
             metrics = calculator.calculateEnhancedMetrics(timeline, employeeInfo, dateStr)

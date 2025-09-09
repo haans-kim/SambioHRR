@@ -120,8 +120,8 @@ async function processEmployee(task: WorkerTask): Promise<WorkerResult[]> {
         // Calculate metrics with Ground Rules
         const employeeInfo = {
           employeeId: task.employeeId,
-          teamName: employee.team_name || employee.group_name || 'Unknown Team',
-          workScheduleType: employee.work_schedule_type || '선택근무제'
+          teamName: employee.team_name || employee.group_name || employee.department || 'Unknown Team',
+          workScheduleType: employee.work_schedule_type || employee.shift_type || '선택근무제'
         }
         
         const metrics = calculator.calculateEnhancedMetrics(timeline, employeeInfo, dateStr)

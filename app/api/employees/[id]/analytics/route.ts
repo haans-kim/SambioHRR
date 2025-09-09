@@ -27,10 +27,15 @@ export async function GET(
     
     // Initialize Enhanced Calculator if Ground Rules enabled
     let enhancedCalculator: EnhancedWorkHourCalculator | null = null
-    if (useGroundRules) {
-      const analyticsDbPath = path.join(process.cwd(), 'sambio_analytics.db')
-      enhancedCalculator = new EnhancedWorkHourCalculator(analyticsDbPath)
-      console.log('🎯 Ground Rules enabled for individual analysis')
+    try {
+      if (useGroundRules) {
+        const analyticsDbPath = path.join(process.cwd(), 'sambio_analytics.db')
+        enhancedCalculator = new EnhancedWorkHourCalculator(analyticsDbPath)
+        console.log('🎯 Ground Rules enabled for individual analysis')
+      }
+    } catch (error) {
+      console.error('Failed to initialize Enhanced Calculator:', error)
+      enhancedCalculator = null
     }
     
     // Get employee data
@@ -127,8 +132,8 @@ export async function GET(
       // Extract team and work schedule info from employee data
       const employeeInfo = {
         employeeId: employeeId,
-        teamName: employee.team_name || employee.group_name || 'Unknown Team',
-        workScheduleType: employee.work_schedule_type || '선택근무제'
+        teamName: employee.team_name || employee.group_name || employee.department || 'Unknown Team',
+        workScheduleType: employee.work_schedule_type || employee.shift_type || '선택근무제'
       }
       
       metrics = enhancedCalculator.calculateEnhancedMetrics(timeline, employeeInfo, date)
@@ -253,8 +258,12 @@ export async function GET(
     console.error('Analytics API Error:', error)
     
     // Clean up calculator in case of error
-    if (typeof enhancedCalculator !== 'undefined' && enhancedCalculator) {
-      enhancedCalculator.close()
+    try {
+      if (enhancedCalculator) {
+        enhancedCalculator.close()
+      }
+    } catch (cleanupError) {
+      console.error('Error during cleanup:', cleanupError)
     }
     
     return NextResponse.json(

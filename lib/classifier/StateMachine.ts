@@ -5,7 +5,7 @@ import {
   T1_CONFIGS,
   type TagEvent,
   type TimelineEntry
-} from '@/types/analytics'
+} from '../../types/analytics'
 
 interface StateTransition {
   from: TagCode

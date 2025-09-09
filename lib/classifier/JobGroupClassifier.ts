@@ -1,4 +1,4 @@
-import type { Employee } from '@/types/database'
+import type { Employee } from '../../types/database'
 
 export type JobGroup = 'PRODUCTION' | 'RESEARCH' | 'OFFICE' | 'MANAGEMENT'
 

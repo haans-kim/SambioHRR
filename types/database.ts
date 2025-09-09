@@ -9,6 +9,9 @@ export interface Employee {
   gender: string
   shift_type: string
   job_group?: 'PRODUCTION' | 'RESEARCH' | 'OFFICE' | 'MANAGEMENT'
+  team_name?: string
+  group_name?: string
+  work_schedule_type?: string
 }
 
 export interface TagData {
