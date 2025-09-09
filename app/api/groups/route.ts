@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { 
   getOrganizationsWithStats,
   getOrganizationById,
-  getChildOrganizations
+  getChildOrganizations,
+  getOrganizationByName
 } from '@/lib/db/queries/organization';
 import { getGroupStats } from '@/lib/db/queries/teamStats';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
@@ -13,7 +14,7 @@ import { calculateAdjustedWorkHours, calculateAIAdjustmentFactor, FLEXIBLE_WORK_
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const teamCode = searchParams.get('team');
-  const cacheKey = `groups:v8:team=${teamCode || ''}`; // v8으로 변경하여 캐시 무효화
+  const cacheKey = `groups:v9:team=${teamCode || ''}`; // v9으로 변경하여 캐시 무효화
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
@@ -25,13 +26,23 @@ export async function GET(request: NextRequest) {
   
   if (teamCode) {
     // Show groups under a specific team
+    // First try to get by orgCode, then by orgName if not found
     parentOrg = getOrganizationById(teamCode);
-    const allChildren = getChildOrganizations(teamCode);
-    console.log('Team Code:', teamCode);
-    console.log('Parent Org:', parentOrg);
-    console.log('All Children:', allChildren);
-    groups = allChildren.filter((org: any) => org.orgLevel === 'group');
-    console.log('Filtered Groups:', groups);
+    let resolvedTeamCode = teamCode;
+    
+    if (!parentOrg) {
+      // Try to find by orgName and get the orgCode
+      const orgByName = getOrganizationByName(teamCode, 'team');
+      if (orgByName) {
+        parentOrg = orgByName;
+        resolvedTeamCode = orgByName.orgCode;
+      }
+    }
+    
+    if (parentOrg) {
+      const allChildren = getChildOrganizations(resolvedTeamCode);
+      groups = allChildren.filter((org: any) => org.orgLevel === 'group');
+    }
 
     // breadcrumb: Center -> (optional) Division -> Team
     if (parentOrg && parentOrg.parentOrgCode) {
