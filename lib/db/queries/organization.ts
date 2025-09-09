@@ -62,9 +62,13 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         -- 원본 일간 근무시간
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
+        -- Ground Rules 보정 일간 근무시간
+        ROUND(SUM(dar.ground_rules_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
         -- 원본 주간 근무시간
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+        -- Ground Rules 보정 주간 근무시간
+        ROUND((SUM(dar.ground_rules_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
         -- 탄력근무제 보정 적용 일간 근무시간
         ROUND(
           SUM(CASE 
@@ -129,8 +133,12 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
           -- 원본 값
           ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
           ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
+          -- Ground Rules 보정 값
+          ROUND(SUM(dar.ground_rules_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
           ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
           ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+          -- Ground Rules 보정 주간 근무시간
+          ROUND((SUM(dar.ground_rules_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
           -- 보정된 값
           ROUND(
             SUM(CASE 
@@ -198,8 +206,12 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         -- 원본 값
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
+        -- Ground Rules 보정 값
+        ROUND(SUM(dar.ground_rules_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+        -- Ground Rules 보정 주간 근무시간
+        ROUND((SUM(dar.ground_rules_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
         -- 보정된 값
         ROUND(
           SUM(CASE 
@@ -261,8 +273,12 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         -- 원본 값
         ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
         ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
+        -- Ground Rules 보정 값
+        ROUND(SUM(dar.ground_rules_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
         ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
         ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+        -- Ground Rules 보정 주간 근무시간
+        ROUND((SUM(dar.ground_rules_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
         -- 보정된 값
         ROUND(
           SUM(CASE 
@@ -344,12 +360,13 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         avgFocusedWorkHours: stats.avgFocusedWorkHours || 0,
         avgDataReliability: stats.avgDataReliability || 0,
         centerName: stats.centerName || null,
-        avgAdjustedWeeklyWorkHours: stats.avgDataReliability 
-          ? calculateAdjustedWorkHours(
-              stats.avgWeeklyWorkHoursAdjusted || stats.avgWeeklyWorkHours || 0, 
-              stats.avgDataReliability
-            )
-          : 0
+        avgAdjustedWeeklyWorkHours: stats.avgWeeklyGroundRulesWorkHours || 
+          (stats.avgDataReliability 
+            ? calculateAdjustedWorkHours(
+                stats.avgWeeklyWorkHoursAdjusted || stats.avgWeeklyWorkHours || 0, 
+                stats.avgDataReliability
+              )
+            : 0)
       }
     };
   });

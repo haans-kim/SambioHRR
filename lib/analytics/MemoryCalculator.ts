@@ -8,6 +8,7 @@ import type { GroundRulesMetrics } from '../../types/ground-rules'
 import { ActivityState, WorkJudgment, TagCode } from '../../types/analytics'
 import { ActivityStateMachine } from '../classifier/StateMachine'
 import { JobGroupClassifier } from '../classifier/JobGroupClassifier'
+import { WorkHourCalculator } from './WorkHourCalculator'
 import type { MemoryDataset, EmployeeData, EventData } from './MemoryDataLoader'
 
 export interface MemoryCalculationResult {
@@ -96,12 +97,14 @@ export class MemoryCalculator {
       // Timeline 생성 (메모리 기반)
       const timeline = this.createTimeline(tagEvents, jobGroup)
 
-      // 기본 메트릭 계산
-      const baseMetrics = this.calculateBasicMetrics(timeline)
+      // 기존 WorkHourCalculator를 기본으로 사용 (85-120% 효율성 유지)
+      const workHourCalculator = new WorkHourCalculator()
+      const baseMetrics = workHourCalculator.calculateMetrics(timeline)
 
-      // Ground Rules 메트릭 계산 (메모리 기반)
-      const groundRulesMetrics = this.calculateGroundRulesMetrics(
+      // Ground Rules로 미세 조정 (T1 태그만 보정)
+      const groundRulesMetrics = this.calculateGroundRulesAdjustment(
         timeline,
+        baseMetrics,
         employee,
         date
       )
@@ -298,157 +301,85 @@ export class MemoryCalculator {
     }
   }
 
-  private calculateGroundRulesMetrics(
+  private calculateGroundRulesAdjustment(
     timeline: TimelineEntry[],
+    baseMetrics: WorkMetrics,
     employee: EmployeeData,
     date: string
   ): GroundRulesMetrics {
+    // AI 보정: 기존 WorkHourCalculator 결과를 기반으로 미세 조정 (±5% 정도만)
+    
     // 팀 특성 가져오기 (메모리에서)
-    const teamKey = `${employee.teamName}_일반` // 기본 근무형태
     const teamCharacteristics = this.dataset.teamCharacteristics.get(employee.teamName)
     
-    if (!teamCharacteristics) {
-      return this.createEmptyGroundRulesMetrics()
-    }
-
-    // T1 태그 기반 이동 시간 계산
+    // T1 태그 기반 미세 조정 계산
     const t1Events = timeline.filter(entry => entry.tagCode === 'T1')
-    let t1WorkMovement = 0
-    let t1NonWorkMovement = 0
-
-    // 각 T1 이벤트에 대해 컨텍스트 기반 신뢰도 계산
-    let totalConfidence = 0
-    let confidenceCount = 0
-
-    for (let i = 0; i < t1Events.length; i++) {
-      const t1Event = t1Events[i]
-      const hour = t1Event.timestamp.getHours()
-      
-      // 시간대별 가중치 계산
-      let timeWeight = 1.0
-      if (hour >= 6 && hour <= 8) timeWeight = 1.2  // 출근 시간
-      else if (hour >= 12 && hour <= 13) timeWeight = 0.8  // 점심 시간
-      else if (hour >= 17 && hour <= 19) timeWeight = 1.1  // 퇴근 시간
-      
-      // 시퀀스 기반 multiplier
-      const prevEvent = i > 0 ? timeline[timeline.findIndex(e => e === t1Event) - 1] : null
-      const nextEvent = i < timeline.length - 1 ? timeline[timeline.findIndex(e => e === t1Event) + 1] : null
-      
-      let sequenceMultiplier = 1.0
-      if (prevEvent?.tagCode === 'O' && nextEvent?.tagCode === 'O') {
-        sequenceMultiplier = 2.5  // O-T1-O 패턴 (업무 이동)
-      } else if ((prevEvent?.tagCode === 'O' && nextEvent?.tagCode !== 'O') || 
-                 (prevEvent?.tagCode !== 'O' && nextEvent?.tagCode === 'O')) {
-        sequenceMultiplier = 2.2  // O-T1-X 또는 X-T1-O 패턴
-      }
-      
-      // 85% baseline 접근: 팀별 기본 신뢰도 상향 조정
-      const baseConfidence = teamCharacteristics?.tagRatio ? 
-        Math.min(0.75, teamCharacteristics.tagRatio + 0.15) : 0.65 // 85% 목표를 위한 상향 조정
-      
-      // 최종 신뢰도 계산
-      const eventConfidence = Math.min(0.95, Math.max(0.05, 
-        baseConfidence * sequenceMultiplier * timeWeight
-      ))
-      
-      totalConfidence += eventConfidence
-      confidenceCount++
-      
-      // 신뢰도에 따라 업무/비업무 이동 분류
-      const duration = 5 // 기본 T1 지속 시간 (분)
-      if (eventConfidence > 0.6) {
-        t1WorkMovement += duration
-      } else {
-        t1NonWorkMovement += duration
-      }
-    }
-
-    // Ground Rules 기반 작업시간 재계산
-    // 목표: 업무상 합리적인 이동 Loss 반영 (5-15% 감소, 85-95% 효율)
-    let groundRulesWorkTime = 0
-    let t1TotalTime = 0  // T1 태그 총 시간
+    let adjustmentFactor = 1.0  // 기본: 조정 없음
     
-    for (let i = 0; i < timeline.length - 1; i++) {
-      const current = timeline[i]
-      const next = timeline[i + 1]
-      const duration = Math.floor((next.timestamp.getTime() - current.timestamp.getTime()) / 60000)
+    // T1 패턴 기반 미세 조정 (최대 ±5%)
+    if (t1Events.length > 0) {
+      let businessMovementScore = 0
       
-      if (current.state === ActivityState.WORK) {
-        if (current.tagCode === 'T1') {
-          // T1 태그: 합리적인 이동 Loss 적용 (보수적 접근)
-          const hour = current.timestamp.getHours()
-          const prevEvent = i > 0 ? timeline[i - 1] : null
-          const nextEvent = next
-          
-          // 85% baseline 접근: 팀 기반 기본 신뢰도 상향 조정
-          const baseConfidence = teamCharacteristics?.tagRatio ? 
-            Math.min(0.75, teamCharacteristics.tagRatio + 0.15) : 0.65
-          
-          // 시간대별 가중치 (탄력근무제 야간근무 포함)
-          let timeWeight = 1.0
-          if (hour >= 22 || hour <= 6) {
-            // 야간시간: 탄력근무제 야간근무 (22:00-06:00)
-            timeWeight = 1.1  // 야간 작업 이동에 높은 가중치
-          } else if (hour >= 6 && hour <= 8) {
-            // 출근시간
-            timeWeight = 1.1
-          } else if (hour >= 12 && hour <= 13) {
-            // 점심시간
-            timeWeight = 0.95
-          } else if (hour >= 17 && hour <= 19) {
-            // 퇴근시간  
-            timeWeight = 1.05
-          }
-          
-          // 시퀀스 기반 multiplier (85% baseline 제한)
-          let sequenceMultiplier = 1.0
-          if (prevEvent?.tagCode === 'O' && nextEvent?.tagCode === 'O') {
-            sequenceMultiplier = 1.15  // O-T1-O: 업무간 이동으로 높은 신뢰도
-          } else if ((prevEvent?.tagCode === 'O' && nextEvent?.tagCode !== 'O') || 
-                     (prevEvent?.tagCode !== 'O' && nextEvent?.tagCode === 'O')) {
-            sequenceMultiplier = 1.1   // 부분적 업무 이동
-          }
-          
-          // 85% baseline 제한: 최종 신뢰도가 0.85를 넘지 않도록 조정
-          const tentativeConfidence = baseConfidence * sequenceMultiplier * timeWeight
-          if (tentativeConfidence > 0.85) {
-            sequenceMultiplier = 0.85 / (baseConfidence * timeWeight)
-          }
-          
-          // Ground Rules 신뢰도 계산
-          const t1Confidence = Math.min(0.95, Math.max(0.05, 
-            baseConfidence * sequenceMultiplier * timeWeight
-          ))
-          
-          // T1 이동시간도 85% 이상은 업무시간으로 인정 (합리적 Loss만 적용)
-          groundRulesWorkTime += duration * t1Confidence
-          t1TotalTime += duration
-        } else {
-          // O, G1, G2, G3 등 모든 업무 태그는 100% 업무시간으로 인정
-          groundRulesWorkTime += duration
+      for (let i = 0; i < t1Events.length; i++) {
+        const t1Event = t1Events[i]
+        const hour = t1Event.timestamp.getHours()
+        
+        // 전후 태그 확인 (업무 이동인지 판단)
+        const prevEvent = i > 0 ? timeline[timeline.findIndex(e => e === t1Event) - 1] : null
+        const nextEvent = i < timeline.length - 1 ? timeline[timeline.findIndex(e => e === t1Event) + 1] : null
+        
+        // O-T1-O 패턴: 업무간 이동으로 간주 (+점수)
+        if (prevEvent?.tagCode === 'O' && nextEvent?.tagCode === 'O') {
+          businessMovementScore += 2.0
+        }
+        // 출퇴근 시간대 이동: 업무 관련성 높음 (+점수)  
+        else if ((hour >= 6 && hour <= 9) || (hour >= 17 && hour <= 19)) {
+          businessMovementScore += 1.5
+        }
+        // 점심시간 이동: 비업무 관련성 높음 (-점수)
+        else if (hour >= 12 && hour <= 13) {
+          businessMovementScore -= 0.5
         }
       }
+      
+      // 평균 점수로 조정 팩터 계산 (0.95 ~ 1.05 범위)
+      const avgScore = businessMovementScore / t1Events.length
+      adjustmentFactor = Math.max(0.95, Math.min(1.05, 1.0 + (avgScore * 0.01)))
     }
-
-    // 기존 작업시간 계산 (비교용)
-    const baselineWorkTime = timeline.reduce((total, entry, index) => {
-      if (index < timeline.length - 1 && entry.state === ActivityState.WORK) {
-        const next = timeline[index + 1]
-        return total + Math.floor((next.timestamp.getTime() - entry.timestamp.getTime()) / 60000)
-      }
-      return total
-    }, 0)
-
-    // 평균 신뢰도 계산
-    const groundRulesConfidence = confidenceCount > 0 ? totalConfidence / confidenceCount : 0
-
-    // 이상치 점수 계산 (Ground Rules 작업시간 vs 기존 작업시간 차이)
-    const anomalyScore = baselineWorkTime > 0 ? 
-      Math.abs(groundRulesWorkTime - baselineWorkTime) / baselineWorkTime : 0
+    
+    // Ground Rules 조정된 업무시간 = 기존 업무시간 * 조정팩터
+    const groundRulesWorkTime = baseMetrics.workTime * adjustmentFactor
+    
+    // 간단한 신뢰도 계산 (T1 개수와 팀 특성 기반)
+    const baseConfidence = teamCharacteristics?.tagRatio || 0.5
+    const t1Confidence = Math.min(0.8, baseConfidence + (t1Events.length * 0.02))
+    
+    // 통계 계산
+    let t1WorkMovement = 0
+    let t1NonWorkMovement = 0
+    const totalConfidence = t1Confidence * t1Events.length
+    
+    // T1 이동 분류 (조정팩터 기반으로 간단하게 계산)
+    if (adjustmentFactor > 1.0) {
+      // 업무 이동으로 판정된 경우가 더 많음
+      t1WorkMovement = t1Events.length * 5 * 0.8  // 80% 업무 이동으로 간주
+      t1NonWorkMovement = t1Events.length * 5 * 0.2
+    } else {
+      // 비업무 이동으로 판정된 경우가 더 많음
+      t1WorkMovement = t1Events.length * 5 * 0.3  // 30% 업무 이동으로 간주
+      t1NonWorkMovement = t1Events.length * 5 * 0.7
+    }
+    
+    // 평균 신뢰도 계산 (간단하게)
+    const groundRulesConfidence = t1Events.length > 0 ? t1Confidence * 100 : 50
+    
+    // 이상치 점수 계산 (조정 정도로 판단)
+    const adjustmentAmount = Math.abs(adjustmentFactor - 1.0)
+    const anomalyScore = adjustmentAmount > 0.02 ? adjustmentAmount * 100 : 0
 
     return {
       groundRulesWorkTime,
-      groundRulesConfidence: Math.round(groundRulesConfidence * 1000) / 10, // Convert to % with 1 decimal place
+      groundRulesConfidence: Math.round(groundRulesConfidence * 10) / 10, // Convert to % with 1 decimal place
       t1WorkMovement,
       t1NonWorkMovement,
       teamBaselineUsed: 50.0, // Default T1 baseline confidence (50%)

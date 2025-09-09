@@ -74,14 +74,15 @@ export class BatchSaver {
   private convertToSaveFormat(result: MemoryCalculationResult) {
     const metrics = result.metrics
     
-    // Ground Rules가 있는 경우, 기존 지표들을 Ground Rules 값으로 대체
+    // Ground Rules가 있는 경우, 3-stage 구조 유지
     if (metrics.groundRulesMetrics) {
       const groundRulesWorkHours = metrics.groundRulesMetrics.groundRulesWorkTime / 60
       const groundRulesConfidence = metrics.groundRulesMetrics.groundRulesConfidence
       const claimedHours = result.claimedHours || 0
       
-      // Ground Rules 기반 효율성 계산 (Ground Rules 업무시간 / 신고시간)
-      const groundRulesEfficiency = claimedHours > 0 ? groundRulesWorkHours / claimedHours : 0
+      // 3-stage 구조: Stage 2 (WorkHourCalculator) 결과를 actual_work_hours에 유지
+      const workHourCalculatorHours = metrics.workTime / 60  // Stage 2: WorkHourCalculator 결과
+      const workHourCalculatorEfficiency = claimedHours > 0 ? workHourCalculatorHours / claimedHours : 0
       
       const saveData = {
         employeeId: result.employeeId,
@@ -94,19 +95,19 @@ export class BatchSaver {
         groupId: result.groupId,
         groupName: result.groupName,
         totalHours: metrics.totalTime / 60,
-        // 🔄 기존 지표들을 Ground Rules 값으로 대체
-        actualWorkHours: groundRulesWorkHours,           // ← Ground Rules 업무시간
-        claimedWorkHours: claimedHours,
-        efficiencyRatio: groundRulesEfficiency,          // ← Ground Rules 효율성
+        // Stage 2: WorkHourCalculator 결과 (85-120% 효율성 범위)
+        actualWorkHours: workHourCalculatorHours,            // ← WorkHourCalculator 업무시간
+        claimedWorkHours: claimedHours,                      // ← Stage 1: Claim data
+        efficiencyRatio: workHourCalculatorEfficiency,       // ← WorkHourCalculator 효율성
         focusedWorkMinutes: metrics.focusTime,
         meetingMinutes: metrics.meetingTime,
         mealMinutes: metrics.mealTime,
         movementMinutes: metrics.transitTime,
         restMinutes: metrics.restTime,
-        confidenceScore: groundRulesConfidence,          // ← Ground Rules 신뢰도
-        // Ground Rules 전용 컬럼들도 동시 저장
-        groundRulesWorkHours: groundRulesWorkHours,
-        groundRulesConfidence: groundRulesConfidence,
+        confidenceScore: metrics.reliabilityScore,           // ← WorkHourCalculator 신뢰도
+        // Stage 3: Ground Rules 미세 조정 결과
+        groundRulesWorkHours: groundRulesWorkHours,          // ← Ground Rules AI 보정 시간
+        groundRulesConfidence: groundRulesConfidence,        // ← Ground Rules 신뢰도
         workMovementMinutes: metrics.groundRulesMetrics.t1WorkMovement,
         nonWorkMovementMinutes: metrics.groundRulesMetrics.t1NonWorkMovement,
         anomalyScore: metrics.groundRulesMetrics.anomalyScore
