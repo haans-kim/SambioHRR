@@ -463,9 +463,10 @@ export function getGradeWorkHoursMatrix30Days() {
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
-      -- 자연 평균화 방식: 탄력근무제 직원의 실제 근무 패턴이 자동 반영
+      -- 자연 평균화 방식: 탄력근무제 직원의 실제 근무 패턴이 자동 반영 (일간 평균)
       ROUND(
-        SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id), 1
+        SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1
       ) as avgWorkHours
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
@@ -478,7 +479,7 @@ export function getGradeWorkHoursMatrix30Days() {
   `;
   
   const stmt = db.prepare(query);
-  const results = stmt.all(startDate, endDate) as any[];
+  const results = stmt.all(endDate, startDate, startDate, endDate) as any[];
   
   // Transform to matrix format
   const matrix: Record<string, Record<string, number>> = {};
@@ -659,9 +660,10 @@ export function getGradeClaimedHoursMatrix30Days() {
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
-      -- 자연 평균화 방식: 탄력근무제 직원의 실제 근무 패턴이 자동 반영
+      -- 자연 평균화 방식: 탄력근무제 직원의 실제 근무 패턴이 자동 반영 (일간 평균)
       ROUND(
-        SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id), 1
+        SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1
       ) as avgClaimedHours
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
@@ -674,7 +676,7 @@ export function getGradeClaimedHoursMatrix30Days() {
   `;
   
   const stmt = db.prepare(query);
-  const results = stmt.all(startDate, endDate) as any[];
+  const results = stmt.all(endDate, startDate, startDate, endDate) as any[];
   
   // Transform to matrix format
   const matrix: Record<string, Record<string, number>> = {};
@@ -933,11 +935,13 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
       ORDER BY avgValue ASC
     `;
   } else {
+    // Apply 1.4x correction for workHours and claimedHours to match display values
+    const correctionFactor = (metricType === 'workHours' || metricType === 'claimedHours') ? ' * 1.4' : '';
     dataQuery = `
       SELECT 
         e.center_name as centerName,
         'Lv.' || e.job_grade as grade,
-        ROUND(AVG(dar.${column}), 1) as avgValue
+        ROUND(AVG(dar.${column})${correctionFactor}, 1) as avgValue
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?

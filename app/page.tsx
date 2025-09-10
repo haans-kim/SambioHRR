@@ -52,7 +52,12 @@ export default function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/dashboard');
+        const response = await fetch(`/api/dashboard?_t=${Date.now()}`, {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         if (!response.ok) throw new Error('Failed to fetch');
         const dashboardData = await response.json();
         setData(dashboardData);

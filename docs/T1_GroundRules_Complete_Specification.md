@@ -85,22 +85,22 @@ function isT1WorkRelated(individualT1: T1Event, teamContext: TeamPattern): boole
 ```typescript
 interface T1ConfidenceCalculation {
   // 1단계: 팀별 기본 확률
-  teamBaselineProbability: number    // 0.2-0.65 범위
+  teamBaselineProbability: number    // 0.80-0.90 범위
   
   // 2단계: 시퀀스 기반 조정 
-  sequenceMultiplier: number         // 0.8-2.5 범위
+  sequenceMultiplier: number         // 0.95-1.1 범위
   
   // 3단계: 시간대별 가중치
-  timeWeightMultiplier: number       // 0.6-1.8 범위
+  timeWeightMultiplier: number       // 0.95-1.15 범위
   
   // 4단계: 지속시간 미세조정
-  durationAdjustment: number         // ±0.1-0.3 범위
+  durationAdjustment: number         // ±0.02-0.05 범위
   
   // 5단계: 특별규칙 적용
-  specialRulesAdjustment: number     // ±0.1-0.2 범위
+  specialRulesAdjustment: number     // ±0.02-0.03 범위
   
-  // 최종 신뢰도 (5%-95% 제한)
-  finalConfidence: number            // Math.max(0.05, Math.min(0.95, result))
+  // 최종 신뢰도 (75%-95% 제한)
+  finalConfidence: number            // Math.max(0.75, Math.min(0.95, result))
 }
 ```
 
@@ -109,27 +109,27 @@ interface T1ConfidenceCalculation {
 ```yaml
 team_categories:
   VERY_HIGH_MOBILITY:     # T1/O > 100
-    baseline_confidence: 0.65
+    baseline_confidence: 0.90
     description: "극고이동성 - 시설관리/현장조사"
     teams: ["인프라복지팀", "Market Intelligence팀"]
     
   HIGH_MOBILITY:          # T1/O 10-100  
-    baseline_confidence: 0.50
+    baseline_confidence: 0.87
     description: "고이동성 - 영업/안전점검"
     teams: ["Sales&Operation팀", "안전환경팀"]
     
   MEDIUM_MOBILITY:        # T1/O 1-10
-    baseline_confidence: 0.35
+    baseline_confidence: 0.85
     description: "중이동성 - 혼합업무"
     teams: ["PM팀", "항체배양PD팀"]
     
   LOW_MOBILITY:           # T1/O 0.5-1
-    baseline_confidence: 0.25
+    baseline_confidence: 0.82
     description: "저이동성 - 사무업무"
     teams: ["구매팀(선택근무제)"]
     
   VERY_LOW_MOBILITY:      # T1/O < 0.5
-    baseline_confidence: 0.20
+    baseline_confidence: 0.80
     description: "극저이동성 - 실험실/기술업무"
     teams: ["Technical QA팀"]
 ```
@@ -139,18 +139,18 @@ team_categories:
 ```yaml
 sequence_multipliers:
   O_T1_O:    # 업무간 이동 (0.03%)
-    multiplier: 2.5
-    final_range: [0.85, 0.95]
+    multiplier: 1.1
+    final_range: [0.90, 0.95]
     description: "연속 업무간 이동 - 최고 신뢰도"
     
   O_T1_X:    # 업무 후 이동 (9.86%)
-    multiplier: 2.2
-    final_range: [0.75, 0.90]  
+    multiplier: 1.05
+    final_range: [0.87, 0.92]  
     description: "업무 완료 후 이동"
     
   X_T1_O:    # 업무 전 이동 (4.78%)
-    multiplier: 2.2
-    final_range: [0.75, 0.90]
+    multiplier: 1.05
+    final_range: [0.87, 0.92]
     description: "업무 시작 전 이동"
     
   X_T1_X:    # 독립적 이동 (85.33%)
@@ -164,20 +164,20 @@ sequence_multipliers:
 ```yaml
 time_weights:
   선택근무제:     # 사무직 패턴
-    "06-08": 1.3      # 출근 이동
+    "06-08": 1.1      # 출근 이동
     "09-11": 1.0      # 기본 업무 
-    "12-13": 1.7      # 점심/회의 (최고)
+    "12-13": 1.15     # 점심/회의
     "14-16": 1.0      # 기본 업무
-    "17-19": 1.4      # 퇴근 준비
-    "20-22": 1.1      # 야간 근무
+    "17-19": 1.05     # 퇴근 준비
+    "20-22": 1.02     # 야간 근무
     
   탄력근무제:     # 생산직 패턴
-    "06-08": 1.4      # 작업장 이동
-    "09-11": 0.8      # 집중 작업
-    "12-13": 1.6      # 교대/휴식  
-    "14-16": 0.9      # 오후 작업
-    "17-19": 1.3      # 교대 시간
-    "20-22": 1.2      # 야간 교대
+    "06-08": 1.1      # 작업장 이동
+    "09-11": 0.95     # 집중 작업
+    "12-13": 1.12     # 교대/휴식  
+    "14-16": 0.98     # 오후 작업
+    "17-19": 1.08     # 교대 시간
+    "20-22": 1.05     # 야간 교대
 ```
 
 ### 3.5 팀별 특별 규칙

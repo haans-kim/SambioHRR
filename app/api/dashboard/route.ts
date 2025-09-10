@@ -20,7 +20,7 @@ import { calculateAdjustedWorkHours } from '@/lib/utils';
 
 export async function GET() {
   try {
-    const cacheKey = 'dashboard:v15'; // 자연 평균화 방식 적용 - 탄력근무제 보정 제거
+    const cacheKey = 'dashboard:v28'; // 캐시 강제 무효화
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
@@ -37,8 +37,24 @@ export async function GET() {
     const dataReliabilityStats = getOrganizationDataReliabilityStats30Days();
     const totalEmployees = orgStats?.totalEmployees || 0;
     const avgEfficiency = orgStats?.avgEfficiencyRatio || 0;
-    const avgWorkHours = orgStats?.avgActualWorkHours || 8.2;
-    const avgClaimedHours = orgStats?.avgClaimedHours || 8.5;
+    
+    // Calculate weighted average from centers instead of organization-wide stats
+    let totalWeightedWorkHours = 0;
+    let totalWeightedClaimedHours = 0;
+    let totalCenterEmployees = 0;
+    
+    centers.forEach(center => {
+      const employees = center.stats?.totalEmployees || 0;
+      const workHours = center.stats?.avgActualWorkHours || 0;
+      const claimedHours = center.stats?.avgAttendanceHours || 0;
+      
+      totalWeightedWorkHours += workHours * employees;
+      totalWeightedClaimedHours += claimedHours * employees;
+      totalCenterEmployees += employees;
+    });
+    
+    const avgWorkHours = totalCenterEmployees > 0 ? totalWeightedWorkHours / totalCenterEmployees : 8.2;
+    const avgClaimedHours = totalCenterEmployees > 0 ? totalWeightedClaimedHours / totalCenterEmployees : 8.5;
     const avgWeeklyWorkHours = weeklyStats?.avgWeeklyWorkHours || 40.0;
     const avgWeeklyClaimedHours = weeklyStats?.avgWeeklyClaimedHours || 42.5;
     const avgFocusedWorkHours = focusedStats?.avgFocusedWorkHours || 4.2;

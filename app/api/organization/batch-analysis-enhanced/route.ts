@@ -271,19 +271,32 @@ export async function POST(request: Request) {
           // Save to DB if requested
           if (saveToDb) {
             try {
+              // Use Ground Rules values as primary metrics when available
+              const actualWorkHours = metrics.groundRulesMetrics?.groundRulesWorkTime
+                ? metrics.groundRulesMetrics.groundRulesWorkTime / 60
+                : metrics.workTime / 60;
+              
+              const efficiencyRatio = metrics.groundRulesMetrics?.groundRulesWorkTime && claimedHours
+                ? (metrics.groundRulesMetrics.groundRulesWorkTime / 60) / claimedHours * 100
+                : metrics.workRatio;
+
+              const confidenceScore = metrics.groundRulesMetrics?.groundRulesConfidence
+                ? metrics.groundRulesMetrics.groundRulesConfidence
+                : metrics.reliabilityScore;
+              
               const saveData = {
                 employeeId: emp.employeeId,
                 analysisDate: dateStr,
                 totalHours: metrics.totalTime / 60,
-                actualWorkHours: metrics.workTime / 60,
+                actualWorkHours: actualWorkHours,
                 claimedWorkHours: claimedHours,
-                efficiencyRatio: metrics.workRatio,
+                efficiencyRatio: efficiencyRatio,
                 focusedWorkMinutes: metrics.focusTime,
                 meetingMinutes: metrics.meetingTime,
                 mealMinutes: metrics.mealTime,
                 movementMinutes: metrics.transitTime,
                 restMinutes: metrics.restTime,
-                confidenceScore: metrics.reliabilityScore
+                confidenceScore: confidenceScore
               }
               
               // Add Ground Rules metrics if available
