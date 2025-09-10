@@ -252,11 +252,10 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
   return (
     <div 
       className={cn(
-        "p-4 rounded-lg border shadow-sm transition-all h-[140px]",
-        getCardStyle(value),
-        isDevMode ? "hover:shadow-md cursor-pointer" : "cursor-default"
+        "p-4 rounded-lg border shadow-sm transition-all h-[140px] hover:shadow-md cursor-pointer",
+        getCardStyle(value)
       )}
-      onClick={isDevMode ? onClick : undefined}
+      onClick={onClick}
     >
       <div className="flex flex-col h-full">
         <h3 className="text-sm font-semibold text-gray-900 mb-2 truncate">{org.orgName}</h3>
@@ -324,11 +323,9 @@ export function GroupCards({
     return thresholds?.[selectedMetric]?.thresholds;
   };
   
-  const handleGroupClick = (groupCode: string) => {
-    // Only navigate to detail page in dev mode
-    if (isDevMode) {
-      router.push(`/group/${groupCode}`);
-    }
+  const handleGroupClick = (groupCode: string, groupName: string) => {
+    // Navigate to group statistics page using group name
+    router.push(`/group/${encodeURIComponent(groupName)}`);
   };
 
   // parentOrg가 있으면 기존 방식대로, 없으면 센터별로 그룹화
@@ -479,7 +476,7 @@ export function GroupCards({
                     org={group}
                     selectedMetric={selectedMetric}
                     thresholds={effectiveThresholds}
-                    onClick={() => handleGroupClick(group.orgCode)}
+                    onClick={() => handleGroupClick(group.orgCode, group.orgName)}
                   />
                 ))}
               </div>

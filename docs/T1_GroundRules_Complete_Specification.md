@@ -99,9 +99,8 @@ interface T1ConfidenceCalculation {
   // 5단계: 특별규칙 적용
   specialRulesAdjustment: number     // ±0.02-0.03 범위
   
-  // 최종 신뢰도 (75%-95% 제한)
-  finalConfidence: number            // Math.max(0.75, Math.min(0.95, result))
-}
+  // 최종 신뢰도
+  finalConfidence: number           
 ```
 
 ### 3.2 팀 분류 체계
