@@ -36,6 +36,9 @@ interface DashboardData {
     focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
+  // 월 선택 관련 데이터
+  availableMonths?: string[];
+  currentMonth?: string;
 }
 
 export default function HomePage() {
@@ -46,13 +49,19 @@ export default function HomePage() {
     }
     return 'efficiency';
   });
+  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06'); // 기본값 2025-06
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`/api/dashboard?_t=${Date.now()}`, {
+        const params = new URLSearchParams({
+          _t: Date.now().toString(),
+          month: selectedMonth
+        });
+        
+        const response = await fetch(`/api/dashboard?${params}`, {
           cache: 'no-cache',
           headers: {
             'Cache-Control': 'no-cache',
@@ -61,6 +70,11 @@ export default function HomePage() {
         if (!response.ok) throw new Error('Failed to fetch');
         const dashboardData = await response.json();
         setData(dashboardData);
+        
+        // 첫 로딩 시 서버에서 받은 currentMonth로 상태 업데이트
+        if (dashboardData.currentMonth && selectedMonth !== dashboardData.currentMonth) {
+          setSelectedMonth(dashboardData.currentMonth);
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -69,7 +83,11 @@ export default function HomePage() {
     };
 
     fetchData();
-  }, []);
+  }, [selectedMonth]); // selectedMonth 변경 시 재로딩
+
+  const handleMonthChange = (month: string) => {
+    setSelectedMonth(month);
+  };
 
   if (loading) {
     return (
@@ -96,6 +114,9 @@ export default function HomePage() {
       avgDataReliability={data.avgDataReliability}
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
+      selectedMonth={selectedMonth}
+      onMonthChange={handleMonthChange}
+      availableMonths={data.availableMonths}
     >
       <CenterLevelGrid 
         organizations={data.centers} 

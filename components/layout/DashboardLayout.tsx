@@ -5,6 +5,7 @@ import { NumberTicker } from "@/components/ui/number-ticker";
 import { cn } from "@/lib/utils";
 import { Organization } from "@/lib/types/organization";
 import { MetricType, MetricSelector } from "@/components/dashboard/MetricSelector";
+import { MonthSelector } from "@/components/dashboard/MonthSelector";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,10 @@ interface DashboardLayoutProps {
   onMetricChange?: (metric: MetricType) => void;
   parentOrg?: Organization | null;
   breadcrumb?: { label: string; href?: string }[];
+  // 월 선택 관련 props
+  selectedMonth?: string;
+  onMonthChange?: (month: string) => void;
+  availableMonths?: string[];
 }
 
 export function DashboardLayout({ 
@@ -29,7 +34,10 @@ export function DashboardLayout({
   selectedMetric = 'efficiency',
   onMetricChange,
   parentOrg,
-  breadcrumb
+  breadcrumb,
+  selectedMonth,
+  onMonthChange,
+  availableMonths
 }: DashboardLayoutProps) {
   // Build breadcrumb items
   const defaultBreadcrumb = [{ label: "센터", href: "/" } as { label: string; href?: string }];
@@ -110,12 +118,23 @@ export function DashboardLayout({
               )}
             </div>
 
-            {/* Breadcrumb under stats cards */}
-            {breadcrumbItems && breadcrumbItems.length > 0 && (
-              <div className="mt-6">
+            {/* Breadcrumb and Month Selector */}
+            <div className="mt-6 flex justify-between items-center">
+              {breadcrumbItems && breadcrumbItems.length > 0 && (
                 <Breadcrumb items={breadcrumbItems} />
-              </div>
-            )}
+              )}
+              
+              {/* Month Selector - Right aligned */}
+              {selectedMonth && onMonthChange && availableMonths && (
+                <div className="flex-shrink-0">
+                  <MonthSelector
+                    selectedMonth={selectedMonth}
+                    onMonthChange={onMonthChange}
+                    availableMonths={availableMonths}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

@@ -96,6 +96,34 @@ export function get30DayDateRange(): { startDate: string, endDate: string } {
   return { startDate, endDate };
 }
 
+// 특정 월의 데이터 범위를 계산하는 함수
+export function getMonthDateRange(monthString?: string): { startDate: string, endDate: string } {
+  if (!monthString) {
+    // 월이 지정되지 않으면 전체 범위 반환
+    return get30DayDateRange();
+  }
+  
+  // "2025-06" 형식을 "2025-06-01" ~ "2025-06-30" 범위로 변환
+  const [year, month] = monthString.split('-');
+  const startDate = `${year}-${month}-01`;
+  const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0]; // 해당 월의 마지막 날
+  
+  return { startDate, endDate };
+}
+
+// 사용 가능한 월 목록을 가져오는 함수
+export function getAvailableMonths(): string[] {
+  const stmt = db.prepare(`
+    SELECT DISTINCT strftime('%Y-%m', analysis_date) as month
+    FROM daily_analysis_results 
+    WHERE analysis_date IS NOT NULL
+    ORDER BY month DESC
+  `);
+  const result = stmt.all() as { month: string }[];
+  
+  return result.map(r => r.month);
+}
+
 // Get center-level summary
 export function getCenterSummary(centerId?: string, date?: string): CenterSummary[] {
   const analysisDate = date || getLatestAnalysisDate();

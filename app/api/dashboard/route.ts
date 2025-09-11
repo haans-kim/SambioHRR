@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import { getOrganizationsWithStats } from "@/lib/db/queries/organization";
 import { 
@@ -8,19 +8,28 @@ import {
   getGradeEfficiencyMatrix30Days, 
   getGradeWeeklyClaimedHoursMatrix30Days,
   getGradeDataReliabilityMatrix30Days,
-  getMetricThresholdsForGrid
+  getMetricThresholdsForGrid,
+  getAvailableMonths,
+  getMonthDateRange
 } from "@/lib/db/queries/analytics";
 import { calculateAdjustedWorkHours } from '@/lib/utils';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cacheKey = 'dashboard:v28'; // 캐시 강제 무효화
+    const searchParams = request.nextUrl.searchParams;
+    const selectedMonth = searchParams.get('month'); // "2025-06" 형식
+    
+    const cacheKey = `dashboard:v29:month=${selectedMonth || ''}`; // 월별 캐시
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
         headers: buildCacheHeaders(true, 180),
       });
     }
+
+    // 사용 가능한 월 목록 가져오기
+    const availableMonths = getAvailableMonths();
+    const currentMonth = selectedMonth || (availableMonths.length > 0 ? availableMonths[0] : '2025-06');
 
     const centers = getOrganizationsWithStats('center');
     
@@ -78,7 +87,10 @@ export async function GET() {
         adjustedWeeklyWorkHours: adjustedWeeklyWorkThresholds,
         weeklyClaimedHours: weeklyClaimedThresholds,
         dataReliability: dataReliabilityThresholds
-      }
+      },
+      // 월 선택 관련 데이터 추가
+      availableMonths,
+      currentMonth
     };
 
     setToCache(cacheKey, payload, 180_000); // 3 minutes
