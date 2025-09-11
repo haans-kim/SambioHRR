@@ -66,45 +66,91 @@ export class T1GroundRulesEngine {
   }
 
   /**
-   * Master Table에서 팀별 특성 학습
+   * DB 테이블에서 팀별 특성 로드
    */
   private loadTeamCharacteristics(): void {
-    console.log('🧠 Loading team characteristics from Master Table...')
+    console.log('🧠 Loading team characteristics from DB tables...')
     
-    // Master Table에서 팀별 T1 통계 쿼리
+    // team_characteristics 테이블에서 직접 로드
+    const teamCharsQuery = `
+      SELECT 
+        team_name,
+        work_schedule_type,
+        mobility_level,
+        baseline_confidence,
+        t1_to_o_ratio,
+        sample_size
+      FROM team_characteristics
+      ORDER BY t1_to_o_ratio DESC
+    `
+
+    try {
+      const teamChars = this.db.prepare(teamCharsQuery).all() as any[]
+      
+      console.log(`📊 Found ${teamChars.length} team characteristics from DB`)
+      
+      teamChars.forEach((char: any) => {
+        const characteristics: TeamCharacteristics = {
+          teamName: char.team_name,
+          workScheduleType: char.work_schedule_type,
+          mobilityLevel: char.mobility_level as MobilityLevel,
+          baselineConfidence: char.baseline_confidence,
+          timeWeights: this.generateTimeWeights({ workScheduleType: char.work_schedule_type } as TeamStatistics),
+          specialRules: this.getSpecialRulesForTeam(char.team_name),
+          t1Statistics: {
+            totalEvents: char.sample_size,
+            t1Events: 0, // 추후 필요시 계산
+            t1ToORatio: char.t1_to_o_ratio || 0,
+            hourlyPatterns: {
+              morning: 0,
+              lunch: 0,
+              evening: 0
+            }
+          }
+        }
+        
+        const key = `${char.team_name}_${char.work_schedule_type}`
+        this.teamCharacteristics.set(key, characteristics)
+      })
+
+      console.log(`✅ Loaded characteristics for ${this.teamCharacteristics.size} teams`)
+    } catch (error) {
+      console.error('❌ Error loading team characteristics:', error)
+      // Fallback: 기존 Master Table 방식 시도
+      this.loadTeamCharacteristicsFromMaster()
+    }
+  }
+
+  /**
+   * Fallback: Master Table에서 팀별 특성 학습
+   */
+  private loadTeamCharacteristicsFromMaster(): void {
+    console.log('🔄 Fallback: Loading from master_events_table...')
+    
     const teamStatsQuery = `
       SELECT 
         team_name,
         work_schedule_type,
         COUNT(*) as total_events,
         SUM(CASE WHEN tag_code = 'T1' THEN 1 ELSE 0 END) as t1_events,
-        SUM(CASE WHEN tag_code = 'O' THEN 1 ELSE 0 END) as o_events,
+        SUM(CASE WHEN tag_code = 'G1' THEN 1 ELSE 0 END) as o_events,
         ROUND(100.0 * SUM(CASE WHEN tag_code = 'T1' THEN 1 ELSE 0 END) / COUNT(*), 2) as t1_percentage,
         ROUND(1.0 * SUM(CASE WHEN tag_code = 'T1' THEN 1 ELSE 0 END) / 
-              NULLIF(SUM(CASE WHEN tag_code = 'O' THEN 1 ELSE 0 END), 0), 3) as t1_to_o_ratio,
-        COUNT(DISTINCT employee_id) as team_size,
-        ROUND(100.0 * SUM(CASE WHEN tag_code = 'T1' AND hour BETWEEN 6 AND 8 THEN 1 ELSE 0 END) / 
-              NULLIF(SUM(CASE WHEN hour BETWEEN 6 AND 8 THEN 1 END), 0), 1) as morning_t1_rate,
-        ROUND(100.0 * SUM(CASE WHEN tag_code = 'T1' AND hour BETWEEN 12 AND 13 THEN 1 ELSE 0 END) / 
-              NULLIF(SUM(CASE WHEN hour BETWEEN 12 AND 13 THEN 1 END), 0), 1) as lunch_t1_rate,
-        ROUND(100.0 * SUM(CASE WHEN tag_code = 'T1' AND hour BETWEEN 17 AND 19 THEN 1 ELSE 0 END) / 
-              NULLIF(SUM(CASE WHEN hour BETWEEN 17 AND 19 THEN 1 END), 0), 1) as evening_t1_rate
+              NULLIF(SUM(CASE WHEN tag_code = 'G1' THEN 1 ELSE 0 END), 0), 3) as t1_to_o_ratio,
+        COUNT(DISTINCT employee_id) as team_size
       FROM master_events_table 
       WHERE team_name IS NOT NULL 
         AND team_name != ''
         AND work_schedule_type IS NOT NULL
       GROUP BY team_name, work_schedule_type
-      HAVING COUNT(*) > 500   -- 최소 샘플 사이즈 (더 많은 팀 포함)
+      HAVING COUNT(*) > 500
       ORDER BY t1_to_o_ratio DESC
     `
 
     try {
-      const teamStats = this.db.prepare(teamStatsQuery).all() as TeamStatistics[]
-      
-      console.log(`📊 Found ${teamStats.length} team-schedule combinations`)
+      const teamStats = this.db.prepare(teamStatsQuery).all() as any[]
       
       teamStats.forEach((stats: any) => {
-        // SQL 결과를 TeamStatistics 형태로 매핑
         const mappedStats: TeamStatistics = {
           teamName: stats.team_name,
           workScheduleType: stats.work_schedule_type,
@@ -114,9 +160,9 @@ export class T1GroundRulesEngine {
           t1Percentage: stats.t1_percentage,
           t1ToORatio: stats.t1_to_o_ratio,
           teamSize: stats.team_size,
-          morningT1Rate: stats.morning_t1_rate,
-          lunchT1Rate: stats.lunch_t1_rate,
-          eveningT1Rate: stats.evening_t1_rate
+          morningT1Rate: 0,
+          lunchT1Rate: 0,
+          eveningT1Rate: 0
         }
         
         const characteristics = this.classifyTeamCharacteristics(mappedStats)
@@ -124,9 +170,9 @@ export class T1GroundRulesEngine {
         this.teamCharacteristics.set(key, characteristics)
       })
 
-      console.log(`✅ Loaded characteristics for ${this.teamCharacteristics.size} teams`)
+      console.log(`✅ Fallback loaded characteristics for ${this.teamCharacteristics.size} teams`)
     } catch (error) {
-      console.error('❌ Error loading team characteristics:', error)
+      console.error('❌ Error in fallback loading:', error)
     }
   }
 
