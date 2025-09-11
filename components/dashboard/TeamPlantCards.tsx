@@ -415,7 +415,7 @@ export function TeamPlantCards({
     return { top, middle, bottom, localThresholds };
   };
 
-  // 팀의 값을 가져오는 헬퍼 함수
+  // 팀의 값을 가져오는 헬퍼 함수 - Natural 방식 사용
   const getValue = (team: OrganizationWithStats) => {
     switch (selectedMetric) {
       case 'efficiency':
@@ -425,11 +425,13 @@ export function TeamPlantCards({
       case 'claimedHours':
         return team.stats?.avgAttendanceHours || 0;
       case 'weeklyWorkHours':
-        return team.stats?.avgWeeklyWorkHours || 0;
+        // Natural 방식 우선 사용
+        return team.stats?.avgWeeklyWorkHoursAdjusted || team.stats?.avgWeeklyWorkHours || 0;
       case 'adjustedWeeklyWorkHours':
         return team.stats?.avgAdjustedWeeklyWorkHours || 0;
       case 'weeklyClaimedHours':
-        return team.stats?.avgWeeklyClaimedHours || 0;
+        // Natural 방식 우선 사용
+        return team.stats?.avgWeeklyClaimedHoursAdjusted || team.stats?.avgWeeklyClaimedHours || 0;
       case 'focusedWorkHours':
         return team.stats?.avgFocusedWorkHours || 0;
       case 'dataReliability':

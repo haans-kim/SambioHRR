@@ -59,11 +59,13 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
       case 'claimedHours':
         return claimedHours;
       case 'weeklyWorkHours':
-        return weeklyWorkHours;
+        // Natural 방식 우선 사용
+        return org.stats?.avgWeeklyWorkHoursAdjusted || org.stats?.avgWeeklyWorkHours || 0;
       case 'adjustedWeeklyWorkHours':
         return org.stats?.avgAdjustedWeeklyWorkHours || 0;
       case 'weeklyClaimedHours':
-        return weeklyClaimedHours;
+        // Natural 방식 우선 사용
+        return org.stats?.avgWeeklyClaimedHoursAdjusted || org.stats?.avgWeeklyClaimedHours || 0;
       case 'focusedWorkHours':
         return focusedWorkHours;
       case 'dataReliability':
@@ -358,11 +360,13 @@ export function GroupCards({
         case 'claimedHours':
           return group.stats?.avgAttendanceHours || 0;
         case 'weeklyWorkHours':
-          return group.stats?.avgWeeklyWorkHours || 0;
+          // Natural 방식 우선 사용
+          return group.stats?.avgWeeklyWorkHoursAdjusted || group.stats?.avgWeeklyWorkHours || 0;
         case 'adjustedWeeklyWorkHours':
           return group.stats?.avgAdjustedWeeklyWorkHours || 0;
         case 'weeklyClaimedHours':
-          return group.stats?.avgWeeklyClaimedHours || 0;
+          // Natural 방식 우선 사용
+          return group.stats?.avgWeeklyClaimedHoursAdjusted || group.stats?.avgWeeklyClaimedHours || 0;
         case 'focusedWorkHours':
           return group.stats?.avgFocusedWorkHours || 0;
         case 'dataReliability':
@@ -448,11 +452,13 @@ export function GroupCards({
                 case 'claimedHours':
                   return group.stats?.avgAttendanceHours || 0;
                 case 'weeklyWorkHours':
-                  return group.stats?.avgWeeklyWorkHours || 0;
+                  // Natural 방식 우선 사용
+                  return group.stats?.avgWeeklyWorkHoursAdjusted || group.stats?.avgWeeklyWorkHours || 0;
                 case 'adjustedWeeklyWorkHours':
                   return group.stats?.avgAdjustedWeeklyWorkHours || 0;
                 case 'weeklyClaimedHours':
-                  return group.stats?.avgWeeklyClaimedHours || 0;
+                  // Natural 방식 우선 사용
+                  return group.stats?.avgWeeklyClaimedHoursAdjusted || group.stats?.avgWeeklyClaimedHours || 0;
                 case 'focusedWorkHours':
                   return group.stats?.avgFocusedWorkHours || 0;
                 case 'dataReliability':

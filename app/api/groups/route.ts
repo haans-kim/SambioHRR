@@ -82,10 +82,10 @@ export async function GET(request: NextRequest) {
       // No data available for this group
       group.stats = {
         avgWorkEfficiency: 0,
-        avgActualWorkHours: 0,
-        avgAttendanceHours: 0,
         avgWeeklyWorkHours: 0,
         avgWeeklyClaimedHours: 0,
+        avgAdjustedWeeklyWorkHours: 0,
+        avgDataReliability: 0,
         totalEmployees: 0
       };
     }
@@ -101,9 +101,6 @@ export async function GET(request: NextRequest) {
   const { startDate, endDate } = get30DayDateRange();
   let totalEmployees = 0;
   let avgEfficiency = 0;
-  let avgWorkHours = 0;
-  let avgClaimedHours = 0;
-  let avgFocusedWorkHours = 0;
   let avgDataReliability = 0;
 
   try {
@@ -116,84 +113,82 @@ export async function GET(request: NextRequest) {
     }
 
     const row = db.prepare(
-      `WITH flexible_workers AS (
-         SELECT DISTINCT CAST(사번 AS TEXT) as employee_id
-         FROM claim_data
-         WHERE WORKSCHDTYPNM = '탄력근무제'
-       )
-       SELECT 
+      `SELECT 
          COUNT(DISTINCT dar.employee_id) as unique_employees,
-         COUNT(DISTINCT fw.employee_id) as flexible_count,
-         COUNT(*) as man_days,
-         SUM(dar.actual_work_hours) as sum_actual,
-         SUM(dar.claimed_work_hours) as sum_claimed,
-         SUM(CASE 
-           WHEN fw.employee_id IS NOT NULL THEN dar.actual_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-           ELSE dar.actual_work_hours
-         END) as sum_actual_adjusted,
-         SUM(CASE 
-           WHEN fw.employee_id IS NOT NULL THEN dar.claimed_work_hours * ${FLEXIBLE_WORK_ADJUSTMENT_FACTOR}
-           ELSE dar.claimed_work_hours
-         END) as sum_claimed_adjusted,
-         AVG(dar.focused_work_minutes / 60.0) as avg_focused_hours,
          AVG(dar.confidence_score) as avg_confidence
        FROM daily_analysis_results dar
        JOIN employees e ON e.employee_id = dar.employee_id
-       LEFT JOIN flexible_workers fw ON fw.employee_id = dar.employee_id
        WHERE ${where}
          AND (dar.actual_work_hours > 0 OR dar.claimed_work_hours > 0)`
     ).get(...params) as any;
 
-    const manDays = row?.man_days || 0;
-    const sumActual = row?.sum_actual || 0;
-    const sumClaimed = row?.sum_claimed || 0;
-    const sumActualAdjusted = row?.sum_actual_adjusted || sumActual;
-    const sumClaimedAdjusted = row?.sum_claimed_adjusted || sumClaimed;
     totalEmployees = row?.unique_employees || 0;
-    avgEfficiency = sumClaimed > 0 ? Math.round((sumActual / sumClaimed) * 1000) / 10 : 0;
-    // 탄력근무제 보정 적용된 평균 사용
-    avgWorkHours = manDays > 0 ? Math.round((sumActualAdjusted / manDays) * 10) / 10 : 0;
-    avgClaimedHours = manDays > 0 ? Math.round((sumClaimedAdjusted / manDays) * 10) / 10 : 0;
-    avgFocusedWorkHours = row?.avg_focused_hours ? Math.round(row.avg_focused_hours * 10) / 10 : 0;
     avgDataReliability = row?.avg_confidence ? Math.round(row.avg_confidence * 10) / 10 : 0;
+    
+    // Calculate efficiency from groups stats instead of raw data
+    if (groups.length > 0) {
+      let totalWeightedEfficiency = 0;
+      let totalGroupEmployees = 0;
+      groups.forEach(group => {
+        const employees = group.stats?.totalEmployees || 0;
+        const efficiency = group.stats?.avgWorkEfficiency || 0;
+        totalWeightedEfficiency += efficiency * employees;
+        totalGroupEmployees += employees;
+      });
+      avgEfficiency = totalGroupEmployees > 0 ? totalWeightedEfficiency / totalGroupEmployees : 0;
+    }
   } catch (e) {
     console.error('Failed to compute weighted group summary:', e);
   }
   
-  // Weekly averages (multiply daily by 5)
-  const avgWeeklyWorkHours = avgWorkHours * 5;
-  const avgWeeklyClaimedHours = avgClaimedHours * 5;
+  // Calculate weekly averages from groups stats  
+  let avgWeeklyWorkHours = 0;
+  let avgWeeklyClaimedHours = 0;
+  
+  if (groups.length > 0) {
+    let totalWeightedWeeklyWorkHours = 0;
+    let totalWeightedWeeklyClaimedHours = 0;
+    let totalGroupEmployees = 0;
+    
+    groups.forEach(group => {
+      const employees = group.stats?.totalEmployees || 0;
+      // Natural 방식 사용 (30일 합계 / 30일 * 7)  
+      const weeklyWorkHours = group.stats?.avgWeeklyWorkHoursAdjusted || group.stats?.avgWeeklyWorkHours || 0;
+      const weeklyClaimedHours = group.stats?.avgWeeklyClaimedHoursAdjusted || group.stats?.avgWeeklyClaimedHours || 0;
+      
+      totalWeightedWeeklyWorkHours += weeklyWorkHours * employees;
+      totalWeightedWeeklyClaimedHours += weeklyClaimedHours * employees;
+      totalGroupEmployees += employees;
+    });
+    
+    avgWeeklyWorkHours = totalGroupEmployees > 0 ? totalWeightedWeeklyWorkHours / totalGroupEmployees : 0;
+    avgWeeklyClaimedHours = totalGroupEmployees > 0 ? totalWeightedWeeklyClaimedHours / totalGroupEmployees : 0;
+  }
+  
   const avgAdjustedWeeklyWorkHours = avgWeeklyWorkHours && avgDataReliability 
     ? calculateAdjustedWorkHours(avgWeeklyWorkHours, avgDataReliability)
     : 0;
   
 
-  // Calculate thresholds (20th and 80th percentiles)
+  // Calculate thresholds (20th and 80th percentiles) - Natural 방식 사용
   const efficiencyValues = groups.map((org: any) => org.stats?.avgWorkEfficiency || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
-  const workHoursValues = groups.map((org: any) => org.stats?.avgActualWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
-  const claimedHoursValues = groups.map((org: any) => org.stats?.avgAttendanceHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const adjustedWeeklyWorkHoursValues = groups.map((org: any) => org.stats?.avgAdjustedWeeklyWorkHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
-  const focusedWorkHoursValues = groups.map((org: any) => org.stats?.avgFocusedWorkHours || 0).filter((v: number) => v >= 0).sort((a: number, b: number) => a - b);
+  // Natural 방식 사용: avgWeeklyClaimedHoursAdjusted 우선
+  const weeklyClaimedHoursValues = groups.map((org: any) => org.stats?.avgWeeklyClaimedHoursAdjusted || org.stats?.avgWeeklyClaimedHours || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   const dataReliabilityValues = groups.map((org: any) => org.stats?.avgDataReliability || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
   
   // Ensure we have valid values for thresholds
   if (efficiencyValues.length === 0) {
     efficiencyValues.push(73.2, 88.4);
   }
-  if (workHoursValues.length === 0) {
-    workHoursValues.push(6.0, 8.0);
-  }
-  if (claimedHoursValues.length === 0) {
-    claimedHoursValues.push(7.0, 9.0);
-  }
-  if (focusedWorkHoursValues.length === 0) {
-    focusedWorkHoursValues.push(0.2, 1.0);
-  }
   if (dataReliabilityValues.length === 0) {
     dataReliabilityValues.push(50.0, 80.0);
   }
   if (adjustedWeeklyWorkHoursValues.length === 0) {
     adjustedWeeklyWorkHoursValues.push(35.0, 45.0);
+  }
+  if (weeklyClaimedHoursValues.length === 0) {
+    weeklyClaimedHoursValues.push(35.0, 45.0);
   }
   
   const getPercentile = (arr: number[], percentile: number) => {
@@ -221,49 +216,13 @@ export async function GET(request: NextRequest) {
         high: getPercentile(efficiencyValues, 80)
       }
     },
-    workHours: {
-      low: `≤${getPercentile(workHoursValues, 20).toFixed(1)}h`,
-      middle: `${getPercentile(workHoursValues, 20).toFixed(1)}-${getPercentile(workHoursValues, 80).toFixed(1)}h`,
-      high: `≥${getPercentile(workHoursValues, 80).toFixed(1)}h`,
-      thresholds: {
-        low: getPercentile(workHoursValues, 20),
-        high: getPercentile(workHoursValues, 80)
-      }
-    },
-    claimedHours: {
-      low: `≤${getPercentile(claimedHoursValues, 20).toFixed(1)}h`,
-      middle: `${getPercentile(claimedHoursValues, 20).toFixed(1)}-${getPercentile(claimedHoursValues, 80).toFixed(1)}h`,
-      high: `≥${getPercentile(claimedHoursValues, 80).toFixed(1)}h`,
-      thresholds: {
-        low: getPercentile(claimedHoursValues, 20),
-        high: getPercentile(claimedHoursValues, 80)
-      }
-    },
-    weeklyWorkHours: {
-      low: `≤${(getPercentile(workHoursValues, 20) * 5).toFixed(1)}h`,
-      middle: `${(getPercentile(workHoursValues, 20) * 5).toFixed(1)}-${(getPercentile(workHoursValues, 80) * 5).toFixed(1)}h`,
-      high: `≥${(getPercentile(workHoursValues, 80) * 5).toFixed(1)}h`,
-      thresholds: {
-        low: getPercentile(workHoursValues, 20) * 5,
-        high: getPercentile(workHoursValues, 80) * 5
-      }
-    },
     weeklyClaimedHours: {
-      low: `≤${(getPercentile(claimedHoursValues, 20) * 5).toFixed(1)}h`,
-      middle: `${(getPercentile(claimedHoursValues, 20) * 5).toFixed(1)}-${(getPercentile(claimedHoursValues, 80) * 5).toFixed(1)}h`,
-      high: `≥${(getPercentile(claimedHoursValues, 80) * 5).toFixed(1)}h`,
+      low: `≤${getPercentile(weeklyClaimedHoursValues, 20).toFixed(0)}h`,
+      middle: `${getPercentile(weeklyClaimedHoursValues, 20).toFixed(0)}-${getPercentile(weeklyClaimedHoursValues, 80).toFixed(0)}h`,
+      high: `≥${getPercentile(weeklyClaimedHoursValues, 80).toFixed(0)}h`,
       thresholds: {
-        low: getPercentile(claimedHoursValues, 20) * 5,
-        high: getPercentile(claimedHoursValues, 80) * 5
-      }
-    },
-    focusedWorkHours: {
-      low: `≤${getPercentile(focusedWorkHoursValues, 20).toFixed(1)}h`,
-      middle: `${getPercentile(focusedWorkHoursValues, 20).toFixed(1)}-${getPercentile(focusedWorkHoursValues, 80).toFixed(1)}h`,
-      high: `≥${getPercentile(focusedWorkHoursValues, 80).toFixed(1)}h`,
-      thresholds: {
-        low: getPercentile(focusedWorkHoursValues, 20),
-        high: getPercentile(focusedWorkHoursValues, 80)
+        low: getPercentile(weeklyClaimedHoursValues, 20),
+        high: getPercentile(weeklyClaimedHoursValues, 80)
       }
     },
     dataReliability: {
@@ -291,12 +250,9 @@ export async function GET(request: NextRequest) {
     parentOrg,
     totalEmployees,
     avgEfficiency,
-    avgWorkHours,
-    avgClaimedHours,
     avgWeeklyWorkHours,
     avgWeeklyClaimedHours,
     avgAdjustedWeeklyWorkHours,
-    avgFocusedWorkHours,
     avgDataReliability,
     thresholds,
     breadcrumb

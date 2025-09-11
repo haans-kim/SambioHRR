@@ -15,24 +15,17 @@ interface TeamData {
   summary: {
     totalEmployees: number;
     avgEfficiency: number;
-    avgWorkHours: number;
-    avgClaimedHours: number;
     avgWeeklyWorkHours: number;
     avgWeeklyClaimedHours: number;
     avgAdjustedWeeklyWorkHours?: number;
-    avgFocusedWorkHours: number;
     avgDataReliability: number;
   };
   breadcrumb?: { label: string; href?: string }[];
   thresholds: {
     efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
-    workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
-    claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
-    weeklyWorkHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
-    focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
-    dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
-    adjustedWeeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    dataReliability: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    adjustedWeeklyWorkHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
   };
 }
 
@@ -92,12 +85,8 @@ export default function TeamsPage() {
     <DashboardLayout 
       totalEmployees={data.summary?.totalEmployees || 0}
       avgEfficiency={data.summary?.avgEfficiency || 0}
-      avgWorkHours={data.summary?.avgWorkHours || 0}
-      avgClaimedHours={data.summary?.avgClaimedHours || 0}
-      avgWeeklyWorkHours={data.summary?.avgWeeklyWorkHours || 0}
       avgWeeklyClaimedHours={data.summary?.avgWeeklyClaimedHours || 0}
       avgAdjustedWeeklyWorkHours={data.summary?.avgAdjustedWeeklyWorkHours || 0}
-      avgFocusedWorkHours={data.summary?.avgFocusedWorkHours || 0}
       avgDataReliability={data.summary?.avgDataReliability || 0}
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
@@ -109,12 +98,9 @@ export default function TeamsPage() {
         parentOrg={data.parentOrg}
         selectedMetric={selectedMetric}
         avgEfficiency={data.summary?.avgEfficiency || 0}
-        avgWorkHours={data.summary?.avgWorkHours || 0}
-        avgClaimedHours={data.summary?.avgClaimedHours || 0}
         avgWeeklyWorkHours={data.summary?.avgWeeklyWorkHours || 0}
         avgWeeklyClaimedHours={data.summary?.avgWeeklyClaimedHours || 0}
         avgAdjustedWeeklyWorkHours={data.summary?.avgAdjustedWeeklyWorkHours || 0}
-        avgFocusedWorkHours={data.summary?.avgFocusedWorkHours || 0}
         avgDataReliability={data.summary?.avgDataReliability || 0}
         thresholds={data.thresholds}
       />

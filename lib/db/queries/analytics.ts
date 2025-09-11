@@ -813,7 +813,7 @@ export function getOrganizationDataReliabilityStats30Days() {
 }
 
 // Get metric thresholds based on grid matrix data (center-grade averages)
-export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours' | 'claimedHours' | 'weeklyWorkHours' | 'weeklyClaimedHours' | 'focusedWorkHours' | 'dataReliability' | 'adjustedWeeklyWorkHours') {
+export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'weeklyClaimedHours' | 'dataReliability' | 'adjustedWeeklyWorkHours') {
   const { startDate, endDate } = get30DayDateRange();
   
   let column = '';
@@ -822,22 +822,9 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'workHours
     case 'efficiency':
       column = 'efficiency_ratio';
       break;
-    case 'workHours':
-      column = 'actual_work_hours';
-      break;
-    case 'claimedHours':
-      column = 'claimed_work_hours';
-      break;
-    case 'weeklyWorkHours':
-      column = 'actual_work_hours';
-      isWeekly = true;
-      break;
     case 'weeklyClaimedHours':
       column = 'claimed_work_hours';
       isWeekly = true;
-      break;
-    case 'focusedWorkHours':
-      column = 'focused_work_minutes';
       break;
     case 'dataReliability':
       column = 'confidence_score';

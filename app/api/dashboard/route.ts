@@ -4,17 +4,11 @@ import { getOrganizationsWithStats } from "@/lib/db/queries/organization";
 import { 
   getOrganizationStats30Days, 
   getOrganizationWeeklyStats30Days,
-  getOrganizationFocusedStats30Days,
   getOrganizationDataReliabilityStats30Days,
   getGradeEfficiencyMatrix30Days, 
-  getGradeWorkHoursMatrix30Days, 
-  getGradeClaimedHoursMatrix30Days,
-  getGradeWeeklyWorkHoursMatrix30Days,
   getGradeWeeklyClaimedHoursMatrix30Days,
-  getGradeFocusedWorkHoursMatrix30Days,
   getGradeDataReliabilityMatrix30Days,
-  getMetricThresholdsForGrid,
-  getFocusedWorkTableData
+  getMetricThresholdsForGrid
 } from "@/lib/db/queries/analytics";
 import { calculateAdjustedWorkHours } from '@/lib/utils';
 
@@ -33,87 +27,56 @@ export async function GET() {
     // Get organization-wide statistics for 30 days
     const orgStats = getOrganizationStats30Days();
     const weeklyStats = getOrganizationWeeklyStats30Days();
-    const focusedStats = getOrganizationFocusedStats30Days();
     const dataReliabilityStats = getOrganizationDataReliabilityStats30Days();
     const totalEmployees = orgStats?.totalEmployees || 0;
     const avgEfficiency = orgStats?.avgEfficiencyRatio || 0;
     
-    // Calculate weighted average from centers instead of organization-wide stats
-    let totalWeightedWorkHours = 0;
-    let totalWeightedClaimedHours = 0;
+    // Calculate weighted average from centers for remaining metrics
+    let totalWeightedWeeklyClaimedHours = 0;
     let totalCenterEmployees = 0;
     
     centers.forEach(center => {
       const employees = center.stats?.totalEmployees || 0;
-      const workHours = center.stats?.avgActualWorkHours || 0;
-      const claimedHours = center.stats?.avgAttendanceHours || 0;
+      // Natural 방식 사용 (30일 합계 / 30일 * 7)
+      const weeklyClaimedHours = center.stats?.avgWeeklyClaimedHoursAdjusted || center.stats?.avgWeeklyClaimedHours || 0;
       
-      totalWeightedWorkHours += workHours * employees;
-      totalWeightedClaimedHours += claimedHours * employees;
+      totalWeightedWeeklyClaimedHours += weeklyClaimedHours * employees;
       totalCenterEmployees += employees;
     });
-    
-    const avgWorkHours = totalCenterEmployees > 0 ? totalWeightedWorkHours / totalCenterEmployees : 8.2;
-    const avgClaimedHours = totalCenterEmployees > 0 ? totalWeightedClaimedHours / totalCenterEmployees : 8.5;
     const avgWeeklyWorkHours = weeklyStats?.avgWeeklyWorkHours || 40.0;
-    const avgWeeklyClaimedHours = weeklyStats?.avgWeeklyClaimedHours || 42.5;
-    const avgFocusedWorkHours = focusedStats?.avgFocusedWorkHours || 4.2;
+    const avgWeeklyClaimedHours = totalCenterEmployees > 0 ? totalWeightedWeeklyClaimedHours / totalCenterEmployees : (weeklyStats?.avgWeeklyClaimedHours || 42.5);
     const avgDataReliability = dataReliabilityStats?.avgDataReliability || 83.6;
     // avgWeeklyWorkHours already has flexible work adjustment applied from weeklyStats
     const avgAdjustedWeeklyWorkHours = avgDataReliability 
       ? calculateAdjustedWorkHours(avgWeeklyWorkHours, avgDataReliability)
       : 0;
     
-    // Get grade efficiency, work hours, and claimed hours matrices for 30 days
+    // Get grade matrices for remaining metrics
     const gradeMatrix = getGradeEfficiencyMatrix30Days();
-    const workHoursMatrix = getGradeWorkHoursMatrix30Days();
-    const claimedHoursMatrix = getGradeClaimedHoursMatrix30Days();
-    const weeklyWorkHoursMatrix = getGradeWeeklyWorkHoursMatrix30Days();
     const weeklyClaimedHoursMatrix = getGradeWeeklyClaimedHoursMatrix30Days();
-    const focusedWorkHoursMatrix = getGradeFocusedWorkHoursMatrix30Days();
     const dataReliabilityMatrix = getGradeDataReliabilityMatrix30Days();
     
-    // Get dynamic thresholds based on grid matrix data (center-grade averages)
+    // Get dynamic thresholds for remaining metrics
     const efficiencyThresholds = getMetricThresholdsForGrid('efficiency');
-    const workHoursThresholds = getMetricThresholdsForGrid('workHours');
-    const claimedHoursThresholds = getMetricThresholdsForGrid('claimedHours');
-    const weeklyWorkThresholds = getMetricThresholdsForGrid('weeklyWorkHours');
     const weeklyClaimedThresholds = getMetricThresholdsForGrid('weeklyClaimedHours');
-    const focusedWorkThresholds = getMetricThresholdsForGrid('focusedWorkHours');
     const dataReliabilityThresholds = getMetricThresholdsForGrid('dataReliability');
-    
     const adjustedWeeklyWorkThresholds = getMetricThresholdsForGrid('adjustedWeeklyWorkHours');
     
-    // Get focused work table data
-    const focusedWorkTable = getFocusedWorkTableData();
-
     const payload = {
       centers,
       totalEmployees,
       avgEfficiency,
-      avgWorkHours,
-      avgClaimedHours,
       avgWeeklyWorkHours,
       avgWeeklyClaimedHours,
       avgAdjustedWeeklyWorkHours,
-      avgFocusedWorkHours,
       avgDataReliability,
       gradeMatrix,
-      workHoursMatrix,
-      claimedHoursMatrix,
-      weeklyWorkHoursMatrix,
       weeklyClaimedHoursMatrix,
-      focusedWorkHoursMatrix,
       dataReliabilityMatrix,
-      focusedWorkTable,
       thresholds: {
         efficiency: efficiencyThresholds,
-        workHours: workHoursThresholds,
-        claimedHours: claimedHoursThresholds,
-        weeklyWorkHours: weeklyWorkThresholds,
         adjustedWeeklyWorkHours: adjustedWeeklyWorkThresholds,
         weeklyClaimedHours: weeklyClaimedThresholds,
-        focusedWorkHours: focusedWorkThresholds,
         dataReliability: dataReliabilityThresholds
       }
     };

@@ -16,8 +16,6 @@ interface GroupStatsResult {
     totalEmployees: number
     totalRecords: number
     avgEfficiency: number
-    avgWorkHours: number
-    avgClaimedHours: number
     avgGroundRulesWorkHours: number
     avgGroundRulesConfidence: number
     avgAdjustedWeeklyWorkHours: number
@@ -301,8 +299,6 @@ export async function GET(
         totalEmployees: stats.total_employees || 0,
         totalRecords: stats.total_records || 0,
         avgEfficiency: Number((stats.avg_efficiency_ratio || 0).toFixed(1)),
-        avgWorkHours: Number((stats.avg_actual_work_hours || 0).toFixed(1)),
-        avgClaimedHours: Number((stats.avg_claimed_work_hours || 0).toFixed(1)),
         avgGroundRulesWorkHours: Number((stats.avg_ground_rules_work_hours || 0).toFixed(1)),
         avgGroundRulesConfidence: Number((stats.avg_ground_rules_confidence || 0).toFixed(1)),
         avgAdjustedWeeklyWorkHours: Number((calculateAdjustedWorkHours(
