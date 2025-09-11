@@ -121,9 +121,11 @@ export default function HomePage() {
       <CenterLevelGrid 
         organizations={data.centers} 
         gradeMatrix={data.gradeMatrix}
+        weeklyWorkHoursMatrix={data.weeklyWorkHoursMatrix}
         weeklyClaimedHoursMatrix={data.weeklyClaimedHoursMatrix}
         dataReliabilityMatrix={data.dataReliabilityMatrix}
         avgEfficiency={data.avgEfficiency}
+        avgWeeklyWorkHours={data.avgWeeklyWorkHours}
         avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
         avgAdjustedWeeklyWorkHours={data.avgAdjustedWeeklyWorkHours}
         avgDataReliability={data.avgDataReliability}

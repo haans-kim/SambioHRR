@@ -6,6 +6,7 @@ import {
   getOrganizationWeeklyStats30Days,
   getOrganizationDataReliabilityStats30Days,
   getGradeEfficiencyMatrix30Days, 
+  getGradeWeeklyWorkHoursMatrix30Days,
   getGradeWeeklyClaimedHoursMatrix30Days,
   getGradeDataReliabilityMatrix30Days,
   getMetricThresholdsForGrid,
@@ -62,8 +63,10 @@ export async function GET(request: NextRequest) {
     
     // Get grade matrices for remaining metrics
     const gradeMatrix = getGradeEfficiencyMatrix30Days();
+    const weeklyWorkHoursMatrix = getGradeWeeklyWorkHoursMatrix30Days();
     const weeklyClaimedHoursMatrix = getGradeWeeklyClaimedHoursMatrix30Days();
     const dataReliabilityMatrix = getGradeDataReliabilityMatrix30Days();
+    
     
     // Get dynamic thresholds for remaining metrics
     const efficiencyThresholds = getMetricThresholdsForGrid('efficiency');
@@ -80,6 +83,7 @@ export async function GET(request: NextRequest) {
       avgAdjustedWeeklyWorkHours,
       avgDataReliability,
       gradeMatrix,
+      weeklyWorkHoursMatrix,
       weeklyClaimedHoursMatrix,
       dataReliabilityMatrix,
       thresholds: {
