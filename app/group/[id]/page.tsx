@@ -166,10 +166,8 @@ export default function GroupStatsPage() {
     <DashboardLayout
       totalEmployees={data?.summary.totalEmployees || 0}
       avgEfficiency={data?.summary.avgEfficiency || 0}
-      avgWorkHours={data?.summary.avgWorkHours || 0}
-      avgClaimedHours={data?.summary.avgClaimedHours || 0}
-      avgWeeklyWorkHours={(data?.summary.avgWorkHours || 0) * 5}
       avgWeeklyClaimedHours={(data?.summary.avgClaimedHours || 0) * 5}
+      avgAdjustedWeeklyWorkHours={data?.summary.avgAdjustedWeeklyWorkHours || 0}
       selectedMetric={'efficiency'}
       breadcrumb={breadcrumb}
     >

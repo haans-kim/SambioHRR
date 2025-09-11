@@ -85,12 +85,8 @@ export default function GroupsPage() {
     <DashboardLayout 
       totalEmployees={data.totalEmployees}
       avgEfficiency={data.avgEfficiency}
-      avgWorkHours={data.avgWorkHours}
-      avgClaimedHours={data.avgClaimedHours}
-      avgWeeklyWorkHours={data.avgWeeklyWorkHours}
       avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
       avgAdjustedWeeklyWorkHours={data.avgAdjustedWeeklyWorkHours}
-      avgFocusedWorkHours={data.avgFocusedWorkHours}
       avgDataReliability={data.avgDataReliability}
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}

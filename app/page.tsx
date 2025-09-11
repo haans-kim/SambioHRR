@@ -91,36 +91,20 @@ export default function HomePage() {
     <DashboardLayout 
       totalEmployees={data.totalEmployees}
       avgEfficiency={data.avgEfficiency}
-      avgWorkHours={data.avgWorkHours}
-      avgClaimedHours={data.avgClaimedHours}
-      avgWeeklyWorkHours={data.avgWeeklyWorkHours}
       avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
       avgAdjustedWeeklyWorkHours={data.avgAdjustedWeeklyWorkHours}
-      avgFocusedWorkHours={data.avgFocusedWorkHours}
       avgDataReliability={data.avgDataReliability}
       selectedMetric={selectedMetric}
       onMetricChange={setSelectedMetric}
     >
-      <FocusedWorkTable visible={selectedMetric === 'focusedWorkHours'} />
-      {selectedMetric === 'focusedWorkHours' && <div className="mb-6" />}
-      <FocusedWorkChart visible={selectedMetric === 'focusedWorkHours'} />
-      {selectedMetric === 'focusedWorkHours' && <div className="mb-8" />}
       <CenterLevelGrid 
         organizations={data.centers} 
         gradeMatrix={data.gradeMatrix}
-        workHoursMatrix={data.workHoursMatrix}
-        claimedHoursMatrix={data.claimedHoursMatrix}
-        weeklyWorkHoursMatrix={data.weeklyWorkHoursMatrix}
         weeklyClaimedHoursMatrix={data.weeklyClaimedHoursMatrix}
-        focusedWorkHoursMatrix={data.focusedWorkHoursMatrix}
         dataReliabilityMatrix={data.dataReliabilityMatrix}
         avgEfficiency={data.avgEfficiency}
-        avgWorkHours={data.avgWorkHours}
-        avgClaimedHours={data.avgClaimedHours}
-        avgWeeklyWorkHours={data.avgWeeklyWorkHours}
         avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
         avgAdjustedWeeklyWorkHours={data.avgAdjustedWeeklyWorkHours}
-        avgFocusedWorkHours={data.avgFocusedWorkHours}
         avgDataReliability={data.avgDataReliability}
         selectedMetric={selectedMetric}
         thresholds={data.thresholds}

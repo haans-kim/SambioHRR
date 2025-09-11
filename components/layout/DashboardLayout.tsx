@@ -10,12 +10,8 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   totalEmployees?: number;
   avgEfficiency?: number;
-  avgWorkHours?: number;
-  avgClaimedHours?: number;
-  avgWeeklyWorkHours?: number;
   avgWeeklyClaimedHours?: number;
   avgAdjustedWeeklyWorkHours?: number;
-  avgFocusedWorkHours?: number;
   avgDataReliability?: number;
   selectedMetric?: MetricType;
   onMetricChange?: (metric: MetricType) => void;
@@ -27,12 +23,8 @@ export function DashboardLayout({
   children, 
   totalEmployees = 0, 
   avgEfficiency = 0,
-  avgWorkHours = 8.2,
-  avgClaimedHours = 8.5,
-  avgWeeklyWorkHours = 40.0,
   avgWeeklyClaimedHours = 42.5,
   avgAdjustedWeeklyWorkHours = 38.4,
-  avgFocusedWorkHours = 4.2,
   avgDataReliability = 65.0,
   selectedMetric = 'efficiency',
   onMetricChange,
@@ -81,18 +73,10 @@ export function DashboardLayout({
                       value={
                         selectedMetric === 'efficiency' 
                           ? avgEfficiency 
-                          : selectedMetric === 'workHours' 
-                          ? avgWorkHours 
-                          : selectedMetric === 'claimedHours'
-                          ? avgClaimedHours
-                          : selectedMetric === 'weeklyWorkHours'
-                          ? avgWeeklyWorkHours
                           : selectedMetric === 'adjustedWeeklyWorkHours'
                           ? avgAdjustedWeeklyWorkHours
                           : selectedMetric === 'weeklyClaimedHours'
                           ? avgWeeklyClaimedHours
-                          : selectedMetric === 'focusedWorkHours'
-                          ? avgFocusedWorkHours
                           : selectedMetric === 'dataReliability'
                           ? avgDataReliability
                           : 0
@@ -104,18 +88,10 @@ export function DashboardLayout({
                   <div className="text-sm text-gray-600 mt-1">
                     {selectedMetric === 'efficiency' 
                       ? '평균 효율성 비율' 
-                      : selectedMetric === 'workHours' 
-                      ? '일간 근무추정시간' 
-                      : selectedMetric === 'claimedHours'
-                      ? '일간 근무시간'
-                      : selectedMetric === 'weeklyWorkHours'
-                      ? '주간 근무추정시간'
                       : selectedMetric === 'adjustedWeeklyWorkHours'
                       ? '근무추정시간(AI보정)'
                       : selectedMetric === 'weeklyClaimedHours'
                       ? '주간 근무시간'
-                      : selectedMetric === 'focusedWorkHours'
-                      ? '집중근무시간'
                       : selectedMetric === 'dataReliability'
                       ? '데이터 신뢰도'
                       : ''}
