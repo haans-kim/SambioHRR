@@ -153,9 +153,11 @@ export function DashboardLayout({
 
         {/* Main Content */}
         <main className="max-w-[1600px] mx-auto px-6 py-6">
+          {children}
+          
           {/* Data Quality Indicator - Show when data quality info is available */}
           {analysisMode && availableMetrics && dataQuality && (
-            <div className="mb-6">
+            <div className="mt-6">
               <DataQualityIndicator
                 analysisMode={analysisMode}
                 availableMetrics={availableMetrics}
@@ -163,8 +165,6 @@ export function DashboardLayout({
               />
             </div>
           )}
-          
-          {children}
         </main>
       </div>
     </div>

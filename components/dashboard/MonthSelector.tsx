@@ -27,7 +27,7 @@ export function MonthSelector({
   availableMonths = DEFAULT_MONTHS 
 }: MonthSelectorProps) {
   const [visibleStartIndex, setVisibleStartIndex] = useState(0);
-  const visibleCount = 4; // 한 번에 보여줄 탭 수
+  const visibleCount = 6; // 한 번에 보여줄 탭 수
 
   // 월을 "2025.06" 형식으로 포맷
   const formatMonth = (month: string) => {

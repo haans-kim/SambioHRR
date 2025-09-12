@@ -752,12 +752,7 @@ export default function OrganizationAnalysisPage() {
               {/* 1-5월 추가분석 버튼 */}
               <button
                 onClick={async () => {
-                  if (!organizationPath.center) {
-                    alert('조직을 선택해주세요.');
-                    return;
-                  }
-                  
-                  console.log('1-5월 추가분석 시작');
+                  console.log('🚀 전체 1-5월 추가분석 시작');
                   
                   try {
                     setIsAnalyzing(true);
@@ -787,12 +782,11 @@ export default function OrganizationAnalysisPage() {
                       }));
                       
                       try {
-                        // 해당 월 데이터 분석 실행
-                        const extractRes = await fetch('/api/organization/extract-employees', {
+                        // 전체 claim 데이터에서 근무시간이 0이 아닌 사람들 추출
+                        const extractRes = await fetch('/api/organization/extract-employees-with-work-hours', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ 
-                            organizationPath,
                             startDate: monthStart.toISOString().split('T')[0],
                             endDate: monthEnd.toISOString().split('T')[0]
                           })
@@ -804,7 +798,7 @@ export default function OrganizationAnalysisPage() {
                         }
                         
                         const extractData = await extractRes.json();
-                        console.log(`${month} 직원 수:`, extractData.employees?.length || 0);
+                        console.log(`📊 ${month} 추출된 근무자 수: ${extractData.employees?.length || 0}명 (근무시간 > 0)`);
                         
                         if (extractData.employees && extractData.employees.length > 0) {
                           const response = await fetch('/api/organization/ground-rules-worker-analysis', {
@@ -830,13 +824,19 @@ export default function OrganizationAnalysisPage() {
                           const data = await response.json();
                           if (data.results) {
                             totalResults.push(...data.results);
-                            console.log(`${month} 분석 결과:`, data.results.length, '건');
+                            
+                            // 분석 결과 상세 로그
+                            console.log(`✅ ${month} 분석 완료:`);
+                            console.log(`   📈 분석 결과: ${data.results.length.toLocaleString()}건`);
+                            console.log(`   ⚡ 처리 속도: ${data.summary?.performance?.resultsPerSecond?.toFixed(1) || 'N/A'} 건/초`);
+                            console.log(`   🕐 소요 시간: ${data.summary?.performance?.totalDuration || 'N/A'}ms`);
+                            console.log(`   👥 분석 대상: ${data.summary?.employeeCount || 0}명`);
                           }
                         } else {
-                          console.log(`${month}: 분석할 직원 데이터 없음`);
+                          console.log(`⚠️ ${month} 근무시간이 0보다 큰 직원이 없습니다.`);
                         }
                       } catch (monthError) {
-                        console.error(`${month} 처리 중 오류:`, monthError);
+                        console.error(`❌ ${month} 처리 중 오류:`, monthError);
                         // 다음 월로 계속 진행
                       }
                       
@@ -853,24 +853,28 @@ export default function OrganizationAnalysisPage() {
                     const elapsedTime = Date.now() - analysisStartTime;
                     setAnalysisInfo(prev => ({ ...prev, elapsedTime }));
                     
-                    console.log('1-5월 분석 완료:', totalResults.length, '건');
-                    alert(`1-5월 추가분석 완료!\n분석된 항목: ${totalResults.length}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초`);
+                    console.log(`🎉 전체 1-5월 분석 완료:`);
+                    console.log(`   📊 총 분석 결과: ${totalResults.length.toLocaleString()}건`);
+                    console.log(`   ⏱️ 총 소요 시간: ${(elapsedTime / 1000).toFixed(1)}초`);
+                    console.log(`   📈 전체 처리 속도: ${(totalResults.length / (elapsedTime / 1000)).toFixed(1)} 건/초`);
+                    
+                    alert(`1-5월 전체 추가분석 완료!\n분석된 항목: ${totalResults.length.toLocaleString()}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초\n평균 처리속도: ${(totalResults.length / (elapsedTime / 1000)).toFixed(1)} 건/초`);
                     
                     setTimeout(() => {
                       setIsAnalyzing(false);
                     }, 500);
                     
                   } catch (error) {
-                    console.error('1-5월 분석 전체 오류:', error);
+                    console.error('❌ 1-5월 전체 분석 오류:', error);
                     alert(`1-5월 분석 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
                     setIsAnalyzing(false);
                     setProgress(0);
                     setAnalysisInfo({});
                   }
                 }}
-                disabled={isAnalyzing || !organizationPath.center}
+                disabled={isAnalyzing}
                 className={`px-8 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors ${
-                  isAnalyzing || !organizationPath.center
+                  isAnalyzing
                     ? 'bg-gray-600 cursor-not-allowed' 
                     : 'bg-orange-600 hover:bg-orange-700'
                 }`}

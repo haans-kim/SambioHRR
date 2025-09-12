@@ -157,7 +157,7 @@ export function getAvailableMonths(): string[] {
     SELECT DISTINCT strftime('%Y-%m', analysis_date) as month
     FROM daily_analysis_results 
     WHERE analysis_date IS NOT NULL
-    ORDER BY month DESC
+    ORDER BY month ASC
   `);
   const result = stmt.all() as { month: string }[];
   
@@ -365,9 +365,8 @@ export function getOrganizationStats(date?: string) {
   };
 }
 
-// Get organization-wide weekly statistics for 30 days
-export function getOrganizationWeeklyStats30Days() {
-  const { startDate, endDate } = get30DayDateRange();
+// Get organization-wide weekly statistics for specified period  
+export function getOrganizationWeeklyStatsForPeriod(startDate: string, endDate: string) {
   
   const query = `
     SELECT 
@@ -408,6 +407,12 @@ export function getOrganizationWeeklyStats30Days() {
   };
 }
 
+// Get organization-wide weekly statistics for 30 days (backwards compatibility)
+export function getOrganizationWeeklyStats30Days() {
+  const { startDate, endDate } = get30DayDateRange();
+  return getOrganizationWeeklyStatsForPeriod(startDate, endDate);
+}
+
 // Get organization-wide focused work hours stats for 30 days
 export function getOrganizationFocusedStats30Days() {
   const { startDate, endDate } = get30DayDateRange();
@@ -431,9 +436,8 @@ export function getOrganizationFocusedStats30Days() {
   };
 }
 
-// Get organization-wide statistics for 30 days
-export function getOrganizationStats30Days() {
-  const { startDate, endDate } = get30DayDateRange();
+// Get organization-wide statistics for specified period
+export function getOrganizationStatsForPeriod(startDate: string, endDate: string) {
   
   const query = `
     WITH adjusted_efficiency AS (
@@ -476,6 +480,12 @@ export function getOrganizationStats30Days() {
     efficiency70To80: number;
     efficiencyBelow70: number;
   };
+}
+
+// Get organization-wide statistics for 30 days (backwards compatibility)
+export function getOrganizationStats30Days() {
+  const { startDate, endDate } = get30DayDateRange();
+  return getOrganizationStatsForPeriod(startDate, endDate);
 }
 
 // Get grade-level efficiency matrix for the dashboard grid
@@ -858,9 +868,8 @@ export function getGradeDataReliabilityMatrix30Days() {
   };
 }
 
-// Get organization-wide data reliability stats for 30 days
-export function getOrganizationDataReliabilityStats30Days() {
-  const { startDate, endDate } = get30DayDateRange();
+// Get organization-wide data reliability stats for specified period
+export function getOrganizationDataReliabilityStatsForPeriod(startDate: string, endDate: string) {
   
   const query = `
     SELECT 
@@ -878,6 +887,12 @@ export function getOrganizationDataReliabilityStats30Days() {
     totalEmployees: number;
     avgDataReliability: number;
   };
+}
+
+// Get organization-wide data reliability stats for 30 days (backwards compatibility)
+export function getOrganizationDataReliabilityStats30Days() {
+  const { startDate, endDate } = get30DayDateRange();
+  return getOrganizationDataReliabilityStatsForPeriod(startDate, endDate);
 }
 
 // Get metric thresholds based on grid matrix data (center-grade averages)
@@ -1213,3 +1228,376 @@ export function getFocusedWorkTableData() {
   return stmt.all(startDate, endDate) as any[];
 }
 
+// ================================
+// PERIOD-BASED MATRIX FUNCTIONS
+// ================================
+
+// Get grade-level efficiency matrix for specified period
+export function getGradeEfficiencyMatrixForPeriod(startDate: string, endDate: string) {
+  const query = `
+    SELECT 
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      COUNT(DISTINCT dar.employee_id) as employeeCount,
+      ROUND(
+        SUM(
+          dar.actual_work_hours * 
+          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+        ) / SUM(dar.claimed_work_hours) * 100, 
+        1
+      ) as avgEfficiency
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+      AND dar.actual_work_hours IS NOT NULL
+      AND dar.claimed_work_hours IS NOT NULL
+      AND dar.confidence_score IS NOT NULL
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY e.center_name, e.job_grade
+  `;
+  
+  const stmt = db.prepare(query);
+  const results = stmt.all(startDate, endDate) as any[];
+  
+  // Transform to matrix format
+  const matrix: Record<string, Record<string, number>> = {};
+  const centers: Set<string> = new Set();
+  const grades: Set<string> = new Set();
+  
+  results.forEach(row => {
+    if (!matrix[row.grade]) {
+      matrix[row.grade] = {};
+    }
+    matrix[row.grade][row.centerName] = row.avgEfficiency;
+    centers.add(row.centerName);
+    grades.add(row.grade);
+  });
+  
+  return {
+    matrix,
+    centers: Array.from(centers).sort(),
+    grades: Array.from(grades).sort((a, b) => {
+      const aNum = parseInt(a.replace('Lv.', ''));
+      const bNum = parseInt(b.replace('Lv.', ''));
+      return bNum - aNum; // 4, 3, 2, 1 순서
+    })
+  };
+}
+
+// Get grade-level data reliability matrix for specified period
+export function getGradeDataReliabilityMatrixForPeriod(startDate: string, endDate: string) {
+  const query = `
+    SELECT 
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      COUNT(DISTINCT dar.employee_id) as employeeCount,
+      ROUND(AVG(dar.confidence_score), 1) as avgConfidenceScore
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+      AND dar.confidence_score IS NOT NULL
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY e.center_name, e.job_grade
+  `;
+  
+  const stmt = db.prepare(query);
+  const results = stmt.all(startDate, endDate) as any[];
+  
+  // Transform to matrix format
+  const matrix: Record<string, Record<string, number>> = {};
+  const centers: Set<string> = new Set();
+  const grades: Set<string> = new Set();
+  
+  results.forEach(row => {
+    if (!matrix[row.grade]) {
+      matrix[row.grade] = {};
+    }
+    matrix[row.grade][row.centerName] = row.avgConfidenceScore;
+    centers.add(row.centerName);
+    grades.add(row.grade);
+  });
+  
+  return {
+    matrix,
+    centers: Array.from(centers).sort(),
+    grades: Array.from(grades).sort((a, b) => {
+      const aNum = parseInt(a.replace('Lv.', ''));
+      const bNum = parseInt(b.replace('Lv.', ''));
+      return bNum - aNum; // 4, 3, 2, 1 순서
+    })
+  };
+}
+
+// Get grade-level weekly work hours matrix for specified period
+export function getGradeWeeklyWorkHoursMatrixForPeriod(startDate: string, endDate: string) {
+  const query = `
+    SELECT 
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      COUNT(DISTINCT dar.employee_id) as employeeCount,
+      ROUND(
+        SUM(dar.actual_work_hours * 7) / COUNT(*), 
+        1
+      ) as avgWeeklyWorkHours
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+      AND dar.actual_work_hours IS NOT NULL
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY e.center_name, e.job_grade
+  `;
+  
+  const stmt = db.prepare(query);
+  const results = stmt.all(startDate, endDate) as any[];
+  
+  // Transform to matrix format
+  const matrix: Record<string, Record<string, number>> = {};
+  const centers: Set<string> = new Set();
+  const grades: Set<string> = new Set();
+  
+  results.forEach(row => {
+    if (!matrix[row.grade]) {
+      matrix[row.grade] = {};
+    }
+    matrix[row.grade][row.centerName] = row.avgWeeklyWorkHours;
+    centers.add(row.centerName);
+    grades.add(row.grade);
+  });
+  
+  return {
+    matrix,
+    centers: Array.from(centers).sort(),
+    grades: Array.from(grades).sort((a, b) => {
+      const aNum = parseInt(a.replace('Lv.', ''));
+      const bNum = parseInt(b.replace('Lv.', ''));
+      return bNum - aNum; // 4, 3, 2, 1 순서
+    })
+  };
+}
+
+// Get grade-level weekly claimed hours matrix for specified period
+export function getGradeWeeklyClaimedHoursMatrixForPeriod(startDate: string, endDate: string) {
+  const query = `
+    SELECT 
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      COUNT(DISTINCT dar.employee_id) as employeeCount,
+      ROUND(
+        SUM(dar.claimed_work_hours * 7) / COUNT(*), 
+        1
+      ) as avgWeeklyClaimedHours
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+      AND dar.claimed_work_hours IS NOT NULL
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY e.center_name, e.job_grade
+  `;
+  
+  const stmt = db.prepare(query);
+  const results = stmt.all(startDate, endDate) as any[];
+  
+  // Transform to matrix format
+  const matrix: Record<string, Record<string, number>> = {};
+  const centers: Set<string> = new Set();
+  const grades: Set<string> = new Set();
+  
+  results.forEach(row => {
+    if (!matrix[row.grade]) {
+      matrix[row.grade] = {};
+    }
+    matrix[row.grade][row.centerName] = row.avgWeeklyClaimedHours;
+    centers.add(row.centerName);
+    grades.add(row.grade);
+  });
+  
+  return {
+    matrix,
+    centers: Array.from(centers).sort(),
+    grades: Array.from(grades).sort((a, b) => {
+      const aNum = parseInt(a.replace('Lv.', ''));
+      const bNum = parseInt(b.replace('Lv.', ''));
+      return bNum - aNum; // 4, 3, 2, 1 순서
+    })
+  };
+}
+
+
+// Get metric thresholds for grid display based on specified period
+export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | 'weeklyClaimedHours' | 'dataReliability' | 'adjustedWeeklyWorkHours', startDate: string, endDate: string) {
+  
+  // Get center-grade averages (same as what's displayed in the grid) to match existing threshold logic
+  let dataQuery = '';
+  
+  if (metricType === 'efficiency') {
+    // For efficiency, calculate with AI-adjusted work hours to match grid display
+    dataQuery = `
+      SELECT 
+        e.center_name as centerName,
+        'Lv.' || e.job_grade as grade,
+        ROUND(
+          SUM(
+            dar.actual_work_hours * 
+            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+          ) / SUM(dar.claimed_work_hours) * 100, 
+          1
+        ) as avgValue
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.job_grade IS NOT NULL
+        AND e.center_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.actual_work_hours IS NOT NULL
+        AND dar.claimed_work_hours IS NOT NULL
+        AND dar.confidence_score IS NOT NULL
+      GROUP BY e.center_name, e.job_grade
+      ORDER BY avgValue ASC
+    `;
+  } else if (metricType === 'adjustedWeeklyWorkHours') {
+    // For adjustedWeeklyWorkHours, calculate with natural averaging and AI adjustment to match grid display
+    dataQuery = `
+      SELECT 
+        e.center_name as centerName,
+        'Lv.' || e.job_grade as grade,
+        ROUND(
+          SUM(dar.actual_work_hours * 7) / COUNT(*), 
+          1
+        ) as avgValue
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.job_grade IS NOT NULL
+        AND e.center_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.actual_work_hours IS NOT NULL
+      GROUP BY e.center_name, e.job_grade
+      ORDER BY avgValue ASC
+    `;
+  } else if (metricType === 'weeklyClaimedHours') {
+    dataQuery = `
+      SELECT 
+        e.center_name as centerName,
+        'Lv.' || e.job_grade as grade,
+        ROUND(
+          SUM(dar.claimed_work_hours * 7) / COUNT(*), 
+          1
+        ) as avgValue
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.job_grade IS NOT NULL
+        AND e.center_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.claimed_work_hours IS NOT NULL
+      GROUP BY e.center_name, e.job_grade
+      ORDER BY avgValue ASC
+    `;
+  } else {
+    // dataReliability
+    dataQuery = `
+      SELECT 
+        e.center_name as centerName,
+        'Lv.' || e.job_grade as grade,
+        ROUND(AVG(dar.confidence_score), 1) as avgValue
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.job_grade IS NOT NULL
+        AND e.center_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.confidence_score IS NOT NULL
+      GROUP BY e.center_name, e.job_grade
+      ORDER BY avgValue ASC
+    `;
+  }
+  
+  const stmt = db.prepare(dataQuery);
+  const results = stmt.all(startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
+  
+  // If we have fewer than 10 data points, use hardcoded thresholds
+  if (results.length < 10) {
+    if (metricType === 'efficiency') {
+      return {
+        low: '<73.2%',
+        middle: '73.2-88.4%',
+        high: '≥88.5%',
+        thresholds: { low: 73.2, high: 88.4 }
+      };
+    } else if (metricType === 'weeklyClaimedHours') {
+      return {
+        low: '<38.0h',
+        middle: '38.0-47.9h',
+        high: '≥48.0h',
+        thresholds: { low: 38.0, high: 48.0 }
+      };
+    } else if (metricType === 'dataReliability') {
+      return {
+        low: '<70.0',
+        middle: '70.0-84.9',
+        high: '≥85.0',
+        thresholds: { low: 70.0, high: 85.0 }
+      };
+    } else {
+      // adjustedWeeklyWorkHours
+      return {
+        low: '<35.0h',
+        middle: '35.0-41.9h',
+        high: '≥42.0h',
+        thresholds: { low: 35.0, high: 42.0 }
+      };
+    }
+  }
+  
+  // Calculate percentiles
+  const values = results.map(r => r.avgValue).sort((a, b) => a - b);
+  const p20Index = Math.floor(values.length * 0.2);
+  const p80Index = Math.floor(values.length * 0.8);
+  
+  const percentile20 = Math.round(values[p20Index] * 10) / 10;
+  const percentile80 = Math.round(values[p80Index] * 10) / 10;
+  
+  if (metricType === 'efficiency') {
+    return {
+      low: `≤${percentile20}%`,
+      middle: `${(percentile20 + 0.1).toFixed(1)}-${percentile80.toFixed(1)}%`,
+      high: `≥${(percentile80 + 0.1).toFixed(1)}%`,
+      thresholds: {
+        low: percentile20,
+        high: percentile80
+      }
+    };
+  } else if (metricType === 'weeklyClaimedHours' || metricType === 'adjustedWeeklyWorkHours') {
+    return {
+      low: `<${percentile20}h`,
+      middle: `${percentile20.toFixed(1)}-${percentile80.toFixed(1)}h`,
+      high: `≥${percentile80}h`,
+      thresholds: {
+        low: percentile20,
+        high: percentile80
+      }
+    };
+  } else {
+    return {
+      low: `<${percentile20}`,
+      middle: `${percentile20.toFixed(1)}-${percentile80.toFixed(1)}`,
+      high: `≥${percentile80}`,
+      thresholds: {
+        low: percentile20,
+        high: percentile80
+      }
+    };
+  }
+}

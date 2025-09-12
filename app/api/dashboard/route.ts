@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
-import { getOrganizationsWithStats } from "@/lib/db/queries/organization";
+import { getOrganizationsWithStats, getOrganizationsWithStatsForPeriod } from "@/lib/db/queries/organization";
 import { 
-  getOrganizationStats30Days, 
-  getOrganizationWeeklyStats30Days,
-  getOrganizationDataReliabilityStats30Days,
+  getOrganizationStatsForPeriod, 
+  getOrganizationWeeklyStatsForPeriod,
+  getOrganizationDataReliabilityStatsForPeriod,
   getGradeEfficiencyMatrix30Days, 
   getGradeWeeklyWorkHoursMatrix30Days,
   getGradeWeeklyClaimedHoursMatrix30Days,
   getGradeDataReliabilityMatrix30Days,
+  getGradeEfficiencyMatrixForPeriod,
+  getGradeWeeklyWorkHoursMatrixForPeriod,
+  getGradeWeeklyClaimedHoursMatrixForPeriod,
+  getGradeDataReliabilityMatrixForPeriod,
   getMetricThresholdsForGrid,
+  getMetricThresholdsForGridForPeriod,
   getAvailableMonths,
   getMonthDateRange,
   getAnalysisModeForMonth,
@@ -23,7 +28,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
     
-    const cacheKey = `dashboard:v29:month=${selectedMonth || ''}`; // 월별 캐시
+    const cacheKey = `dashboard:v36:month=${selectedMonth || ''}`; // 월별 캐시
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
@@ -39,12 +44,15 @@ export async function GET(request: NextRequest) {
     const analysisMode = getAnalysisModeForMonth(currentMonth);
     const availableMetrics = getAvailableMetrics(analysisMode);
 
-    const centers = getOrganizationsWithStats('center');
+    // 선택된 월의 날짜 범위 가져오기
+    const { startDate, endDate } = getMonthDateRange(currentMonth);
     
-    // Get organization-wide statistics for 30 days
-    const orgStats = getOrganizationStats30Days();
-    const weeklyStats = getOrganizationWeeklyStats30Days();
-    const dataReliabilityStats = getOrganizationDataReliabilityStats30Days();
+    const centers = getOrganizationsWithStatsForPeriod('center', startDate, endDate);
+    
+    // Get organization-wide statistics for selected month
+    const orgStats = getOrganizationStatsForPeriod(startDate, endDate);
+    const weeklyStats = getOrganizationWeeklyStatsForPeriod(startDate, endDate);
+    const dataReliabilityStats = getOrganizationDataReliabilityStatsForPeriod(startDate, endDate);
     const totalEmployees = orgStats?.totalEmployees || 0;
     const avgEfficiency = orgStats?.avgEfficiencyRatio || 0;
     
@@ -68,18 +76,26 @@ export async function GET(request: NextRequest) {
       ? calculateAdjustedWorkHours(avgWeeklyWorkHours, avgDataReliability)
       : 0;
     
-    // Get grade matrices for remaining metrics
-    const gradeMatrix = getGradeEfficiencyMatrix30Days();
-    const weeklyWorkHoursMatrix = getGradeWeeklyWorkHoursMatrix30Days();
-    const weeklyClaimedHoursMatrix = getGradeWeeklyClaimedHoursMatrix30Days();
-    const dataReliabilityMatrix = getGradeDataReliabilityMatrix30Days();
+    // Get grade matrices for selected period
+    const gradeMatrix = getGradeEfficiencyMatrixForPeriod(startDate, endDate);
+    const weeklyWorkHoursMatrix = getGradeWeeklyWorkHoursMatrixForPeriod(startDate, endDate);
+    const weeklyClaimedHoursMatrix = getGradeWeeklyClaimedHoursMatrixForPeriod(startDate, endDate);
+    const dataReliabilityMatrix = getGradeDataReliabilityMatrixForPeriod(startDate, endDate);
     
     
-    // Get dynamic thresholds for remaining metrics
-    const efficiencyThresholds = getMetricThresholdsForGrid('efficiency');
-    const weeklyClaimedThresholds = getMetricThresholdsForGrid('weeklyClaimedHours');
-    const dataReliabilityThresholds = getMetricThresholdsForGrid('dataReliability');
-    const adjustedWeeklyWorkThresholds = getMetricThresholdsForGrid('adjustedWeeklyWorkHours');
+    // Get dynamic thresholds for selected period
+    const efficiencyThresholds = getMetricThresholdsForGridForPeriod('efficiency', startDate, endDate);
+    const weeklyClaimedThresholds = getMetricThresholdsForGridForPeriod('weeklyClaimedHours', startDate, endDate);
+    const dataReliabilityThresholds = getMetricThresholdsForGridForPeriod('dataReliability', startDate, endDate);
+    const adjustedWeeklyWorkThresholds = getMetricThresholdsForGridForPeriod('adjustedWeeklyWorkHours', startDate, endDate);
+    
+    // Debug threshold values
+    console.log('[Thresholds Debug]', {
+      month: currentMonth,
+      period: `${startDate} - ${endDate}`,
+      efficiency: efficiencyThresholds,
+      dataReliability: dataReliabilityThresholds
+    });
     
     const payload = {
       centers,

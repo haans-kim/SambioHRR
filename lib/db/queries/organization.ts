@@ -425,3 +425,106 @@ export function getOrganizationByName(orgName: string, orgLevel?: string): Organ
     isActive: Boolean(result.isActive)
   } : null;
 }
+
+// Period-based version of getOrganizationsWithStats
+export function getOrganizationsWithStatsForPeriod(level: OrgLevel, startDate: string, endDate: string): OrganizationWithStats[] {
+  // 1. 조직 마스터 데이터 가져오기
+  const organizations = db.prepare(`
+    SELECT 
+      org_code as orgCode,
+      org_name as orgName,
+      org_level as orgLevel,
+      parent_org_code as parentOrgCode,
+      display_order as displayOrder,
+      is_active as isActive,
+      (SELECT COUNT(*) FROM organization_master WHERE parent_org_code = o.org_code) as childrenCount
+    FROM organization_master o
+    WHERE o.org_level = ? AND o.is_active = 1
+      AND o.org_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+    ORDER BY o.display_order, o.org_name
+  `).all(level) as any[];
+  
+  // 2. Period-based 통계 계산 (레벨별 처리)
+  const statsMap = new Map<string, any>();
+  
+  if (level === 'center') {
+    const centerStats = db.prepare(`
+      SELECT 
+        e.center_name as orgName,
+        COUNT(DISTINCT dar.employee_id) as totalEmployees,
+        COUNT(*) as manDays,
+        ROUND(
+          SUM(
+            dar.actual_work_hours *
+            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+          ) / SUM(dar.claimed_work_hours) * 100, 
+          1
+        ) as avgWorkEfficiency,
+        -- 원본 값
+        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
+        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
+        -- Ground Rules 보정 값 (있는 경우 사용)
+        ROUND(
+          CASE 
+            WHEN SUM(CASE WHEN dar.ground_rules_work_hours > 0 THEN dar.ground_rules_work_hours ELSE 0 END) > 0
+            THEN SUM(CASE WHEN dar.ground_rules_work_hours > 0 THEN dar.ground_rules_work_hours ELSE dar.actual_work_hours END) / COUNT(*)
+            ELSE SUM(dar.actual_work_hours) / COUNT(*)
+          END, 1
+        ) as avgGroundRulesWorkHours,
+        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
+        ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
+        -- Ground Rules 보정 주간 근무시간
+        ROUND(
+          (CASE 
+            WHEN SUM(CASE WHEN dar.ground_rules_work_hours > 0 THEN dar.ground_rules_work_hours ELSE 0 END) > 0
+            THEN SUM(CASE WHEN dar.ground_rules_work_hours > 0 THEN dar.ground_rules_work_hours ELSE dar.actual_work_hours END) / COUNT(*)
+            ELSE SUM(dar.actual_work_hours) / COUNT(*)
+          END) * 5, 1
+        ) as avgWeeklyGroundRulesWorkHours,
+        -- 자연 평균화 보정 값
+        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHoursAdjusted,
+        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHoursAdjusted,
+        ROUND(
+          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
+        ) as avgWeeklyWorkHoursAdjusted,
+        ROUND(
+          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
+        ) as avgWeeklyClaimedHoursAdjusted,
+        ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
+        ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.center_name IS NOT NULL
+        AND e.job_grade IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+      GROUP BY e.center_name
+    `).all(endDate, startDate, endDate, startDate, startDate, endDate) as any[];
+    
+    
+    centerStats.forEach(stat => {
+      statsMap.set(stat.orgName, stat);
+    });
+  }
+  
+  // 3. 조직과 통계 매핑 (기존 함수와 동일한 형식으로)
+  return organizations.map(org => {
+    const stats = statsMap.get(org.orgName);
+    return {
+      ...org,
+      stats: stats ? {
+        ...stats,
+        // avgAdjustedWeeklyWorkHours 필드 추가 (기존 함수와 호환성 위해)
+        avgAdjustedWeeklyWorkHours: stats.avgWeeklyWorkHoursAdjusted || 
+          (stats.avgDataReliability 
+            ? calculateAdjustedWorkHours(
+                stats.avgWeeklyWorkHoursAdjusted || stats.avgWeeklyWorkHours || 0, 
+                stats.avgDataReliability
+              )
+            : 0)
+      } : null
+    };
+  });
+}
