@@ -1342,8 +1342,8 @@ export function getGradeWeeklyWorkHoursMatrixForPeriod(startDate: string, endDat
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
       ROUND(
-        SUM(dar.actual_work_hours * 7) / COUNT(*), 
-        1
+        SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
       ) as avgWeeklyWorkHours
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
@@ -1357,7 +1357,7 @@ export function getGradeWeeklyWorkHoursMatrixForPeriod(startDate: string, endDat
   `;
   
   const stmt = db.prepare(query);
-  const results = stmt.all(startDate, endDate) as any[];
+  const results = stmt.all(endDate, startDate, startDate, endDate) as any[];
   
   // Transform to matrix format
   const matrix: Record<string, Record<string, number>> = {};
@@ -1392,8 +1392,8 @@ export function getGradeWeeklyClaimedHoursMatrixForPeriod(startDate: string, end
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
       ROUND(
-        SUM(dar.claimed_work_hours * 7) / COUNT(*), 
-        1
+        SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
       ) as avgWeeklyClaimedHours
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id
@@ -1407,7 +1407,7 @@ export function getGradeWeeklyClaimedHoursMatrixForPeriod(startDate: string, end
   `;
   
   const stmt = db.prepare(query);
-  const results = stmt.all(startDate, endDate) as any[];
+  const results = stmt.all(endDate, startDate, startDate, endDate) as any[];
   
   // Transform to matrix format
   const matrix: Record<string, Record<string, number>> = {};
@@ -1473,8 +1473,8 @@ export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | '
         e.center_name as centerName,
         'Lv.' || e.job_grade as grade,
         ROUND(
-          SUM(dar.actual_work_hours * 7) / COUNT(*), 
-          1
+          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
         ) as avgValue
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
@@ -1492,8 +1492,8 @@ export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | '
         e.center_name as centerName,
         'Lv.' || e.job_grade as grade,
         ROUND(
-          SUM(dar.claimed_work_hours * 7) / COUNT(*), 
-          1
+          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
         ) as avgValue
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
@@ -1525,7 +1525,14 @@ export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | '
   }
   
   const stmt = db.prepare(dataQuery);
-  const results = stmt.all(startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
+  let results: { centerName: string; grade: string; avgValue: number }[] = [];
+  
+  // 매개변수 개수에 따라 적절히 전달
+  if (metricType === 'adjustedWeeklyWorkHours' || metricType === 'weeklyClaimedHours') {
+    results = stmt.all(endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
+  } else {
+    results = stmt.all(startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
+  }
   
   // If we have fewer than 10 data points, use hardcoded thresholds
   if (results.length < 10) {
