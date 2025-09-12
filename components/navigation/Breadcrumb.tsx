@@ -32,11 +32,10 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
           <ChevronRight className="w-4 h-4 mx-1 text-neutral-400" />
           {item.href ? (
             <Link
-              href={item.label === '센터' ? '/' : item.href}
+              href={item.href}
               onClick={(e) => { 
                 e.preventDefault(); 
-                const target = item.label === '센터' ? '/' : (item.href || '/');
-                router.push(target); 
+                router.push(item.href || '/'); 
               }}
               className="hover:text-blue-600 transition-colors"
             >

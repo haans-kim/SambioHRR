@@ -133,16 +133,36 @@ export default function GroupStatsPage() {
       return [{ label: '센터', href: '/' }];
     }
     const crumbs: { label: string; href?: string }[] = [{ label: '센터', href: '/' }];
+    
+    // Add center - need to find center code from API or use name-based navigation
     if (data.group.parentCenter) {
-      crumbs.push({ label: data.group.parentCenter, href: '/' });
+      crumbs.push({ 
+        label: data.group.parentCenter, 
+        href: `/teams?center=${data.group.parentCenter}` 
+      });
     }
+    
+    // Add division if exists
     if (data.group.parentDivision) {
-      crumbs.push({ label: data.group.parentDivision, href: '/' });
+      crumbs.push({ 
+        label: data.group.parentDivision, 
+        href: `/teams?division=${data.group.parentDivision}` 
+      });
     }
+    
+    // Add team - parent of the current group
     if (data.group.parentTeam) {
-      crumbs.push({ label: data.group.parentTeam, href: '/' });
+      crumbs.push({ 
+        label: data.group.parentTeam, 
+        href: `/groups?team=${data.group.parentTeam}` 
+      });
     }
+    
+    // Current group (no link)
     crumbs.push({ label: data.group.orgName });
+    
+    // Debug log
+    console.log('Generated breadcrumb for group:', data.group.orgName, crumbs);
     return crumbs;
   }, [data]);
 

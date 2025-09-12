@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       groups = allChildren.filter((org: any) => org.orgLevel === 'group');
     }
 
-    // breadcrumb: Center -> (optional) Division -> Team
+    // breadcrumb: Center -> (optional) Division -> Team 
     if (parentOrg && parentOrg.parentOrgCode) {
       const divisionOrCenter = getOrganizationById(parentOrg.parentOrgCode);
       if (divisionOrCenter) {
@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
         }
       }
     }
+    // Add team to breadcrumb (team should come before group in hierarchy)
     if (parentOrg) {
       breadcrumb.push({ label: parentOrg.orgName, href: `/groups?team=${parentOrg.orgCode}` });
     }

@@ -227,7 +227,7 @@ export default function MillerColumn() {
             // Update organization path when center is selected
             const centerName = centers.find(c => c.code === center)?.name
             setOrganizationPath({
-              center: centerName || undefined,  // Use name, not code
+              center: center || undefined,  // Use code for routing
               centerName: centerName || undefined,
               division: undefined,
               divisionName: undefined,
@@ -265,9 +265,9 @@ export default function MillerColumn() {
               const centerName = centers.find(c => c.code === selectedCenter)?.name
               const divisionName = division === 'center_direct' ? '센터 직속' : divisions.find(d => d.code === division)?.name
               setOrganizationPath({
-                center: centerName || undefined,  // Use name, not code
+                center: selectedCenter || undefined,  // Use code for routing
                 centerName: centerName || undefined,
-                division: divisionName || undefined,  // Use name, not code
+                division: division || undefined,  // Use code for routing
                 divisionName: divisionName || undefined,
                 team: undefined,
                 teamName: undefined,
@@ -310,11 +310,11 @@ export default function MillerColumn() {
               const divisionName = selectedDivision === 'center_direct' ? '센터 직속' : divisions.find(d => d.code === selectedDivision)?.name
               const teamName = team === 'direct' ? undefined : (teams.find(t => t.code === team)?.name || centerDirectTeams.find(t => t.code === team)?.name)
               setOrganizationPath({
-                center: centerName || undefined,  // Use name, not code
+                center: selectedCenter || undefined,  // Use code for routing
                 centerName: centerName || undefined,
-                division: divisionName || undefined,  // Use name, not code
+                division: selectedDivision || undefined,  // Use code for routing
                 divisionName: divisionName || undefined,
-                team: teamName || undefined,  // Use name, not code
+                team: team === 'direct' ? undefined : team,  // Use code for routing
                 teamName: teamName || undefined,
                 group: undefined,
                 groupName: undefined
@@ -343,13 +343,13 @@ export default function MillerColumn() {
                 (selectedDivision === 'center_direct' ? centerDirectTeams.find(t => t.code === selectedTeam)?.name : undefined)
               const groupName = groups.find(g => g.code === group)?.name
               setOrganizationPath({
-                center: centerName || undefined,  // Use name, not code
+                center: selectedCenter || undefined,  // Use code for routing
                 centerName: centerName || undefined,
-                division: divisionName || undefined,  // Use name, not code
+                division: selectedDivision || undefined,  // Use code for routing
                 divisionName: divisionName || undefined,
-                team: teamName || undefined,  // Use name, not code
+                team: selectedTeam || undefined,  // Use code for routing
                 teamName: teamName || undefined,
-                group: groupName || undefined,  // Use name, not code
+                group: group || undefined,  // Use code for routing
                 groupName: groupName || undefined
               })
             }}

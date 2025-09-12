@@ -103,9 +103,34 @@ export async function GET(
       return NextResponse.json({ error: 'Group not found' }, { status: 404 })
     }
 
-    // Get hierarchy info from the data itself
-    const parentTeam = groupInfo.team_name || 'Unknown'
-    const parentCenter = groupInfo.center_name || 'Unknown'
+    // Get hierarchy info from organization_master table
+    const hierarchyQuery = `
+      SELECT 
+        g.org_name as group_name,
+        g.parent_org_code as parent_team_code,
+        t.org_name as parent_team,
+        t.parent_org_code as parent_div_or_center_code,
+        dt.org_name as parent_division,
+        dt.org_level as parent_div_level,
+        c.org_name as parent_center
+      FROM organization_master g
+      LEFT JOIN organization_master t ON g.parent_org_code = t.org_code
+      LEFT JOIN organization_master dt ON t.parent_org_code = dt.org_code  
+      LEFT JOIN organization_master c ON (
+        CASE 
+          WHEN dt.org_level = 'center' THEN dt.org_code
+          ELSE dt.parent_org_code 
+        END = c.org_code AND c.org_level = 'center'
+      )
+      WHERE g.org_name = ? AND g.org_level = 'group'
+      LIMIT 1
+    `
+    
+    const hierarchy = db.prepare(hierarchyQuery).get(groupName) as any
+    
+    const parentTeam = hierarchy?.parent_team || groupInfo.team_name || 'Unknown'
+    const parentCenter = hierarchy?.parent_center || groupInfo.center_name || 'Unknown' 
+    const parentDivision = hierarchy?.parent_div_level === 'division' ? hierarchy.parent_division : null
 
     // Get group statistics from daily_analysis_results
     const statsQuery = `
@@ -196,7 +221,7 @@ export async function GET(
           orgName: groupName,
           parentTeam: parentTeam,
           parentCenter: parentCenter,
-          parentDivision: null
+          parentDivision: parentDivision
         }
       }, { status: 404 })
     }
@@ -293,7 +318,7 @@ export async function GET(
         orgName: groupName,
         parentTeam: parentTeam,
         parentCenter: parentCenter,
-        parentDivision: null
+        parentDivision: parentDivision
       },
       summary: {
         totalEmployees: stats.total_employees || 0,

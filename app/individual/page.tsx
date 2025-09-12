@@ -12,11 +12,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
+import { Breadcrumb } from "@/components/navigation/Breadcrumb"
 
 export default function IndividualAnalysisPage() {
   const { 
     selectedEmployee, 
     selectedDate,
+    organizationPath,
     setEmployee,
     setDate
   } = useAppStore()
@@ -41,6 +43,46 @@ export default function IndividualAnalysisPage() {
       .catch(err => console.error('Failed to fetch dates:', err))
   }, [])
   
+  // Generate breadcrumb based on organization path
+  const generateBreadcrumb = () => {
+    const breadcrumb = [{ label: '센터', href: '/' }];
+    
+    if (organizationPath?.centerName) {
+      breadcrumb.push({ 
+        label: organizationPath.centerName, 
+        href: `/teams?center=${organizationPath.center}` 
+      });
+    }
+    
+    if (organizationPath?.divisionName && organizationPath.divisionName !== '센터 직속') {
+      breadcrumb.push({ 
+        label: organizationPath.divisionName, 
+        href: `/teams?division=${organizationPath.division}` 
+      });
+    }
+    
+    if (organizationPath?.teamName) {
+      breadcrumb.push({ 
+        label: organizationPath.teamName, 
+        href: `/groups?team=${organizationPath.team}` 
+      });
+    }
+    
+    if (organizationPath?.groupName) {
+      breadcrumb.push({ 
+        label: organizationPath.groupName 
+      });
+    }
+    
+    if (selectedEmployee) {
+      breadcrumb.push({ 
+        label: `${selectedEmployee.name} (${selectedEmployee.employee_id})` 
+      });
+    }
+    
+    return breadcrumb;
+  };
+
   const handleEmployeeSearch = async () => {
     if (!employeeIdInput) return
     
@@ -110,6 +152,13 @@ export default function IndividualAnalysisPage() {
               </PopoverContent>
             </Popover>
           </div>
+          
+          {/* Breadcrumb */}
+          {(organizationPath?.centerName || selectedEmployee) && (
+            <div className="pb-4">
+              <Breadcrumb items={generateBreadcrumb()} />
+            </div>
+          )}
         </div>
       </header>
 
