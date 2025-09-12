@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { GroupCards } from "@/components/dashboard/GroupCards";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { MetricType } from "@/components/dashboard/MetricSelector";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface GroupData {
   groups: any[];
@@ -27,6 +27,7 @@ interface GroupData {
 
 export default function GroupsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const teamCode = searchParams.get('team');
   
   const [selectedMetric, setSelectedMetric] = useState<MetricType>(() => {
@@ -36,8 +37,13 @@ export default function GroupsPage() {
     }
     return 'efficiency';
   });
+  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06');
   const [data, setData] = useState<GroupData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleMonthChange = (month: string) => {
+    setSelectedMonth(month);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,6 +81,22 @@ export default function GroupsPage() {
     );
   }
 
+  // 분석 모드 정보 생성
+  const analysisMode = selectedMonth >= '2025-06' ? 'enhanced' : 'legacy';
+  const availableMetrics = analysisMode === 'enhanced' 
+    ? ['efficiency', 'weeklyWorkHours', 'weeklyClaimedHours', 'adjustedWeeklyWorkHours', 'dataReliability', 'mealTime', 'meetingTime', 'equipmentTime', 'movementTime', 'focusedWorkTime']
+    : ['efficiency', 'weeklyWorkHours', 'weeklyClaimedHours', 'adjustedWeeklyWorkHours', 'dataReliability'];
+  
+  const dataQuality = {
+    mode: analysisMode,
+    description: analysisMode === 'enhanced' 
+      ? '전체 데이터 기반 상세 분석' 
+      : '제한 데이터 기반 기본 분석 (Tag + Claim 데이터만)',
+    limitations: analysisMode === 'legacy' 
+      ? ['장비 사용 시간 미포함', '식사 시간 추정치', '회의실 이용 데이터 제한'] 
+      : []
+  };
+
   return (
     <DashboardLayout 
       totalEmployees={data.totalEmployees}
@@ -86,6 +108,11 @@ export default function GroupsPage() {
       onMetricChange={setSelectedMetric}
       parentOrg={data.parentOrg}
       breadcrumb={data.breadcrumb}
+      selectedMonth={selectedMonth}
+      onMonthChange={handleMonthChange}
+      analysisMode={analysisMode}
+      availableMetrics={availableMetrics}
+      dataQuality={dataQuality}
     >
       <GroupCards 
         groups={data.groups} 

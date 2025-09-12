@@ -7,7 +7,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { TeamPlantCards } from "@/components/dashboard/TeamPlantCards";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { MetricType } from "@/components/dashboard/MetricSelector";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface TeamData {
   teams: any[];
@@ -31,6 +31,7 @@ interface TeamData {
 
 export default function TeamsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
   
@@ -41,8 +42,16 @@ export default function TeamsPage() {
     }
     return 'efficiency';
   });
+  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06'); // 기본값 2025-06
   const [data, setData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // 월 변경 핸들러 (Legacy Analysis 버튼용)
+  const handleMonthChange = (month: string) => {
+    setSelectedMonth(month);
+    // 현재는 UI만 업데이트, 실제 데이터는 6월 데이터 사용
+    // 추후 1-5월 데이터가 업로드되면 API 호출도 추가
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -81,6 +90,22 @@ export default function TeamsPage() {
     );
   }
 
+  // 분석 모드 정보 생성
+  const analysisMode = selectedMonth >= '2025-06' ? 'enhanced' : 'legacy';
+  const availableMetrics = analysisMode === 'enhanced' 
+    ? ['efficiency', 'weeklyWorkHours', 'weeklyClaimedHours', 'adjustedWeeklyWorkHours', 'dataReliability', 'mealTime', 'meetingTime', 'equipmentTime', 'movementTime', 'focusedWorkTime']
+    : ['efficiency', 'weeklyWorkHours', 'weeklyClaimedHours', 'adjustedWeeklyWorkHours', 'dataReliability'];
+  
+  const dataQuality = {
+    mode: analysisMode,
+    description: analysisMode === 'enhanced' 
+      ? '전체 데이터 기반 상세 분석' 
+      : '제한 데이터 기반 기본 분석 (Tag + Claim 데이터만)',
+    limitations: analysisMode === 'legacy' 
+      ? ['장비 사용 시간 미포함', '식사 시간 추정치', '회의실 이용 데이터 제한'] 
+      : []
+  };
+
   return (
     <DashboardLayout 
       totalEmployees={data.summary?.totalEmployees || 0}
@@ -92,6 +117,11 @@ export default function TeamsPage() {
       onMetricChange={setSelectedMetric}
       parentOrg={data.parentOrg}
       breadcrumb={data.breadcrumb}
+      selectedMonth={selectedMonth}
+      onMonthChange={handleMonthChange}
+      analysisMode={analysisMode}
+      availableMetrics={availableMetrics}
+      dataQuality={dataQuality}
     >
       <TeamPlantCards 
         teams={data.teams} 

@@ -28,6 +28,7 @@ export default function OrganizationAnalysisPage() {
   const { organizationPath } = useAppStore()
   const [startDate, setStartDate] = useState<Date>(new Date('2025-06-01'))
   const [endDate, setEndDate] = useState<Date>(new Date('2025-06-30'))
+  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([])
@@ -37,7 +38,22 @@ export default function OrganizationAnalysisPage() {
     completedRecords?: number
     elapsedTime?: number
     startTime?: number
+    currentMonth?: string
+    completedMonths?: number
+    totalMonths?: number
   }>({})
+
+  // 월 변경 핸들러
+  const handleMonthChange = (month: string) => {
+    setSelectedMonth(month);
+    // 날짜 범위 업데이트 (해당 월의 전체 기간으로)
+    const year = parseInt(month.split('-')[0]);
+    const monthNum = parseInt(month.split('-')[1]);
+    const startOfMonth = new Date(year, monthNum - 1, 1);
+    const endOfMonth = new Date(year, monthNum, 0); // 다음 달 0일 = 현재 달 마지막 일
+    setStartDate(startOfMonth);
+    setEndDate(endOfMonth);
+  };
 
   const formatMinutes = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
@@ -732,6 +748,135 @@ export default function OrganizationAnalysisPage() {
               >
                 {isAnalyzing ? '분석 중...' : '전체 분석'}
               </button>
+
+              {/* 1-5월 추가분석 버튼 */}
+              <button
+                onClick={async () => {
+                  if (!organizationPath.center) {
+                    alert('조직을 선택해주세요.');
+                    return;
+                  }
+                  
+                  console.log('1-5월 추가분석 시작');
+                  
+                  try {
+                    setIsAnalyzing(true);
+                    setProgress(0);
+                    setAnalysisInfo({});
+                    const analysisStartTime = Date.now();
+                    
+                    const months = ['2025-01', '2025-02', '2025-03', '2025-04', '2025-05'];
+                    let totalResults: AnalysisResult[] = [];
+                    
+                    for (let i = 0; i < months.length; i++) {
+                      const month = months[i];
+                      const [year, monthNum] = month.split('-').map(Number);
+                      const monthStart = new Date(year, monthNum - 1, 1);
+                      const monthEnd = new Date(year, monthNum, 0);
+                      
+                      console.log(`${month} 분석 시작 (${monthStart.toISOString().split('T')[0]} ~ ${monthEnd.toISOString().split('T')[0]})`);
+                      
+                      // 월별 진행 상태 업데이트
+                      const baseProgress = (i / months.length) * 100;
+                      setProgress(baseProgress);
+                      setAnalysisInfo(prev => ({ 
+                        ...prev, 
+                        currentMonth: month,
+                        completedMonths: i,
+                        totalMonths: months.length
+                      }));
+                      
+                      try {
+                        // 해당 월 데이터 분석 실행
+                        const extractRes = await fetch('/api/organization/extract-employees', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ 
+                            organizationPath,
+                            startDate: monthStart.toISOString().split('T')[0],
+                            endDate: monthEnd.toISOString().split('T')[0]
+                          })
+                        });
+                        
+                        if (!extractRes.ok) {
+                          console.error(`${month} 직원 추출 실패:`, extractRes.status, extractRes.statusText);
+                          continue; // 다음 월로 넘어감
+                        }
+                        
+                        const extractData = await extractRes.json();
+                        console.log(`${month} 직원 수:`, extractData.employees?.length || 0);
+                        
+                        if (extractData.employees && extractData.employees.length > 0) {
+                          const response = await fetch('/api/organization/ground-rules-worker-analysis', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              employees: extractData.employees.map((emp: any) => ({
+                                employeeId: emp.employeeId,
+                                employeeName: emp.employeeName
+                              })),
+                              startDate: monthStart.toISOString().split('T')[0],
+                              endDate: monthEnd.toISOString().split('T')[0],
+                              saveToDb: true,
+                              useWorkers: true
+                            })
+                          });
+                          
+                          if (!response.ok) {
+                            console.error(`${month} Ground Rules 분석 실패:`, response.status, response.statusText);
+                            continue; // 다음 월로 넘어감
+                          }
+                          
+                          const data = await response.json();
+                          if (data.results) {
+                            totalResults.push(...data.results);
+                            console.log(`${month} 분석 결과:`, data.results.length, '건');
+                          }
+                        } else {
+                          console.log(`${month}: 분석할 직원 데이터 없음`);
+                        }
+                      } catch (monthError) {
+                        console.error(`${month} 처리 중 오류:`, monthError);
+                        // 다음 월로 계속 진행
+                      }
+                      
+                      // 월별 완료 진행률 업데이트
+                      const completedProgress = ((i + 1) / months.length) * 100;
+                      setProgress(completedProgress);
+                      setAnalysisInfo(prev => ({ 
+                        ...prev, 
+                        completedMonths: i + 1
+                      }));
+                    }
+                    
+                    setAnalysisResults(totalResults);
+                    const elapsedTime = Date.now() - analysisStartTime;
+                    setAnalysisInfo(prev => ({ ...prev, elapsedTime }));
+                    
+                    console.log('1-5월 분석 완료:', totalResults.length, '건');
+                    alert(`1-5월 추가분석 완료!\n분석된 항목: ${totalResults.length}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초`);
+                    
+                    setTimeout(() => {
+                      setIsAnalyzing(false);
+                    }, 500);
+                    
+                  } catch (error) {
+                    console.error('1-5월 분석 전체 오류:', error);
+                    alert(`1-5월 분석 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+                    setIsAnalyzing(false);
+                    setProgress(0);
+                    setAnalysisInfo({});
+                  }
+                }}
+                disabled={isAnalyzing || !organizationPath.center}
+                className={`px-8 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors ${
+                  isAnalyzing || !organizationPath.center
+                    ? 'bg-gray-600 cursor-not-allowed' 
+                    : 'bg-orange-600 hover:bg-orange-700'
+                }`}
+              >
+                {isAnalyzing ? '1-5월 분석 중...' : '1-5월 추가분석'}
+              </button>
               
               {/* Progress Bar for Ground Rules Analysis */}
               <div className="flex-1">
@@ -742,7 +887,12 @@ export default function OrganizationAnalysisPage() {
                   </span>
                 </div>
                 <div className="mt-2 text-sm text-gray-600">
-                  {isAnalyzing && analysisInfo.totalRecords && (
+                  {isAnalyzing && analysisInfo.currentMonth && analysisInfo.totalMonths && (
+                    <span className="text-orange-600 font-medium">
+                      {analysisInfo.currentMonth} 분석 중 ({analysisInfo.completedMonths || 0}/{analysisInfo.totalMonths}월 완료)
+                    </span>
+                  )}
+                  {isAnalyzing && analysisInfo.totalRecords && !analysisInfo.currentMonth && (
                     <span>
                       총 {analysisInfo.totalRecords.toLocaleString()}건 분석 중
                       {analysisInfo.completedRecords && (

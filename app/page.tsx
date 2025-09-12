@@ -39,6 +39,14 @@ interface DashboardData {
   // 월 선택 관련 데이터
   availableMonths?: string[];
   currentMonth?: string;
+  // 분석 모드 및 데이터 품질 정보
+  analysisMode?: 'enhanced' | 'legacy';
+  availableMetrics?: string[];
+  dataQuality?: {
+    mode: 'enhanced' | 'legacy';
+    description: string;
+    limitations: string[];
+  };
 }
 
 export default function HomePage() {
@@ -117,6 +125,9 @@ export default function HomePage() {
       selectedMonth={selectedMonth}
       onMonthChange={handleMonthChange}
       availableMonths={data.availableMonths}
+      analysisMode={data.analysisMode}
+      availableMetrics={data.availableMetrics}
+      dataQuality={data.dataQuality}
     >
       <CenterLevelGrid 
         organizations={data.centers} 

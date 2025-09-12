@@ -74,6 +74,46 @@ export function getLatestAnalysisDate(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+// Analysis modes based on data availability
+export type AnalysisMode = 'enhanced' | 'legacy';
+
+// Determine analysis mode based on date (Enhanced: 2025-06+, Legacy: before 2025-06)
+export function getAnalysisMode(dateString: string): AnalysisMode {
+  // Enhanced mode for 2025-06 and later (has all data: equipment, Knox, meal data)
+  // Legacy mode for 2025-01 to 2025-05 (only has claim and tag data)
+  return dateString >= '2025-06-01' ? 'enhanced' : 'legacy';
+}
+
+// Get analysis mode for a month string (e.g., "2025-06")
+export function getAnalysisModeForMonth(monthString?: string): AnalysisMode {
+  if (!monthString) return 'enhanced'; // Default to enhanced for latest data
+  return monthString >= '2025-06' ? 'enhanced' : 'legacy';
+}
+
+// Get available metrics based on analysis mode
+export function getAvailableMetrics(mode: AnalysisMode): string[] {
+  const baseMetrics = [
+    'efficiency',
+    'weeklyWorkHours', 
+    'weeklyClaimedHours',
+    'dataReliability',
+    'adjustedWeeklyWorkHours'
+  ];
+  
+  if (mode === 'enhanced') {
+    return [
+      ...baseMetrics,
+      'mealTime',
+      'meetingTime', 
+      'equipmentTime',
+      'movementTime',
+      'focusedWorkTime'
+    ];
+  }
+  
+  return baseMetrics; // Legacy mode - limited metrics
+}
+
 // Get 30-day date range for analysis
 export function get30DayDateRange(): { startDate: string, endDate: string } {
   const stmt = db.prepare(`

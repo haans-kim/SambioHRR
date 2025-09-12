@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Organization } from "@/lib/types/organization";
 import { MetricType, MetricSelector } from "@/components/dashboard/MetricSelector";
 import { MonthSelector } from "@/components/dashboard/MonthSelector";
+import { DataQualityIndicator } from "@/components/dashboard/DataQualityIndicator";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,14 @@ interface DashboardLayoutProps {
   selectedMonth?: string;
   onMonthChange?: (month: string) => void;
   availableMonths?: string[];
+  // 데이터 품질 관련 props
+  analysisMode?: 'enhanced' | 'legacy';
+  availableMetrics?: string[];
+  dataQuality?: {
+    mode: 'enhanced' | 'legacy';
+    description: string;
+    limitations: string[];
+  };
 }
 
 export function DashboardLayout({ 
@@ -37,7 +46,10 @@ export function DashboardLayout({
   breadcrumb,
   selectedMonth,
   onMonthChange,
-  availableMonths
+  availableMonths,
+  analysisMode,
+  availableMetrics,
+  dataQuality
 }: DashboardLayoutProps) {
   // Build breadcrumb items
   const defaultBreadcrumb = [{ label: "센터", href: "/" } as { label: string; href?: string }];
@@ -124,22 +136,34 @@ export function DashboardLayout({
                 <Breadcrumb items={breadcrumbItems} />
               )}
               
-              {/* Month Selector - Right aligned */}
-              {selectedMonth && onMonthChange && availableMonths && (
-                <div className="flex-shrink-0">
+              {/* Right side controls */}
+              <div className="flex items-center gap-3">
+                {/* Month Selector */}
+                {selectedMonth && onMonthChange && availableMonths && (
                   <MonthSelector
                     selectedMonth={selectedMonth}
                     onMonthChange={onMonthChange}
                     availableMonths={availableMonths}
                   />
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Main Content */}
         <main className="max-w-[1600px] mx-auto px-6 py-6">
+          {/* Data Quality Indicator - Show when data quality info is available */}
+          {analysisMode && availableMetrics && dataQuality && (
+            <div className="mb-6">
+              <DataQualityIndicator
+                analysisMode={analysisMode}
+                availableMetrics={availableMetrics}
+                dataQuality={dataQuality}
+              />
+            </div>
+          )}
+          
           {children}
         </main>
       </div>

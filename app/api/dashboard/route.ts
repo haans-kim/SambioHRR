@@ -11,7 +11,10 @@ import {
   getGradeDataReliabilityMatrix30Days,
   getMetricThresholdsForGrid,
   getAvailableMonths,
-  getMonthDateRange
+  getMonthDateRange,
+  getAnalysisModeForMonth,
+  getAvailableMetrics,
+  type AnalysisMode
 } from "@/lib/db/queries/analytics";
 import { calculateAdjustedWorkHours } from '@/lib/utils';
 
@@ -31,6 +34,10 @@ export async function GET(request: NextRequest) {
     // 사용 가능한 월 목록 가져오기
     const availableMonths = getAvailableMonths();
     const currentMonth = selectedMonth || (availableMonths.length > 0 ? availableMonths[0] : '2025-06');
+    
+    // 분석 모드 결정 (Enhanced: 2025-06+, Legacy: 2025-01~2025-05)
+    const analysisMode = getAnalysisModeForMonth(currentMonth);
+    const availableMetrics = getAvailableMetrics(analysisMode);
 
     const centers = getOrganizationsWithStats('center');
     
@@ -94,7 +101,19 @@ export async function GET(request: NextRequest) {
       },
       // 월 선택 관련 데이터 추가
       availableMonths,
-      currentMonth
+      currentMonth,
+      // 분석 모드 및 메트릭 가용성 정보 추가
+      analysisMode,
+      availableMetrics,
+      dataQuality: {
+        mode: analysisMode,
+        description: analysisMode === 'enhanced' 
+          ? '전체 데이터 기반 상세 분석' 
+          : '제한 데이터 기반 기본 분석 (Tag + Claim 데이터만)',
+        limitations: analysisMode === 'legacy' 
+          ? ['장비 사용 시간 미포함', '식사 시간 추정치', '회의실 이용 데이터 제한'] 
+          : []
+      }
     };
 
     setToCache(cacheKey, payload, 180_000); // 3 minutes
