@@ -237,11 +237,11 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
       case 'claimedHours':
         return '일간 근무시간';
       case 'weeklyWorkHours':
-        return '주간 근무추정시간';
+        return '주간 추정근태시간';
       case 'adjustedWeeklyWorkHours':
-        return '주간 근무추정시간(AI보정)';
+        return '주간 추정근태시간(AI보정)';
       case 'weeklyClaimedHours':
-        return '주간 근무시간';
+        return '주간 근태시간';
       case 'focusedWorkHours':
         return '집중근무시간';
       case 'dataReliability':
@@ -545,7 +545,7 @@ export function GroupCards({
           </>
         ) : selectedMetric === 'weeklyClaimedHours' ? (
           <>
-            <div className="font-semibold text-gray-900">주간 근무시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
+            <div className="font-semibold text-gray-900">주간 근태시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
             <div className="text-xs text-gray-700 mt-1">
               주당 신고 근무시간 평균 | 30일 평균 데이터
             </div>

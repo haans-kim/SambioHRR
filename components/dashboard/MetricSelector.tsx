@@ -22,8 +22,8 @@ export function MetricSelector({ selectedMetric, onMetricChange }: MetricSelecto
   }
 
   const metrics = [
-    { id: 'weeklyClaimedHours' as MetricType, label: '주간 근무시간' },
-    { id: 'adjustedWeeklyWorkHours' as MetricType, label: '주간 추정근무시간' },
+    { id: 'weeklyClaimedHours' as MetricType, label: '주간 근태시간' },
+    { id: 'adjustedWeeklyWorkHours' as MetricType, label: '주간 추정근태시간' },
     { id: 'efficiency' as MetricType, label: '효율성 지표' },
     { id: 'dataReliability' as MetricType, label: '데이터 신뢰도' },
   ];

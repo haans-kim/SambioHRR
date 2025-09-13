@@ -16,9 +16,9 @@ interface DataQualityIndicatorProps {
 
 const METRIC_LABELS = {
   efficiency: '효율성 비율',
-  weeklyWorkHours: '주간 근무시간', 
+  weeklyWorkHours: '주간 근태시간', 
   weeklyClaimedHours: '주간 신청시간',
-  adjustedWeeklyWorkHours: '보정 근무시간',
+  adjustedWeeklyWorkHours: '주간 추정근태시간',
   dataReliability: '데이터 신뢰도',
   mealTime: '식사시간',
   meetingTime: '회의시간', 

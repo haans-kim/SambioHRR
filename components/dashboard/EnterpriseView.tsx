@@ -235,9 +235,9 @@ export default function EnterpriseView() {
                       {/* Y축 */}
                       <line x1="80" y1="50" x2="80" y2="530" stroke="#4B5563" strokeWidth="2"/>
                       
-                      {/* X축 레이블 - 주간 근무시간 */}
+                      {/* X축 레이블 - 주간 추정근태시간 */}
                       <text x="615" y="585" textAnchor="middle" className="text-lg font-bold fill-gray-800">
-                        주간 근무시간 (AI보정, 시간/주)
+                        주간 추정근태시간 (AI보정, 시간/주)
                       </text>
                       
                       {/* Y축 레이블 - 변동계수 */}

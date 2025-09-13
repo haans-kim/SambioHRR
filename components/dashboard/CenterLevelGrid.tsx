@@ -465,7 +465,7 @@ export function CenterLevelGrid({
           </>
         ) : selectedMetric === 'weeklyClaimedHours' ? (
           <>
-            <div className="font-semibold text-gray-900">주간 근무시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
+            <div className="font-semibold text-gray-900">주간 근태시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
             <div className="text-xs text-gray-700 mt-1">
               주당 신고 근무시간 평균 | 30일 평균 데이터
             </div>
