@@ -35,7 +35,7 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
         ROUND(
           SUM(
             dar.actual_work_hours *
-            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
+            (0.95 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.05))
           ) / NULLIF(SUM(dar.claimed_work_hours), 0) * 100,
           1
         ) as avgWorkEfficiency,
@@ -50,7 +50,7 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
         ROUND(
           (SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7) *
-          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.08)),
+          (0.95 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.05)),
           1
         ) as avgAdjustedWeeklyWorkHours
       FROM daily_analysis_results dar

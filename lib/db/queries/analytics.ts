@@ -1409,18 +1409,20 @@ export function getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate: string
       e.center_name as centerName,
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
-      -- 주간 근무시간 계산
+      -- 주간 근무시간 (DAR 기준)
       ROUND(
         SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
         (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
       ) as avgWeeklyWorkHours,
       -- 데이터 신뢰도 평균
       ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
-      -- AI 보정된 주간 근무시간 (근무시간 * 신뢰도 기반 보정계수)
+      -- AI 보정된 주간 추정근태시간 = (DAR근무 * AI보정) + DAR에 저장된 휴가
       ROUND(
         (SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
         (JULIANDAY(?) - JULIANDAY(?) + 1) * 7) *
-        (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.08)),
+        (0.95 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.05)) +
+        (SUM(dar.leave_hours) / COUNT(DISTINCT dar.employee_id) /
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7),
         1
       ) as avgAdjustedWeeklyWorkHours
     FROM daily_analysis_results dar
@@ -1436,7 +1438,12 @@ export function getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate: string
   `;
 
   const stmt = db.prepare(query);
-  const results = stmt.all(endDate, startDate, endDate, startDate, startDate, endDate) as any[];
+  const results = stmt.all(
+    endDate, startDate,  // 주간 근무시간 계산용
+    endDate, startDate,  // AI 보정 계산용
+    endDate, startDate,  // 휴가 주간 환산용
+    startDate, endDate   // WHERE절 날짜 조건
+  ) as any[];
 
   // Transform to matrix format
   const matrix: Record<string, Record<string, number>> = {};

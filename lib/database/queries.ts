@@ -265,6 +265,10 @@ export const saveDailyAnalysisResult = (data: {
   workMovementMinutes?: number
   nonWorkMovementMinutes?: number
   anomalyScore?: number
+  // 휴가/연차 정보 추가
+  leaveHours?: number
+  businessTripHours?: number
+  leaveType?: string | null
 }) => {
   try {
     const stmt = db.getDb().prepare(`
@@ -293,8 +297,11 @@ export const saveDailyAnalysisResult = (data: {
         work_movement_minutes,
         non_work_movement_minutes,
         anomaly_score,
+        leave_hours,
+        business_trip_hours,
+        leave_type,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `)
     
     // Calculate work_minutes (actual_work_hours * 60)
@@ -324,7 +331,10 @@ export const saveDailyAnalysisResult = (data: {
       data.groundRulesConfidence || 0,
       data.workMovementMinutes || 0,
       data.nonWorkMovementMinutes || 0,
-      data.anomalyScore || 0
+      data.anomalyScore || 0,
+      data.leaveHours || 0,
+      data.businessTripHours || 0,
+      data.leaveType || null
     )
   } catch (error) {
     console.error('Error saving daily analysis result:', error)

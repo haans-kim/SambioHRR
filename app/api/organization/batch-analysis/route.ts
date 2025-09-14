@@ -165,10 +165,13 @@ export async function POST(request: Request) {
             metrics.date = dateStr
           }
           
-          // Get claimed hours
+          // Get claimed hours and leave data
           const claimData = getClaimData(emp.employeeId, dateStr) as any
           const claimedHours = claimData?.근무시간 || null
-          
+          const leaveHours = claimData?.휴가_연차 || 0
+          const businessTripHours = claimData?.출장 || 0
+          const leaveType = claimData?.leave_type || null
+
           results.push({
             date: dateStr,
             employeeId: emp.employeeId,
@@ -176,7 +179,7 @@ export async function POST(request: Request) {
             metrics,
             claimedHours
           })
-          
+
           // Save to DB if requested
           if (saveToDb) {
             try {
@@ -192,7 +195,11 @@ export async function POST(request: Request) {
                 mealMinutes: metrics.mealTime,
                 movementMinutes: metrics.transitTime,
                 restMinutes: metrics.restTime,
-                confidenceScore: metrics.reliabilityScore
+                confidenceScore: metrics.reliabilityScore,
+                // 휴가/연차 정보 추가
+                leaveHours: leaveHours,
+                businessTripHours: businessTripHours,
+                leaveType: leaveType
               }
               
               // Add Ground Rules metrics if available

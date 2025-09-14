@@ -34,7 +34,8 @@
       "mcp__playwright__browser_snapshot",
       "Read(//var/folders/cg/hnykq8n5159dxh1w7lmpmcsc0000gn/T/TemporaryItems/NSIRD_screencaptureui_KitZFV/**)",
       "Bash(pip3 install:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Read(//var/folders/cg/hnykq8n5159dxh1w7lmpmcsc0000gn/T/TemporaryItems/NSIRD_screencaptureui_sutqy3/**)"
     ],
     "deny": []
   }

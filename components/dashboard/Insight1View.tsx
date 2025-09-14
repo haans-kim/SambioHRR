@@ -106,7 +106,7 @@ export function Insight1View() {
           인건비 크기 시각화 설명
         </h2>
         <p className="text-sm text-gray-500 mt-1">
-          센터별 · 레벨별 인건비와 주간 추정근태시간(AI보정) 통계
+          센터별 · 레벨별 인건비와 주간 추정근태시간 통계
         </p>
         <div className="flex items-center gap-2 mt-2">
           <div className="w-2 h-2 rounded-full bg-blue-500"></div>

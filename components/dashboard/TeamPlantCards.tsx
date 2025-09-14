@@ -249,7 +249,7 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
       case 'weeklyWorkHours':
         return '주간 추정근태시간';
       case 'adjustedWeeklyWorkHours':
-        return '주간 추정근태시간(AI보정)';
+        return '주간 추정근태시간';
       case 'weeklyClaimedHours':
         return '주간 근태시간';
       case 'focusedWorkHours':
@@ -573,15 +573,43 @@ export function TeamPlantCards({
             </div>
           </>
         ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
-          <>
-            <div className="font-semibold text-gray-900">주간 근무추정시간(AI보정) : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
-            <div className="text-xs text-gray-700 mt-1">
-              AI 신뢰도 보정 적용 | 30일 평균 데이터
+          <div className="grid grid-cols-2 gap-0">
+            <div className="pr-4">
+              <div className="font-semibold text-gray-900">주간 추정근태시간 : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
+              <div className="text-xs text-gray-700 mt-1">
+                주당 추정 근무시간 평균 | 30일 평균 데이터
+              </div>
+              <div className="text-xs text-gray-700 mt-1">
+                ▲ 상위({thresholds?.adjustedWeeklyWorkHours?.high}) | ● 중위({thresholds?.adjustedWeeklyWorkHours?.middle}) | ▼ 하위({thresholds?.adjustedWeeklyWorkHours?.low})
+              </div>
             </div>
-            <div className="text-xs text-gray-700 mt-1">
-              ▲ 상위({thresholds?.adjustedWeeklyWorkHours?.high}) | ● 중위({thresholds?.adjustedWeeklyWorkHours?.middle}) | ▼ 하위({thresholds?.adjustedWeeklyWorkHours?.low})
+            <div className="pl-4 border-l border-gray-300 grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-xs font-medium text-gray-800">포함된 시간</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  ✓ 실제 근무시간 (출퇴근 기록)
+                </div>
+                <div className="text-xs text-gray-600">
+                  ✓ 연차·휴가 시간 (8h/일, 4h/반차, 시간연차)
+                </div>
+                <div className="text-xs text-gray-600">
+                  ✓ 출장·교육 시간 (8h 기본값)
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-800">AI 보정 요소</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  ✓ 데이터 신뢰도 기반 조정
+                </div>
+                <div className="text-xs text-gray-600">
+                  ✓ 팀별 업무 패턴 분석
+                </div>
+                <div className="text-xs text-gray-600">
+                  ✓ 개인별 근무 특성 반영
+                </div>
+              </div>
             </div>
-          </>
+          </div>
         ) : selectedMetric === 'weeklyClaimedHours' ? (
           <>
             <div className="font-semibold text-gray-900">주간 근태시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
