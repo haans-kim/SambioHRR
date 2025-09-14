@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
     
-    const cacheKey = `dashboard:v39:month=${selectedMonth || ''}`; // claim_data 기반 threshold
+    const cacheKey = `dashboard:v41:month=${selectedMonth || ''}`; // zero-hour 직원 제외
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {

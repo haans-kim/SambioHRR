@@ -478,15 +478,31 @@ export function CenterLevelGrid({
             </div>
           </>
         ) : selectedMetric === 'weeklyClaimedHours' ? (
-          <>
-            <div className="font-semibold text-gray-900">주간 근태시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
-            <div className="text-xs text-gray-700 mt-1">
-              주당 신고 근무시간 평균 | 30일 평균 데이터
+          <div className="grid grid-cols-2 gap-4">
+            {/* 왼쪽: 기본 정보 */}
+            <div>
+              <div className="font-semibold text-gray-900">주간 근태시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
+              <div className="text-xs text-gray-700 mt-1">
+                주당 신고 근무시간 평균 | 30일 평균 데이터
+              </div>
+              <div className="text-xs text-gray-700 mt-1">
+                ▲ 상위({thresholds?.weeklyClaimedHours?.high}) | ● 중위({thresholds?.weeklyClaimedHours?.middle}) | ▼ 하위({thresholds?.weeklyClaimedHours?.low})
+              </div>
             </div>
-            <div className="text-xs text-gray-700 mt-1">
-              ▲ 상위({thresholds?.weeklyClaimedHours?.high}) | ● 중위({thresholds?.weeklyClaimedHours?.middle}) | ▼ 하위({thresholds?.weeklyClaimedHours?.low})
+            {/* 오른쪽: 포함된 시간 설명 */}
+            <div className="border-l pl-4">
+              <div className="font-semibold text-gray-900">포함된 시간</div>
+              <div className="text-xs text-gray-700 mt-1">
+                ✓ 실제 근태시간 (출퇴근 기록)
+              </div>
+              <div className="text-xs text-gray-700 mt-1">
+                ✓ 연차·휴가 시간 (8h/일, 4h/반차, 시간연차)
+              </div>
+              <div className="text-xs text-gray-700 mt-1">
+                ✓ 출장·교육 시간 (8h 기본값)
+              </div>
             </div>
-          </>
+          </div>
         ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
           <>
             <div className="font-semibold text-gray-900">근무추정시간(AI보정) : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>

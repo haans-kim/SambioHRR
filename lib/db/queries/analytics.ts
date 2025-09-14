@@ -970,22 +970,35 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'weeklyCla
     `;
   } else if (metricType === 'weeklyClaimedHours') {
     // Use claim_data for accurate weekly claimed hours calculation
+    // 해당 월 전체에 대해 0시간인 직원은 제외
     dataQuery = `
+      WITH monthly_totals AS (
+        SELECT
+          c.사번,
+          c.employee_level,
+          e.center_name,
+          SUM(c.실제근무시간) as month_total_hours
+        FROM claim_data c
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND c.employee_level IS NOT NULL
+          AND c.employee_level != 'Special'
+          AND e.center_name IS NOT NULL
+          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        GROUP BY c.사번, c.employee_level, e.center_name
+        HAVING SUM(c.실제근무시간) > 0  -- 해당 월 전체에 대해 0시간인 직원 제외
+      )
       SELECT
-        e.center_name as centerName,
-        c.employee_level as grade,
+        mt.center_name as centerName,
+        mt.employee_level as grade,
         ROUND(
-          SUM(c.실제근무시간) / COUNT(DISTINCT c.사번) /
+          SUM(c.실제근무시간) / COUNT(DISTINCT mt.사번) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
         ) as avgValue
-      FROM claim_data c
-      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      FROM monthly_totals mt
+      JOIN claim_data c ON c.사번 = mt.사번
       WHERE c.근무일 BETWEEN ? AND ?
-        AND c.employee_level IS NOT NULL
-        AND c.employee_level != 'Special'
-        AND e.center_name IS NOT NULL
-        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-      GROUP BY e.center_name, c.employee_level
+      GROUP BY mt.center_name, mt.employee_level
       ORDER BY avgValue ASC
     `;
   } else if (metricType === 'focusedWorkHours') {
@@ -1029,7 +1042,10 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'weeklyCla
   let results: { centerName: string; grade: string; avgValue: number }[] = [];
   
   // 매개변수 개수에 따라 적절히 전달
-  if (metricType === 'adjustedWeeklyWorkHours') {
+  if (metricType === 'weeklyClaimedHours') {
+    // CTE를 사용하므로 파라미터가 더 많음: monthly_totals WHERE, JULIANDAY 계산, 최종 WHERE
+    results = stmt.all(startDate, endDate, endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
+  } else if (metricType === 'adjustedWeeklyWorkHours') {
     results = stmt.all(endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
   } else if (isWeekly) {
     results = stmt.all(endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
@@ -1489,22 +1505,35 @@ export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | '
     `;
   } else if (metricType === 'weeklyClaimedHours') {
     // Use claim_data for accurate weekly claimed hours calculation
+    // 해당 월 전체에 대해 0시간인 직원은 제외
     dataQuery = `
+      WITH monthly_totals AS (
+        SELECT
+          c.사번,
+          c.employee_level,
+          e.center_name,
+          SUM(c.실제근무시간) as month_total_hours
+        FROM claim_data c
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND c.employee_level IS NOT NULL
+          AND c.employee_level != 'Special'
+          AND e.center_name IS NOT NULL
+          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        GROUP BY c.사번, c.employee_level, e.center_name
+        HAVING SUM(c.실제근무시간) > 0  -- 해당 월 전체에 대해 0시간인 직원 제외
+      )
       SELECT
-        e.center_name as centerName,
-        c.employee_level as grade,
+        mt.center_name as centerName,
+        mt.employee_level as grade,
         ROUND(
-          SUM(c.실제근무시간) / COUNT(DISTINCT c.사번) /
+          SUM(c.실제근무시간) / COUNT(DISTINCT mt.사번) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
         ) as avgValue
-      FROM claim_data c
-      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      FROM monthly_totals mt
+      JOIN claim_data c ON c.사번 = mt.사번
       WHERE c.근무일 BETWEEN ? AND ?
-        AND c.employee_level IS NOT NULL
-        AND c.employee_level != 'Special'
-        AND e.center_name IS NOT NULL
-        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-      GROUP BY e.center_name, c.employee_level
+      GROUP BY mt.center_name, mt.employee_level
       ORDER BY avgValue ASC
     `;
   } else {
@@ -1530,7 +1559,10 @@ export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | '
   let results: { centerName: string; grade: string; avgValue: number }[] = [];
   
   // 매개변수 개수에 따라 적절히 전달
-  if (metricType === 'adjustedWeeklyWorkHours' || metricType === 'weeklyClaimedHours') {
+  if (metricType === 'weeklyClaimedHours') {
+    // CTE를 사용하므로 파라미터가 더 많음: monthly_totals WHERE, JULIANDAY 계산, 최종 WHERE
+    results = stmt.all(startDate, endDate, endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
+  } else if (metricType === 'adjustedWeeklyWorkHours') {
     results = stmt.all(endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
   } else {
     results = stmt.all(startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
