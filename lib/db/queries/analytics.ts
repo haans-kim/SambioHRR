@@ -1420,13 +1420,8 @@ export function getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate: string
       ROUND(
         (SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
         (JULIANDAY(?) - JULIANDAY(?) + 1) * 7) *
-        CASE
-          WHEN AVG(dar.confidence_score) >= 90 THEN 1.05
-          WHEN AVG(dar.confidence_score) >= 80 THEN 1.00
-          WHEN AVG(dar.confidence_score) >= 70 THEN 0.95
-          WHEN AVG(dar.confidence_score) >= 60 THEN 0.90
-          ELSE 0.85
-        END, 1
+        (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.08)),
+        1
       ) as avgAdjustedWeeklyWorkHours
     FROM daily_analysis_results dar
     JOIN employees e ON e.employee_id = dar.employee_id

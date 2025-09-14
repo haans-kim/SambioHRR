@@ -122,13 +122,13 @@ export async function POST(request: Request) {
             const currentClaimData = getClaimData(emp.employeeId, dateStr) as any
             const prevClaimData = getClaimData(emp.employeeId, prevDateStr) as any
             
-            const currentHours = currentClaimData?.근무시간 || 0
-            const prevHours = prevClaimData?.근무시간 || 0
+            const currentHours = currentClaimData?.실제근무시간 || 0
+            const prevHours = prevClaimData?.실제근무시간 || 0
             totalClaimedForValidation = currentHours + prevHours
           } else {
             // 주간근무: 해당 날짜만
             const preliminaryClaimData = getClaimData(emp.employeeId, dateStr) as any
-            totalClaimedForValidation = preliminaryClaimData?.근무시간 || 0
+            totalClaimedForValidation = preliminaryClaimData?.실제근무시간 || 0
           }
           
           if (totalClaimedForValidation < 1.0) {
@@ -212,7 +212,7 @@ export async function POST(request: Request) {
                 analysisClaimedHours = (currentHours + prevHours) || 8.0
               } else {
                 const claimData = getClaimData(emp.employeeId, dateStr) as any
-                analysisClaimedHours = claimData?.근무시간 || 8.0
+                analysisClaimedHours = claimData?.실제근무시간 || 8.0
               }
               
               const comparison = calculator.compareWithGroundRules(metrics, analysisClaimedHours)
@@ -250,13 +250,13 @@ export async function POST(request: Request) {
             const currentClaimData = getClaimData(emp.employeeId, dateStr) as any
             const prevClaimData = getClaimData(emp.employeeId, prevDateStr) as any
             
-            const currentHours = currentClaimData?.근무시간 || 0
-            const prevHours = prevClaimData?.근무시간 || 0
+            const currentHours = currentClaimData?.실제근무시간 || 0
+            const prevHours = prevClaimData?.실제근무시간 || 0
             claimedHours = currentHours + prevHours
           } else {
             // 주간근무: 해당 날짜만
             const claimData = getClaimData(emp.employeeId, dateStr) as any
-            claimedHours = claimData?.근무시간 || null
+            claimedHours = claimData?.실제근무시간 || null
           }
           
           results.push({

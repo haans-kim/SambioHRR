@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
     
-    const cacheKey = `dashboard:v43:month=${selectedMonth || ''}`; // 센터별 avgAdjustedWeeklyWorkHours 추가
+    const cacheKey = `dashboard:v44:month=${selectedMonth || ''}`; // 시그모이드 함수 표준화
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {

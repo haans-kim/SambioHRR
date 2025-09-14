@@ -749,10 +749,10 @@ export default function OrganizationAnalysisPage() {
                 {isAnalyzing ? '분석 중...' : '전체 분석'}
               </button>
 
-              {/* 1-5월 추가분석 버튼 */}
+              {/* 1-6월 전체분석 버튼 */}
               <button
                 onClick={async () => {
-                  console.log('🚀 전체 1-5월 추가분석 시작');
+                  console.log('🚀 전체 1-6월 분석 시작');
                   
                   try {
                     setIsAnalyzing(true);
@@ -760,7 +760,7 @@ export default function OrganizationAnalysisPage() {
                     setAnalysisInfo({});
                     const analysisStartTime = Date.now();
                     
-                    const months = ['2025-01', '2025-02', '2025-03', '2025-04', '2025-05'];
+                    const months = ['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06'];
                     let totalResults: AnalysisResult[] = [];
                     
                     for (let i = 0; i < months.length; i++) {
@@ -879,7 +879,7 @@ export default function OrganizationAnalysisPage() {
                     : 'bg-orange-600 hover:bg-orange-700'
                 }`}
               >
-                {isAnalyzing ? '1-5월 분석 중...' : '1-5월 추가분석'}
+                {isAnalyzing ? '1-6월 분석 중...' : '1-6월 전체분석'}
               </button>
               
               {/* Progress Bar for Ground Rules Analysis */}
