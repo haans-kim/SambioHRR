@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
     
-    const cacheKey = `dashboard:v54:month=${selectedMonth || ''}`; // 95-98% 랜덤 조정 완료
+    const cacheKey = `dashboard:v58:month=${selectedMonth || ''}`; // actual_work_hours = claimed - non_work_movement * 2.5
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
@@ -90,15 +90,7 @@ export async function GET(request: NextRequest) {
     const weeklyClaimedThresholds = getMetricThresholdsForGridForPeriod('weeklyClaimedHours', startDate, endDate);
     const dataReliabilityThresholds = getMetricThresholdsForGridForPeriod('dataReliability', startDate, endDate);
     const adjustedWeeklyWorkThresholds = getMetricThresholdsForGridForPeriod('adjustedWeeklyWorkHours', startDate, endDate);
-    
-    // Debug threshold values
-    console.log('[Thresholds Debug]', {
-      month: currentMonth,
-      period: `${startDate} - ${endDate}`,
-      efficiency: efficiencyThresholds,
-      dataReliability: dataReliabilityThresholds
-    });
-    
+
     const payload = {
       centers,
       totalEmployees,

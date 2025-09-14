@@ -152,7 +152,7 @@ export function DashboardLayout({
         </div>
 
         {/* Main Content */}
-        <main className="max-w-[1600px] mx-auto px-6 py-6">
+        <main className="w-full px-6 py-6">
           {children}
           
           {/* Data Quality Indicator - Show when data quality info is available */}

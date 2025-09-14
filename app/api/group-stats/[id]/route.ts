@@ -16,6 +16,8 @@ interface GroupStatsResult {
     totalEmployees: number
     totalRecords: number
     avgEfficiency: number
+    avgWorkHours: number
+    avgClaimedHours: number
     avgGroundRulesWorkHours: number
     avgGroundRulesConfidence: number
     avgAdjustedWeeklyWorkHours: number
@@ -89,6 +91,16 @@ export async function GET(
   try {
     const { id } = await params
     const groupName = decodeURIComponent(id)
+
+    // Get month parameter from query string
+    const url = new URL(request.url)
+    const selectedMonth = url.searchParams.get('month') || '2025-06'
+
+    // Calculate date range based on selected month
+    const [year, month] = selectedMonth.split('-')
+    const startDate = `${selectedMonth}-01`
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+    const endDate = `${selectedMonth}-${lastDay.toString().padStart(2, '0')}`
 
     // First check if group exists in daily_analysis_results
     const groupExistsQuery = `
@@ -208,10 +220,10 @@ export async function GET(
         MAX(analysis_date) as latest_analysis_date
       FROM daily_analysis_results
       WHERE group_name = ?
-        AND analysis_date BETWEEN '2025-06-01' AND '2025-06-30'
+        AND analysis_date BETWEEN ? AND ?
     `
     
-    const stats = db.prepare(statsQuery).get(groupName) as any
+    const stats = db.prepare(statsQuery).get(groupName, startDate, endDate) as any
     
     if (!stats || stats.total_records === 0) {
       return NextResponse.json({ 
@@ -241,7 +253,7 @@ export async function GET(
           END as range,
           COUNT(*) as count
         FROM daily_analysis_results
-        WHERE group_name = ? AND analysis_date BETWEEN '2025-06-01' AND '2025-06-30'
+        WHERE group_name = ? AND analysis_date BETWEEN ? AND ?
         GROUP BY range
         ORDER BY MIN(CASE 
           WHEN total_hours > 0 THEN (actual_work_hours / total_hours) * 100
@@ -260,7 +272,7 @@ export async function GET(
           END as range,
           COUNT(*) as count
         FROM daily_analysis_results
-        WHERE group_name = ? AND analysis_date BETWEEN '2025-06-01' AND '2025-06-30'
+        WHERE group_name = ? AND analysis_date BETWEEN ? AND ?
         GROUP BY range
         ORDER BY MIN(actual_work_hours * 5) DESC
       `,
@@ -276,7 +288,7 @@ export async function GET(
           END as range,
           COUNT(*) as count
         FROM daily_analysis_results
-        WHERE group_name = ? AND analysis_date BETWEEN '2025-06-01' AND '2025-06-30'
+        WHERE group_name = ? AND analysis_date BETWEEN ? AND ?
         GROUP BY range
         ORDER BY MIN(confidence_score) DESC
       `,
@@ -292,16 +304,16 @@ export async function GET(
           END as range,
           COUNT(*) as count
         FROM daily_analysis_results
-        WHERE group_name = ? AND ground_rules_confidence > 0 AND analysis_date BETWEEN '2025-06-01' AND '2025-06-30'
+        WHERE group_name = ? AND ground_rules_confidence > 0 AND analysis_date BETWEEN ? AND ?
         GROUP BY range
         ORDER BY MIN(ground_rules_confidence) DESC
       `
     }
 
-    const efficiencyDist = db.prepare(distributionQueries.efficiency).all(groupName) as any[]
-    const workHoursDist = db.prepare(distributionQueries.workHours).all(groupName) as any[]
-    const confidenceDist = db.prepare(distributionQueries.confidence).all(groupName) as any[]
-    const groundRulesDist = db.prepare(distributionQueries.groundRules).all(groupName) as any[]
+    const efficiencyDist = db.prepare(distributionQueries.efficiency).all(groupName, startDate, endDate) as any[]
+    const workHoursDist = db.prepare(distributionQueries.workHours).all(groupName, startDate, endDate) as any[]
+    const confidenceDist = db.prepare(distributionQueries.confidence).all(groupName, startDate, endDate) as any[]
+    const groundRulesDist = db.prepare(distributionQueries.groundRules).all(groupName, startDate, endDate) as any[]
 
     // Calculate percentages for distributions
     const calculatePercentages = (dist: any[], total: number) => {

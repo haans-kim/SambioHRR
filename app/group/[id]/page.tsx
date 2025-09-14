@@ -88,14 +88,15 @@ interface GroupStatsData {
 export default function GroupStatsPage() {
   const params = useParams();
   const groupId = params.id as string;
-  
+
   const [data, setData] = useState<GroupStatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`/api/group-stats/${groupId}`);
+        const response = await fetch(`/api/group-stats/${groupId}?month=${selectedMonth}`);
         if (!response.ok) throw new Error('Failed to fetch');
         const statsData = await response.json();
         console.log('Fetched stats for', groupId, ':', {
@@ -112,7 +113,7 @@ export default function GroupStatsPage() {
     };
 
     fetchData();
-  }, [groupId]);
+  }, [groupId, selectedMonth]);
 
   // Helper function to format minutes to hours
   const formatMinutesToHours = (minutes: number) => {
@@ -184,13 +185,29 @@ export default function GroupStatsPage() {
 
   return (
     <DashboardLayout
-      totalEmployees={data?.summary.totalEmployees || 0}
-      avgEfficiency={data?.summary.avgEfficiency || 0}
-      avgWeeklyClaimedHours={data?.summary.avgClaimedHours || 0}
-      avgAdjustedWeeklyWorkHours={data?.summary.avgAdjustedWeeklyWorkHours || 0}
+      totalEmployees={data.summary.totalEmployees}
+      avgEfficiency={data.summary.avgEfficiency}
+      avgWeeklyClaimedHours={data.summary.avgClaimedHours}
+      avgAdjustedWeeklyWorkHours={data.summary.avgAdjustedWeeklyWorkHours}
       selectedMetric={'efficiency'}
       breadcrumb={breadcrumb}
     >
+      {/* 월 선택 드롭다운 */}
+      <div className="mb-6 flex justify-end">
+        <select
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="2025-06">2025년 6월</option>
+          <option value="2025-05">2025년 5월</option>
+          <option value="2025-04">2025년 4월</option>
+          <option value="2025-03">2025년 3월</option>
+          <option value="2025-02">2025년 2월</option>
+          <option value="2025-01">2025년 1월</option>
+        </select>
+      </div>
+
       {/* 그룹 정보 헤더 */}
       <div className="mb-6">
         <div className="flex items-start justify-between">
@@ -201,7 +218,7 @@ export default function GroupStatsPage() {
               {data.group.parentDivision ? ` / ${data.group.parentDivision}` : ''}
               {` / ${data.group.parentTeam}`}
             </p>
-            <p className="text-xs text-gray-500 mt-1">분석일자: {data.analysisDate || '최신 데이터'}</p>
+            <p className="text-xs text-gray-500 mt-1">분석일자: {data.analysisDate ? data.analysisDate : '데이터 없음'}</p>
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-blue-600">{data.summary.totalEmployees}명</div>
@@ -260,7 +277,7 @@ export default function GroupStatsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 시간 관련 지표 - 항상 표시 */}
         <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">⏰ 주간 시간 지표</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">주간 시간 지표</h3>
           <div className="space-y-3">
             {data.metrics.avgTotalHours > 0 && (
               <div className="flex justify-between">
@@ -292,9 +309,10 @@ export default function GroupStatsPage() {
         {/* 활동별 시간 - 데이터가 있는 경우만 표시 */}
         {(data.metrics.avgWorkMinutes > 0 || data.metrics.avgFocusedWorkMinutes > 0 ||
           data.metrics.avgMeetingMinutes > 0 || data.metrics.avgTrainingMinutes > 0 ||
-          data.metrics.avgEquipmentMinutes > 0) && (
+          data.metrics.avgEquipmentMinutes > 0 || data.metrics.avgMealMinutes > 0 ||
+          data.metrics.avgRestMinutes > 0) && (
           <div className="bg-white p-6 rounded-lg shadow border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 활동별 시간 (분) / 일간 기준</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">활동별 시간 (분) / 일간 기준</h3>
             <div className="space-y-3">
               {data.metrics.avgWorkMinutes > 0 && (
                 <div className="flex justify-between">
@@ -326,33 +344,46 @@ export default function GroupStatsPage() {
                   <span className="text-sm font-medium">{data.metrics.avgEquipmentMinutes}분</span>
                 </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* 기타 활동 시간 - 데이터가 있는 경우만 표시 */}
-        {(data.metrics.avgMealMinutes > 0 || data.metrics.avgMovementMinutes > 0 ||
-          data.metrics.avgRestMinutes > 0 || data.metrics.avgFitnessMinutes > 0 ||
-          (data.metrics.avgCommuteInMinutes + data.metrics.avgCommuteOutMinutes) > 0) && (
-          <div className="bg-white p-6 rounded-lg shadow border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">🎯 기타 활동 (분) / 일간 기준</h3>
-            <div className="space-y-3">
               {data.metrics.avgMealMinutes > 0 && (
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">식사 시간</span>
                   <span className="text-sm font-medium">{data.metrics.avgMealMinutes}분</span>
                 </div>
               )}
+              {data.metrics.avgRestMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">휴식 시간 (비업무)</span>
+                  <span className="text-sm font-medium">{data.metrics.avgRestMinutes}분</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 이동 구간 지표 - 데이터가 있는 경우만 표시 */}
+        {(data.metrics.avgMovementMinutes > 0 || data.metrics.avgWorkMovementMinutes > 0 ||
+          data.metrics.avgNonWorkMovementMinutes > 0 ||
+          data.metrics.avgFitnessMinutes > 0 ||
+          (data.metrics.avgCommuteInMinutes + data.metrics.avgCommuteOutMinutes) > 0) && (
+          <div className="bg-white p-6 rounded-lg shadow border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">이동 구간 지표</h3>
+            <div className="space-y-3">
               {data.metrics.avgMovementMinutes > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">이동 시간</span>
+                  <span className="text-sm text-gray-600">총 이동 시간</span>
                   <span className="text-sm font-medium">{data.metrics.avgMovementMinutes}분</span>
                 </div>
               )}
-              {data.metrics.avgRestMinutes > 0 && (
+              {data.metrics.avgWorkMovementMinutes > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">휴식 시간</span>
-                  <span className="text-sm font-medium">{data.metrics.avgRestMinutes}분</span>
+                  <span className="text-sm text-gray-600">업무상 이동 시간</span>
+                  <span className="text-sm font-medium">{data.metrics.avgWorkMovementMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgNonWorkMovementMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">비업무상 이동 시간</span>
+                  <span className="text-sm font-medium">{data.metrics.avgNonWorkMovementMinutes}분</span>
                 </div>
               )}
               {data.metrics.avgFitnessMinutes > 0 && (
@@ -376,7 +407,7 @@ export default function GroupStatsPage() {
         {(data.metrics.avgWorkAreaMinutes > 0 || data.metrics.avgNonWorkAreaMinutes > 0 ||
           data.metrics.avgGateAreaMinutes > 0) && (
           <div className="bg-white p-6 rounded-lg shadow border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">📍 구역별 시간 (분)</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">구역별 시간 (분)</h3>
             <div className="space-y-3">
               {data.metrics.avgWorkAreaMinutes > 0 && (
                 <div className="flex justify-between">
@@ -404,7 +435,7 @@ export default function GroupStatsPage() {
         {(data.metrics.avgActivityCount > 0 || data.metrics.avgMealCount > 0 ||
           data.metrics.avgTagCount > 0) && (
           <div className="bg-white p-6 rounded-lg shadow border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 기타 지표</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">기타 지표</h3>
             <div className="space-y-3">
               {data.metrics.avgActivityCount > 0 && (
                 <div className="flex justify-between">
