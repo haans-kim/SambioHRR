@@ -56,14 +56,15 @@ interface CenterLevelGridProps {
   selectedMetric?: MetricType;
   onMetricChange?: (metric: MetricType) => void;
   thresholds?: {
-    efficiency: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
-    workHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
-    claimedHours: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    efficiency?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    workHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    claimedHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     adjustedWeeklyWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     weeklyClaimedHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     focusedWorkHours?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
     dataReliability?: { low: string; middle: string; high: string; thresholds: { low: number; high: number } };
+    [key: string]: any; // Allow any other keys
   };
 }
 
@@ -77,8 +78,8 @@ interface MetricIndicatorProps {
 
 function MetricIndicator({ value, label, metricType, thresholds, onClick }: MetricIndicatorProps) {
   const getStatusIcon = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
-    if (!thresholds) {
-      // thresholds가 없으면 아이콘 표시하지 않음
+    if (!thresholds || typeof thresholds.low !== 'number' || typeof thresholds.high !== 'number') {
+      // thresholds가 없거나 불완전하면 아이콘 표시하지 않음
       return "";
     }
     
@@ -89,11 +90,11 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
   };
 
   const getIconColor = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
-    if (!thresholds) {
-      // thresholds가 없으면 기본 회색
+    if (!thresholds || typeof thresholds.low !== 'number' || typeof thresholds.high !== 'number') {
+      // thresholds가 없거나 불완전하면 기본 회색
       return "text-gray-400";
     }
-    
+
     // Use dynamic thresholds
     if (value >= thresholds.high) return "text-red-600"; // 상위 (번아웃 위험)
     if (value <= thresholds.low) return "text-blue-600"; // 하위 (양호)
@@ -103,15 +104,15 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
   const getIconStyle = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
     // Make circle slightly larger than default to match triangle size
     let isCircle = false;
-    
-    if (!thresholds) {
-      // thresholds가 없으면 기본 스타일
+
+    if (!thresholds || typeof thresholds.low !== 'number' || typeof thresholds.high !== 'number') {
+      // thresholds가 없거나 불완전하면 기본 스타일
       return "text-base";
     }
-    
+
     // Use dynamic thresholds
     isCircle = value > thresholds.low && value < thresholds.high;
-    
+
     if (isCircle) {
       return "text-lg scale-[1.35]"; // 중간 60% 원형 크게
     }
@@ -214,7 +215,9 @@ export function CenterLevelGrid({
   const router = useRouter();
   
   // Use grade levels from matrix if available, otherwise default (high to low)
-  const levels = gradeMatrix?.grades || ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
+  // Filter out Special group
+  const levelsFromMatrix = gradeMatrix?.grades || ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
+  const levels = levelsFromMatrix.filter(level => level !== 'Special');
   
   // Use actual center names from database
   const centers = organizations.filter(org => org.orgLevel === 'center');
@@ -401,13 +404,24 @@ export function CenterLevelGrid({
                     }
                   }
                   
+                  // Get appropriate thresholds based on selected metric
+                  let metricThresholds = undefined;
+
+                  // Direct access to threshold data
+                  if (thresholds && selectedMetric) {
+                    const thresholdData = thresholds[selectedMetric];
+                    if (thresholdData && thresholdData.thresholds) {
+                      metricThresholds = thresholdData.thresholds;
+                    }
+                  }
+
                   return (
                     <td key={`${level}-${center.orgCode}`} className="p-2 w-[160px]">
-                      <MetricIndicator 
-                        value={value} 
+                      <MetricIndicator
+                        value={value}
                         label=""
                         metricType={selectedMetric}
-                        thresholds={thresholds?.[selectedMetric]?.thresholds}
+                        thresholds={metricThresholds}
                         onClick={() => handleCellClick(center)}
                       />
                     </td>

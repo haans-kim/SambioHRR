@@ -968,23 +968,24 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'weeklyCla
       GROUP BY e.center_name, e.job_grade
       ORDER BY avgValue ASC
     `;
-  } else if (isWeekly) {
+  } else if (metricType === 'weeklyClaimedHours') {
+    // Use claim_data for accurate weekly claimed hours calculation
     dataQuery = `
-      SELECT 
+      SELECT
         e.center_name as centerName,
-        'Lv.' || e.job_grade as grade,
+        c.employee_level as grade,
         ROUND(
-          SUM(dar.${column}) / COUNT(DISTINCT dar.employee_id) / 
+          SUM(c.실제근무시간) / COUNT(DISTINCT c.사번) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
         ) as avgValue
-      FROM daily_analysis_results dar
-      JOIN employees e ON e.employee_id = dar.employee_id
-      WHERE dar.analysis_date BETWEEN ? AND ?
-        AND e.job_grade IS NOT NULL
+      FROM claim_data c
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND c.employee_level IS NOT NULL
+        AND c.employee_level != 'Special'
         AND e.center_name IS NOT NULL
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND dar.${column} IS NOT NULL
-      GROUP BY e.center_name, e.job_grade
+      GROUP BY e.center_name, c.employee_level
       ORDER BY avgValue ASC
     `;
   } else if (metricType === 'focusedWorkHours') {
@@ -1487,22 +1488,23 @@ export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | '
       ORDER BY avgValue ASC
     `;
   } else if (metricType === 'weeklyClaimedHours') {
+    // Use claim_data for accurate weekly claimed hours calculation
     dataQuery = `
-      SELECT 
+      SELECT
         e.center_name as centerName,
-        'Lv.' || e.job_grade as grade,
+        c.employee_level as grade,
         ROUND(
-          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
+          SUM(c.실제근무시간) / COUNT(DISTINCT c.사번) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
         ) as avgValue
-      FROM daily_analysis_results dar
-      JOIN employees e ON e.employee_id = dar.employee_id
-      WHERE dar.analysis_date BETWEEN ? AND ?
-        AND e.job_grade IS NOT NULL
+      FROM claim_data c
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND c.employee_level IS NOT NULL
+        AND c.employee_level != 'Special'
         AND e.center_name IS NOT NULL
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND dar.claimed_work_hours IS NOT NULL
-      GROUP BY e.center_name, e.job_grade
+      GROUP BY e.center_name, c.employee_level
       ORDER BY avgValue ASC
     `;
   } else {

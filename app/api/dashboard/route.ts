@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import { getOrganizationsWithStats, getOrganizationsWithStatsForPeriod } from "@/lib/db/queries/organization";
-import { 
-  getOrganizationStatsForPeriod, 
+import { getOrganizationsWithClaimStats } from "@/lib/db/queries/organization-claim";
+import {
+  getOrganizationStatsForPeriod,
   getOrganizationWeeklyStatsForPeriod,
   getOrganizationDataReliabilityStatsForPeriod,
-  getGradeEfficiencyMatrix30Days, 
+  getGradeEfficiencyMatrix30Days,
   getGradeWeeklyWorkHoursMatrix30Days,
   getGradeWeeklyClaimedHoursMatrix30Days,
   getGradeDataReliabilityMatrix30Days,
@@ -21,6 +22,11 @@ import {
   getAvailableMetrics,
   type AnalysisMode
 } from "@/lib/db/queries/analytics";
+import {
+  getWeeklyClaimedHoursFromClaim,
+  getGradeWeeklyClaimedHoursMatrixFromClaim,
+  getTotalEmployeesFromClaim
+} from "@/lib/db/queries/claim-analytics";
 import { calculateAdjustedWorkHours } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
@@ -28,7 +34,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
     
-    const cacheKey = `dashboard:v36:month=${selectedMonth || ''}`; // 월별 캐시
+    const cacheKey = `dashboard:v39:month=${selectedMonth || ''}`; // claim_data 기반 threshold
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
@@ -47,29 +53,22 @@ export async function GET(request: NextRequest) {
     // 선택된 월의 날짜 범위 가져오기
     const { startDate, endDate } = getMonthDateRange(currentMonth);
     
-    const centers = getOrganizationsWithStatsForPeriod('center', startDate, endDate);
+    // claim_data 기반 정확한 센터별 통계 사용
+    const centers = getOrganizationsWithClaimStats('center', startDate, endDate);
     
     // Get organization-wide statistics for selected month
     const orgStats = getOrganizationStatsForPeriod(startDate, endDate);
     const weeklyStats = getOrganizationWeeklyStatsForPeriod(startDate, endDate);
     const dataReliabilityStats = getOrganizationDataReliabilityStatsForPeriod(startDate, endDate);
-    const totalEmployees = orgStats?.totalEmployees || 0;
+
+    // claim_data 기반 정확한 계산
+    const claimStats = getWeeklyClaimedHoursFromClaim(startDate, endDate);
+    const totalEmployees = claimStats?.totalEmployees || getTotalEmployeesFromClaim(startDate, endDate) || 0;
     const avgEfficiency = orgStats?.avgEfficiencyRatio || 0;
-    
-    // Calculate weighted average from centers for remaining metrics
-    let totalWeightedWeeklyClaimedHours = 0;
-    let totalCenterEmployees = 0;
-    
-    centers.forEach(center => {
-      const employees = center.stats?.totalEmployees || 0;
-      // Natural 방식 사용 (30일 합계 / 30일 * 7)
-      const weeklyClaimedHours = center.stats?.avgWeeklyClaimedHoursAdjusted || center.stats?.avgWeeklyClaimedHours || 0;
-      
-      totalWeightedWeeklyClaimedHours += weeklyClaimedHours * employees;
-      totalCenterEmployees += employees;
-    });
+
     const avgWeeklyWorkHours = weeklyStats?.avgWeeklyWorkHours || 40.0;
-    const avgWeeklyClaimedHours = totalCenterEmployees > 0 ? totalWeightedWeeklyClaimedHours / totalCenterEmployees : (weeklyStats?.avgWeeklyClaimedHours || 42.5);
+    // claim_data 기반 정확한 주간 근태시간 사용
+    const avgWeeklyClaimedHours = claimStats?.avgWeeklyClaimedHours || 38.9;
     const avgDataReliability = dataReliabilityStats?.avgDataReliability || 83.6;
     // avgWeeklyWorkHours already has flexible work adjustment applied from weeklyStats
     const avgAdjustedWeeklyWorkHours = avgDataReliability 
@@ -79,7 +78,8 @@ export async function GET(request: NextRequest) {
     // Get grade matrices for selected period
     const gradeMatrix = getGradeEfficiencyMatrixForPeriod(startDate, endDate);
     const weeklyWorkHoursMatrix = getGradeWeeklyWorkHoursMatrixForPeriod(startDate, endDate);
-    const weeklyClaimedHoursMatrix = getGradeWeeklyClaimedHoursMatrixForPeriod(startDate, endDate);
+    // claim_data 기반 정확한 레벨별 주간 근태시간 매트릭스 사용
+    const weeklyClaimedHoursMatrix = getGradeWeeklyClaimedHoursMatrixFromClaim(startDate, endDate);
     const dataReliabilityMatrix = getGradeDataReliabilityMatrixForPeriod(startDate, endDate);
     
     
