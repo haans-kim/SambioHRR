@@ -1420,7 +1420,7 @@ export function getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate: string
       ROUND(
         (SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
         (JULIANDAY(?) - JULIANDAY(?) + 1) * 7) *
-        (0.95 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.05)) +
+        (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.06)) +
         (SUM(dar.leave_hours) / COUNT(DISTINCT dar.employee_id) /
         (JULIANDAY(?) - JULIANDAY(?) + 1) * 7),
         1

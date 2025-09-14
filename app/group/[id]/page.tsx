@@ -186,7 +186,7 @@ export default function GroupStatsPage() {
     <DashboardLayout
       totalEmployees={data?.summary.totalEmployees || 0}
       avgEfficiency={data?.summary.avgEfficiency || 0}
-      avgWeeklyClaimedHours={(data?.summary.avgClaimedHours || 0) * 5}
+      avgWeeklyClaimedHours={data?.summary.avgClaimedHours || 0}
       avgAdjustedWeeklyWorkHours={data?.summary.avgAdjustedWeeklyWorkHours || 0}
       selectedMetric={'efficiency'}
       breadcrumb={breadcrumb}
@@ -218,7 +218,6 @@ export default function GroupStatsPage() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">평균 효율성</p>
               <p className="text-2xl font-bold text-gray-900">{data.summary.avgEfficiency}%</p>
-              <p className="text-xs text-gray-400">범위: {data.ranges.efficiencyRange.min}% - {data.ranges.efficiencyRange.max}%</p>
             </div>
           </div>
         </div>
@@ -227,20 +226,9 @@ export default function GroupStatsPage() {
           <div className="flex items-center">
             <Clock className="h-8 w-8 text-green-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">평균 근무시간</p>
-              <p className="text-2xl font-bold text-gray-900">{data.summary.avgAdjustedWeeklyWorkHours}h</p>
-              <p className="text-xs text-gray-400">주간 추정근무시간 (AI보정)</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <div className="flex items-center">
-            <Brain className="h-8 w-8 text-purple-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Ground Rules 신뢰도</p>
-              <p className="text-2xl font-bold text-gray-900">{data.summary.avgGroundRulesConfidence}%</p>
-              <p className="text-xs text-gray-400">Ground Rules 작업시간: {data.summary.avgGroundRulesWorkHours}h</p>
+              <p className="text-sm font-medium text-gray-500">주간 근태시간</p>
+              <p className="text-2xl font-bold text-gray-900">{data.summary.avgClaimedHours}h</p>
+              <p className="text-xs text-gray-400">주간 총 근무시간</p>
             </div>
           </div>
         </div>
@@ -249,158 +237,196 @@ export default function GroupStatsPage() {
           <div className="flex items-center">
             <Activity className="h-8 w-8 text-orange-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">데이터 신뢰도</p>
-              <p className="text-2xl font-bold text-gray-900">{data.metrics.avgConfidenceScore}%</p>
-              <p className="text-xs text-gray-400">범위: {data.ranges.confidenceRange.min}% - {data.ranges.confidenceRange.max}%</p>
+              <p className="text-sm font-medium text-gray-500">주간 추정근태시간</p>
+              <p className="text-2xl font-bold text-gray-900">{data.summary.avgWorkHours}h</p>
+              <p className="text-xs text-gray-400">AI보정 포함</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow border">
+          <div className="flex items-center">
+            <Brain className="h-8 w-8 text-purple-600" />
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">신뢰도</p>
+              <p className="text-2xl font-bold text-gray-900">{data.summary.avgGroundRulesConfidence}%</p>
             </div>
           </div>
         </div>
       </div>
 
 
-      {/* 상세 지표 섹션 */}
+      {/* 상세 지표 섹션 - 실제 데이터가 있는 것만 표시 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 시간 관련 지표 */}
+        {/* 시간 관련 지표 - 항상 표시 */}
         <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">⏰ 시간 관련 지표</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">⏰ 주간 시간 지표</h3>
           <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">총 체류시간</span>
-              <span className="text-sm font-medium">{data.metrics.avgTotalHours}h</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">실제 근무시간</span>
-              <span className="text-sm font-medium">{data.metrics.avgActualWorkHours}h</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">신고 근무시간</span>
-              <span className="text-sm font-medium">{data.metrics.avgClaimedWorkHours}h</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">효율성 비율</span>
-              <span className="text-sm font-medium">{data.metrics.avgEfficiencyRatio}%</span>
-            </div>
-            <div className="flex justify-between border-t pt-2">
-              <span className="text-sm text-gray-600">Ground Rules 근무시간</span>
-              <span className="text-sm font-medium text-purple-600">{data.metrics.avgGroundRulesWorkHours}h</span>
-            </div>
+            {data.metrics.avgTotalHours > 0 && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">총 체류시간</span>
+                <span className="text-sm font-medium">{data.metrics.avgTotalHours.toFixed(1)}h</span>
+              </div>
+            )}
+            {data.metrics.avgClaimedWorkHours > 0 && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">근태시간</span>
+                <span className="text-sm font-medium">{data.metrics.avgClaimedWorkHours.toFixed(1)}h</span>
+              </div>
+            )}
+            {data.metrics.avgActualWorkHours > 0 && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">추정근태시간</span>
+                <span className="text-sm font-medium">{data.metrics.avgActualWorkHours.toFixed(1)}h</span>
+              </div>
+            )}
+            {data.metrics.avgEfficiencyRatio > 0 && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">효율성 비율</span>
+                <span className="text-sm font-medium">{data.metrics.avgEfficiencyRatio.toFixed(1)}%</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 활동별 시간 */}
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 활동별 시간 (분)</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">업무 시간</span>
-              <span className="text-sm font-medium">{data.metrics.avgWorkMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">집중 업무</span>
-              <span className="text-sm font-medium">{data.metrics.avgFocusedWorkMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">회의 시간</span>
-              <span className="text-sm font-medium">{data.metrics.avgMeetingMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">교육 시간</span>
-              <span className="text-sm font-medium">{data.metrics.avgTrainingMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">장비 조작</span>
-              <span className="text-sm font-medium">{data.metrics.avgEquipmentMinutes}분</span>
+        {/* 활동별 시간 - 데이터가 있는 경우만 표시 */}
+        {(data.metrics.avgWorkMinutes > 0 || data.metrics.avgFocusedWorkMinutes > 0 ||
+          data.metrics.avgMeetingMinutes > 0 || data.metrics.avgTrainingMinutes > 0 ||
+          data.metrics.avgEquipmentMinutes > 0) && (
+          <div className="bg-white p-6 rounded-lg shadow border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 활동별 시간 (분) / 일간 기준</h3>
+            <div className="space-y-3">
+              {data.metrics.avgWorkMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">업무 시간</span>
+                  <span className="text-sm font-medium">{data.metrics.avgWorkMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgFocusedWorkMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">집중 업무</span>
+                  <span className="text-sm font-medium">{data.metrics.avgFocusedWorkMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgMeetingMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">회의 시간</span>
+                  <span className="text-sm font-medium">{data.metrics.avgMeetingMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgTrainingMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">교육 시간</span>
+                  <span className="text-sm font-medium">{data.metrics.avgTrainingMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgEquipmentMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">장비 조작</span>
+                  <span className="text-sm font-medium">{data.metrics.avgEquipmentMinutes}분</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* 기타 활동 시간 */}
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">🎯 기타 활동 (분)</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">식사 시간</span>
-              <span className="text-sm font-medium">{data.metrics.avgMealMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">이동 시간</span>
-              <span className="text-sm font-medium">{data.metrics.avgMovementMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">휴식 시간</span>
-              <span className="text-sm font-medium">{data.metrics.avgRestMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">피트니스</span>
-              <span className="text-sm font-medium">{data.metrics.avgFitnessMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">출퇴근</span>
-              <span className="text-sm font-medium">{data.metrics.avgCommuteInMinutes + data.metrics.avgCommuteOutMinutes}분</span>
+        {/* 기타 활동 시간 - 데이터가 있는 경우만 표시 */}
+        {(data.metrics.avgMealMinutes > 0 || data.metrics.avgMovementMinutes > 0 ||
+          data.metrics.avgRestMinutes > 0 || data.metrics.avgFitnessMinutes > 0 ||
+          (data.metrics.avgCommuteInMinutes + data.metrics.avgCommuteOutMinutes) > 0) && (
+          <div className="bg-white p-6 rounded-lg shadow border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">🎯 기타 활동 (분) / 일간 기준</h3>
+            <div className="space-y-3">
+              {data.metrics.avgMealMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">식사 시간</span>
+                  <span className="text-sm font-medium">{data.metrics.avgMealMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgMovementMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">이동 시간</span>
+                  <span className="text-sm font-medium">{data.metrics.avgMovementMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgRestMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">휴식 시간</span>
+                  <span className="text-sm font-medium">{data.metrics.avgRestMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgFitnessMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">피트니스</span>
+                  <span className="text-sm font-medium">{data.metrics.avgFitnessMinutes}분</span>
+                </div>
+              )}
+              {(data.metrics.avgCommuteInMinutes + data.metrics.avgCommuteOutMinutes) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">출퇴근</span>
+                  <span className="text-sm font-medium">{data.metrics.avgCommuteInMinutes + data.metrics.avgCommuteOutMinutes}분</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Ground Rules 관련 지표 */}
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">🧠 Ground Rules 지표</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Ground Rules 신뢰도</span>
-              <span className="text-sm font-medium text-purple-600">{data.metrics.avgGroundRulesConfidence}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">업무 관련 이동</span>
-              <span className="text-sm font-medium">{data.metrics.avgWorkMovementMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">비업무 이동</span>
-              <span className="text-sm font-medium">{data.metrics.avgNonWorkMovementMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">이상치 점수</span>
-              <span className="text-sm font-medium">{data.metrics.avgAnomalyScore}</span>
-            </div>
-          </div>
-        </div>
 
-        {/* 구역별 시간 */}
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">📍 구역별 시간 (분)</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">근무 구역</span>
-              <span className="text-sm font-medium">{data.metrics.avgWorkAreaMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">비근무 구역</span>
-              <span className="text-sm font-medium">{data.metrics.avgNonWorkAreaMinutes}분</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">게이트 구역</span>
-              <span className="text-sm font-medium">{data.metrics.avgGateAreaMinutes}분</span>
+        {/* 구역별 시간 - 데이터가 있는 경우만 표시 */}
+        {(data.metrics.avgWorkAreaMinutes > 0 || data.metrics.avgNonWorkAreaMinutes > 0 ||
+          data.metrics.avgGateAreaMinutes > 0) && (
+          <div className="bg-white p-6 rounded-lg shadow border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">📍 구역별 시간 (분)</h3>
+            <div className="space-y-3">
+              {data.metrics.avgWorkAreaMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">근무 구역</span>
+                  <span className="text-sm font-medium">{data.metrics.avgWorkAreaMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgNonWorkAreaMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">비근무 구역</span>
+                  <span className="text-sm font-medium">{data.metrics.avgNonWorkAreaMinutes}분</span>
+                </div>
+              )}
+              {data.metrics.avgGateAreaMinutes > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">게이트 구역</span>
+                  <span className="text-sm font-medium">{data.metrics.avgGateAreaMinutes}분</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* 기타 지표 */}
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 기타 지표</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">평균 활동 횟수</span>
-              <span className="text-sm font-medium">{data.metrics.avgActivityCount}회</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">평균 식사 횟수</span>
-              <span className="text-sm font-medium">{data.metrics.avgMealCount}회</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">평균 태그 수</span>
-              <span className="text-sm font-medium">{data.metrics.avgTagCount}개</span>
+        {/* 기타 지표 - 데이터가 있는 경우만 표시 */}
+        {(data.metrics.avgActivityCount > 0 || data.metrics.avgMealCount > 0 ||
+          data.metrics.avgTagCount > 0) && (
+          <div className="bg-white p-6 rounded-lg shadow border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 기타 지표</h3>
+            <div className="space-y-3">
+              {data.metrics.avgActivityCount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">평균 활동 횟수</span>
+                  <span className="text-sm font-medium">{data.metrics.avgActivityCount}회</span>
+                </div>
+              )}
+              {data.metrics.avgMealCount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">평균 식사 횟수</span>
+                  <span className="text-sm font-medium">{data.metrics.avgMealCount}회</span>
+                </div>
+              )}
+              {data.metrics.avgTagCount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">평균 태그 수</span>
+                  <span className="text-sm font-medium">{data.metrics.avgTagCount}개</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );

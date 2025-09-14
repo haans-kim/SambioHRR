@@ -139,13 +139,13 @@ export async function GET(
         COUNT(DISTINCT employee_id) as total_employees,
         COUNT(DISTINCT analysis_date) as total_days,
         
-        -- 기본 시간 지표
-        AVG(total_hours) as avg_total_hours,
-        AVG(actual_work_hours) as avg_actual_work_hours,
-        AVG(claimed_work_hours) as avg_claimed_work_hours,
-        AVG(CASE 
-          WHEN total_hours > 0 THEN (actual_work_hours / total_hours) * 100
-          ELSE 0 
+        -- 기본 시간 지표 (주간 기준으로 변환)
+        AVG(total_hours) * 5 as avg_total_hours,
+        AVG(actual_work_hours) * 5 as avg_actual_work_hours,
+        AVG(claimed_work_hours) * 5 as avg_claimed_work_hours,
+        AVG(CASE
+          WHEN claimed_work_hours > 0 THEN (actual_work_hours / claimed_work_hours) * 100
+          ELSE 0
         END) as avg_efficiency_ratio,
         
         -- 활동별 시간 (분 단위)
@@ -324,10 +324,12 @@ export async function GET(
         totalEmployees: stats.total_employees || 0,
         totalRecords: stats.total_records || 0,
         avgEfficiency: Number((stats.avg_efficiency_ratio || 0).toFixed(1)),
+        avgWorkHours: Number((stats.avg_actual_work_hours || 0).toFixed(1)),
+        avgClaimedHours: Number((stats.avg_claimed_work_hours || 0).toFixed(1)),
         avgGroundRulesWorkHours: Number((stats.avg_ground_rules_work_hours || 0).toFixed(1)),
         avgGroundRulesConfidence: Number((stats.avg_ground_rules_confidence || 0).toFixed(1)),
         avgAdjustedWeeklyWorkHours: Number((calculateAdjustedWorkHours(
-          stats.avg_weekly_work_hours || 0,
+          stats.avg_actual_work_hours || 0,
           stats.avg_confidence_score || 0
         )).toFixed(1)),
         totalManDays: stats.total_records || 0

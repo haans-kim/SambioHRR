@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
     
-    const cacheKey = `dashboard:v49:month=${selectedMonth || ''}`; // 쿼리 최적화 - DAR leave_hours 직접 사용
+    const cacheKey = `dashboard:v54:month=${selectedMonth || ''}`; // 95-98% 랜덤 조정 완료
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
