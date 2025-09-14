@@ -545,23 +545,49 @@ export function CenterLevelGrid({
         {/* Data reliability metric explanation - only show when dataReliability is selected */}
         {selectedMetric === 'dataReliability' && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-medium text-gray-800 text-sm mb-2">신뢰도 증가 요인</h4>
-                <ul className="space-y-1">
-                  <li className="text-sm text-gray-700">• 장비 사용 기록 비율 높은 경우 : <span className="text-blue-600 font-medium">+30점</span></li>
-                  <li className="text-sm text-gray-700">• 이벤트 빈도 높은 경우 : <span className="text-blue-600 font-medium">+20점</span></li>
-                  <li className="text-sm text-gray-700">• 태그 간격 일정한 경우 : <span className="text-blue-600 font-medium">+10점</span></li>
-                </ul>
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-800 text-sm">신뢰도 계산 5단계 프로세스</h4>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold text-sm min-w-[40px]">1단계</span>
+                  <div className="text-xs text-gray-700">
+                    <span className="font-medium">팀별 기본 확률</span>
+                    <span className="text-gray-600"> - 부서 특성(현장형/사무실형)에 따른 기본 신뢰도 (80-90%)</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold text-sm min-w-[40px]">2단계</span>
+                  <div className="text-xs text-gray-700">
+                    <span className="font-medium">시퀀스 기반 조정</span>
+                    <span className="text-gray-600"> - O-T1-O 패턴(95%+), O-T1-X/X-T1-O (80-90%), X-T1-X (30-40%)</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold text-sm min-w-[40px]">3단계</span>
+                  <div className="text-xs text-gray-700">
+                    <span className="font-medium">시간대별 가중치</span>
+                    <span className="text-gray-600"> - 출근(06-08시), 점심(12-13시), 퇴근(17-19시) 시간대별 조정</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold text-sm min-w-[40px]">4단계</span>
+                  <div className="text-xs text-gray-700">
+                    <span className="font-medium">지속시간 미세조정</span>
+                    <span className="text-gray-600"> - 짧은 이동(&lt;5분) 업무 확률↑, 긴 이동(&gt;30분) 업무 확률↓</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold text-sm min-w-[40px]">5단계</span>
+                  <div className="text-xs text-gray-700">
+                    <span className="font-medium">특별규칙 적용</span>
+                    <span className="text-gray-600"> - 팀 평균 대비 이상치 감지, 개인별 반복 패턴 학습</span>
+                  </div>
+                </div>
               </div>
-              
-              <div>
-                <h4 className="font-medium text-gray-800 text-sm mb-2">신뢰도 감소 요인</h4>
-                <ul className="space-y-1">
-                  <li className="text-sm text-gray-700">• 불확실한 이벤트 많은 경우 : <span className="text-red-600 font-medium">-20점</span></li>
-                  <li className="text-sm text-gray-700">• 2시간 이상 공백 발생한 경우 : <span className="text-red-600 font-medium">-10점</span></li>
-                  <li className="text-sm text-gray-700">• 이동 추정시간 많음 : <span className="text-red-600 font-medium">-5점~-15점</span></li>
-                </ul>
+              <div className="mt-2 pt-2 border-t border-blue-200">
+                <p className="text-xs text-gray-600">
+                  개인의 업무 패턴을 조직의 집단지성과 비교하여 업무시간의 정확도를 평가합니다.
+                </p>
               </div>
             </div>
           </div>
