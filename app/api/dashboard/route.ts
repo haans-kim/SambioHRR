@@ -13,6 +13,7 @@ import {
   getGradeEfficiencyMatrixForPeriod,
   getGradeWeeklyWorkHoursMatrixForPeriod,
   getGradeWeeklyClaimedHoursMatrixForPeriod,
+  getGradeAdjustedWeeklyWorkHoursMatrixForPeriod,
   getGradeDataReliabilityMatrixForPeriod,
   getMetricThresholdsForGrid,
   getMetricThresholdsForGridForPeriod,
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
     
-    const cacheKey = `dashboard:v41:month=${selectedMonth || ''}`; // zero-hour 직원 제외
+    const cacheKey = `dashboard:v43:month=${selectedMonth || ''}`; // 센터별 avgAdjustedWeeklyWorkHours 추가
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
     const weeklyWorkHoursMatrix = getGradeWeeklyWorkHoursMatrixForPeriod(startDate, endDate);
     // claim_data 기반 정확한 레벨별 주간 근태시간 매트릭스 사용
     const weeklyClaimedHoursMatrix = getGradeWeeklyClaimedHoursMatrixFromClaim(startDate, endDate);
+    const adjustedWeeklyWorkHoursMatrix = getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate, endDate);
     const dataReliabilityMatrix = getGradeDataReliabilityMatrixForPeriod(startDate, endDate);
     
     
@@ -108,6 +110,7 @@ export async function GET(request: NextRequest) {
       gradeMatrix,
       weeklyWorkHoursMatrix,
       weeklyClaimedHoursMatrix,
+      adjustedWeeklyWorkHoursMatrix,
       dataReliabilityMatrix,
       thresholds: {
         efficiency: efficiencyThresholds,

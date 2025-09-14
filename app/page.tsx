@@ -24,6 +24,7 @@ interface DashboardData {
   claimedHoursMatrix: any;
   weeklyWorkHoursMatrix: any;
   weeklyClaimedHoursMatrix: any;
+  adjustedWeeklyWorkHoursMatrix?: any;
   focusedWorkHoursMatrix?: any;
   dataReliabilityMatrix?: any;
   thresholds: {
@@ -129,11 +130,12 @@ export default function HomePage() {
       availableMetrics={data.availableMetrics}
       dataQuality={data.dataQuality}
     >
-      <CenterLevelGrid 
-        organizations={data.centers} 
+      <CenterLevelGrid
+        organizations={data.centers}
         gradeMatrix={data.gradeMatrix}
         weeklyWorkHoursMatrix={data.weeklyWorkHoursMatrix}
         weeklyClaimedHoursMatrix={data.weeklyClaimedHoursMatrix}
+        adjustedWeeklyWorkHoursMatrix={data.adjustedWeeklyWorkHoursMatrix}
         dataReliabilityMatrix={data.dataReliabilityMatrix}
         avgEfficiency={data.avgEfficiency}
         avgWeeklyWorkHours={data.avgWeeklyWorkHours}

@@ -35,6 +35,11 @@ interface CenterLevelGridProps {
     centers: string[];
     matrix: Record<string, Record<string, number>>;
   };
+  adjustedWeeklyWorkHoursMatrix?: {
+    grades: string[];
+    centers: string[];
+    matrix: Record<string, Record<string, number>>;
+  };
   focusedWorkHoursMatrix?: {
     grades: string[];
     centers: string[];
@@ -191,13 +196,14 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
   );
 }
 
-export function CenterLevelGrid({ 
-  organizations, 
-  gradeMatrix, 
-  workHoursMatrix, 
+export function CenterLevelGrid({
+  organizations,
+  gradeMatrix,
+  workHoursMatrix,
   claimedHoursMatrix,
   weeklyWorkHoursMatrix,
   weeklyClaimedHoursMatrix,
+  adjustedWeeklyWorkHoursMatrix,
   focusedWorkHoursMatrix,
   dataReliabilityMatrix,
   avgEfficiency = 88, 
@@ -382,9 +388,9 @@ export function CenterLevelGrid({
                       value = 0; // 데이터 없음을 명확히 표시
                     }
                   } else if (selectedMetric === 'adjustedWeeklyWorkHours') {
-                    // Use weekly work hours data for AI보정
-                    if (weeklyWorkHoursMatrix?.matrix[level]?.[center.orgName]) {
-                      value = weeklyWorkHoursMatrix.matrix[level][center.orgName];
+                    // Use adjustedWeeklyWorkHours matrix for AI보정
+                    if (adjustedWeeklyWorkHoursMatrix?.matrix[level]?.[center.orgName]) {
+                      value = adjustedWeeklyWorkHoursMatrix.matrix[level][center.orgName];
                     } else {
                       value = 0; // 데이터 없음을 명확히 표시
                     }

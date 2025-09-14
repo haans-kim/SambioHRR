@@ -1402,6 +1402,72 @@ export function getGradeWeeklyWorkHoursMatrixForPeriod(startDate: string, endDat
 }
 
 // Get grade-level weekly claimed hours matrix for specified period
+// Get grade-level adjusted weekly work hours matrix (AI보정) for specified period
+export function getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate: string, endDate: string) {
+  const query = `
+    SELECT
+      e.center_name as centerName,
+      'Lv.' || e.job_grade as grade,
+      COUNT(DISTINCT dar.employee_id) as employeeCount,
+      -- 주간 근무시간 계산
+      ROUND(
+        SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
+      ) as avgWeeklyWorkHours,
+      -- 데이터 신뢰도 평균
+      ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
+      -- AI 보정된 주간 근무시간 (근무시간 * 신뢰도 기반 보정계수)
+      ROUND(
+        (SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7) *
+        CASE
+          WHEN AVG(dar.confidence_score) >= 90 THEN 1.05
+          WHEN AVG(dar.confidence_score) >= 80 THEN 1.00
+          WHEN AVG(dar.confidence_score) >= 70 THEN 0.95
+          WHEN AVG(dar.confidence_score) >= 60 THEN 0.90
+          ELSE 0.85
+        END, 1
+      ) as avgAdjustedWeeklyWorkHours
+    FROM daily_analysis_results dar
+    JOIN employees e ON e.employee_id = dar.employee_id
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND e.job_grade IS NOT NULL
+      AND e.center_name IS NOT NULL
+      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+      AND dar.actual_work_hours IS NOT NULL
+      AND dar.confidence_score IS NOT NULL
+    GROUP BY e.center_name, e.job_grade
+    ORDER BY e.center_name, e.job_grade
+  `;
+
+  const stmt = db.prepare(query);
+  const results = stmt.all(endDate, startDate, endDate, startDate, startDate, endDate) as any[];
+
+  // Transform to matrix format
+  const matrix: Record<string, Record<string, number>> = {};
+  const centers: Set<string> = new Set();
+  const grades: Set<string> = new Set();
+
+  results.forEach(row => {
+    if (!matrix[row.grade]) {
+      matrix[row.grade] = {};
+    }
+    matrix[row.grade][row.centerName] = row.avgAdjustedWeeklyWorkHours;
+    centers.add(row.centerName);
+    grades.add(row.grade);
+  });
+
+  return {
+    matrix,
+    centers: Array.from(centers).sort(),
+    grades: Array.from(grades).sort((a, b) => {
+      const aNum = parseInt(a.replace('Lv.', ''));
+      const bNum = parseInt(b.replace('Lv.', ''));
+      return bNum - aNum; // 4, 3, 2, 1 순서
+    })
+  };
+}
+
 export function getGradeWeeklyClaimedHoursMatrixForPeriod(startDate: string, endDate: string) {
   const query = `
     SELECT 

@@ -40,12 +40,29 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
           1
         ) as avgWorkEfficiency,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
-        ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours
+        ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
+        -- 주간 근무시간
+        ROUND(
+          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
+        ) as avgWeeklyWorkHours,
+        -- AI 보정된 주간 근무시간
+        ROUND(
+          (SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7) *
+          CASE
+            WHEN AVG(dar.confidence_score) >= 90 THEN 1.05
+            WHEN AVG(dar.confidence_score) >= 80 THEN 1.00
+            WHEN AVG(dar.confidence_score) >= 70 THEN 0.95
+            WHEN AVG(dar.confidence_score) >= 60 THEN 0.90
+            ELSE 0.85
+          END, 1
+        ) as avgAdjustedWeeklyWorkHours
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.center_name = ?
-    `).get(startDate, endDate, org.orgName) as any;
+    `).get(endDate, startDate, endDate, startDate, startDate, endDate, org.orgName) as any;
 
     return {
       ...org,
@@ -57,16 +74,19 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
         // claim_data 기반 정확한 주간 근태시간
         avgWeeklyClaimedHours: claimStats?.avgWeeklyClaimedHours || 0,
         avgWeeklyClaimedHoursAdjusted: claimStats?.avgWeeklyClaimedHours || 0,
+        // daily_analysis_results 기반 주간 근무시간
+        avgWeeklyWorkHours: darStats?.avgWeeklyWorkHours || 0,
+        avgWeeklyWorkHoursAdjusted: darStats?.avgWeeklyWorkHours || 0,
+        // AI 보정된 주간 근무시간
+        avgAdjustedWeeklyWorkHours: darStats?.avgAdjustedWeeklyWorkHours || 0,
         // 기타 필드들은 필요시 추가
         manDays: 0,
         avgActualWorkHours: 0,
         avgAttendanceHours: 0,
-        avgWeeklyWorkHours: 0,
         avgGroundRulesWorkHours: 0,
         avgWeeklyGroundRulesWorkHours: 0,
         avgActualWorkHoursAdjusted: 0,
-        avgAttendanceHoursAdjusted: 0,
-        avgWeeklyWorkHoursAdjusted: 0
+        avgAttendanceHoursAdjusted: 0
       }
     };
   });
