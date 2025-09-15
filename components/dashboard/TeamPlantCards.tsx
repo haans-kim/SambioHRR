@@ -88,39 +88,10 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
 
   const getStatusIcon = (value: number) => {
     if (!thresholds) {
-      // Fallback based on metric type
-      if (selectedMetric === 'efficiency') {
-        if (value >= 93.7) return "▲";
-        if (value > 89.5) return "●";
-        return "▼";
-      } else if (selectedMetric === 'workHours') {
-        if (value >= 8.0) return "▲";
-        if (value >= 6.0) return "●";
-        return "▼";
-      } else if (selectedMetric === 'claimedHours') {
-        if (value >= 9.0) return "▲";
-        if (value >= 7.0) return "●";
-        return "▼";
-      } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
-        if (value >= 48.0) return "▲";
-        if (value > 42.5) return "●";
-        return "▼";
-      } else if (selectedMetric === 'weeklyClaimedHours') {
-        if (value >= 48.0) return "▲";
-        if (value >= 38.0) return "●";
-        return "▼";
-      } else if (selectedMetric === 'focusedWorkHours') {
-        if (value >= 5.0) return "▲";
-        if (value >= 2.0) return "●";
-        return "▼";
-      } else {
-        // dataReliability
-        if (value >= 85.0) return "▲";
-        if (value >= 70.0) return "●";
-        return "▼";
-      }
+      // thresholds가 없으면 중간값으로 표시 (fallback 사용하지 않음)
+      return "●";
     }
-    
+
     // Use dynamic thresholds - 상위 20% (high) 이상은 ▲, 하위 20% (low) 이하는 ▼
     // 3개 이하 팀일 때는 정확히 최대/최소값만 구분
     if (value >= thresholds.high) return "▲";
@@ -130,39 +101,10 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
 
   const getIconColor = (value: number) => {
     if (!thresholds) {
-      // Fallback based on metric type
-      if (selectedMetric === 'efficiency') {
-        if (value >= 98.1) return "text-red-600";
-        if (value > 97.5) return "text-green-600";
-        return "text-blue-600";
-      } else if (selectedMetric === 'workHours') {
-        if (value >= 8.0) return "text-red-600";
-        if (value >= 6.0) return "text-green-600";
-        return "text-blue-600";
-      } else if (selectedMetric === 'claimedHours') {
-        if (value >= 9.0) return "text-red-600";
-        if (value >= 7.0) return "text-green-600";
-        return "text-blue-600";
-      } else if (selectedMetric === 'weeklyWorkHours' || selectedMetric === 'adjustedWeeklyWorkHours') {
-        if (value >= 48.0) return "text-red-600";
-        if (value > 42.5) return "text-green-600";
-        return "text-blue-600";
-      } else if (selectedMetric === 'weeklyClaimedHours') {
-        if (value >= 48.0) return "text-red-600";
-        if (value >= 38.0) return "text-green-600";
-        return "text-blue-600";
-      } else if (selectedMetric === 'focusedWorkHours') {
-        if (value >= 5.0) return "text-red-600";
-        if (value >= 2.0) return "text-green-600";
-        return "text-blue-600";
-      } else {
-        // dataReliability
-        if (value >= 85.0) return "text-red-600";
-        if (value >= 70.0) return "text-green-600";
-        return "text-blue-600";
-      }
+      // thresholds가 없으면 녹색으로 표시 (fallback 사용하지 않음)
+      return "text-green-600";
     }
-    
+
     // Use dynamic thresholds - 상위 20% (high) 이상은 파란색, 하위 20% (low) 이하는 빨간색
     if (value >= thresholds.high) return "text-red-600";
     if (value <= thresholds.low) return "text-blue-600";
