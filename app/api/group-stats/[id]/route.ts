@@ -146,34 +146,49 @@ export async function GET(
 
     // Get group statistics from daily_analysis_results
     const statsQuery = `
-      SELECT 
+      SELECT
         COUNT(*) as total_records,
         COUNT(DISTINCT employee_id) as total_employees,
         COUNT(DISTINCT analysis_date) as total_days,
-        
-        -- 기본 시간 지표 (주간 기준으로 변환)
-        AVG(total_hours) * 5 as avg_total_hours,
-        AVG(actual_work_hours) * 5 as avg_actual_work_hours,
-        AVG(claimed_work_hours) * 5 as avg_claimed_work_hours,
+
+        -- 기본 시간 지표 (주간 기준으로 변환 - 30일 기준)
+        ROUND(
+          SUM(total_hours) /
+          COUNT(DISTINCT CASE WHEN total_hours > 0 THEN employee_id END) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
+          1
+        ) as avg_total_hours,
+        ROUND(
+          SUM(actual_work_hours) /
+          COUNT(DISTINCT CASE WHEN actual_work_hours > 0 THEN employee_id END) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
+          1
+        ) as avg_actual_work_hours,
+        ROUND(
+          SUM(claimed_work_hours) /
+          COUNT(DISTINCT CASE WHEN claimed_work_hours > 0 THEN employee_id END) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
+          1
+        ) as avg_claimed_work_hours,
         AVG(CASE
           WHEN claimed_work_hours > 0 THEN (actual_work_hours / claimed_work_hours) * 100
           ELSE 0
         END) as avg_efficiency_ratio,
-        
+
         -- 활동별 시간 (분 단위)
         AVG(work_minutes) as avg_work_minutes,
         AVG(focused_work_minutes) as avg_focused_work_minutes,
         AVG(equipment_minutes) as avg_equipment_minutes,
         AVG(meeting_minutes) as avg_meeting_minutes,
         AVG(training_minutes) as avg_training_minutes,
-        
+
         -- 식사 시간 상세
         AVG(meal_minutes) as avg_meal_minutes,
         AVG(breakfast_minutes) as avg_breakfast_minutes,
         AVG(lunch_minutes) as avg_lunch_minutes,
         AVG(dinner_minutes) as avg_dinner_minutes,
         AVG(midnight_meal_minutes) as avg_midnight_meal_minutes,
-        
+
         -- 기타 활동 시간
         AVG(movement_minutes) as avg_movement_minutes,
         AVG(rest_minutes) as avg_rest_minutes,
@@ -181,18 +196,23 @@ export async function GET(
         AVG(commute_in_minutes) as avg_commute_in_minutes,
         AVG(commute_out_minutes) as avg_commute_out_minutes,
         AVG(preparation_minutes) as avg_preparation_minutes,
-        
+
         -- 구역별 시간
         AVG(work_area_minutes) as avg_work_area_minutes,
         AVG(non_work_area_minutes) as avg_non_work_area_minutes,
         AVG(gate_area_minutes) as avg_gate_area_minutes,
-        
+
         -- Ground Rules 지표
         AVG(ground_rules_work_hours) as avg_ground_rules_work_hours,
         AVG(ground_rules_confidence) as avg_ground_rules_confidence,
-        
-        -- 주간 근무시간 (실제 근무시간 * 5)
-        AVG(actual_work_hours) * 5 as avg_weekly_work_hours,
+
+        -- 주간 근무시간 (30일 기준으로 정확히 계산)
+        ROUND(
+          SUM(actual_work_hours) /
+          COUNT(DISTINCT CASE WHEN actual_work_hours > 0 THEN employee_id END) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
+          1
+        ) as avg_weekly_work_hours,
         AVG(work_movement_minutes) as avg_work_movement_minutes,
         AVG(non_work_movement_minutes) as avg_non_work_movement_minutes,
         AVG(anomaly_score) as avg_anomaly_score,
@@ -223,7 +243,13 @@ export async function GET(
         AND analysis_date BETWEEN ? AND ?
     `
     
-    const stats = db.prepare(statsQuery).get(groupName, startDate, endDate) as any
+    const stats = db.prepare(statsQuery).get(
+      endDate, startDate, // for avg_total_hours JULIANDAY calculation
+      endDate, startDate, // for avg_actual_work_hours JULIANDAY calculation
+      endDate, startDate, // for avg_claimed_work_hours JULIANDAY calculation
+      endDate, startDate, // for avg_weekly_work_hours JULIANDAY calculation
+      groupName, startDate, endDate // for WHERE clause
+    ) as any
     
     if (!stats || stats.total_records === 0) {
       return NextResponse.json({ 
@@ -340,10 +366,7 @@ export async function GET(
         avgClaimedHours: Number((stats.avg_claimed_work_hours || 0).toFixed(1)),
         avgGroundRulesWorkHours: Number((stats.avg_ground_rules_work_hours || 0).toFixed(1)),
         avgGroundRulesConfidence: Number((stats.avg_ground_rules_confidence || 0).toFixed(1)),
-        avgAdjustedWeeklyWorkHours: Number((calculateAdjustedWorkHours(
-          stats.avg_actual_work_hours || 0,
-          stats.avg_confidence_score || 0
-        )).toFixed(1)),
+        avgAdjustedWeeklyWorkHours: stats.avg_weekly_work_hours || 0,
         totalManDays: stats.total_records || 0
       },
       distributions: {

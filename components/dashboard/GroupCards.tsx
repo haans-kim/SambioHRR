@@ -491,117 +491,61 @@ export function GroupCards({
         })}
       </div>
 
-      {/* Tooltip for information */}
-      <div className="mt-4 p-3 bg-white border border-gray-200 text-gray-900 rounded-lg text-sm max-w-md shadow-sm">
-        {selectedMetric === 'efficiency' ? (
-          <>
-            <div className="font-semibold text-gray-900">평균 효율성 : {avgEfficiency.toFixed(1)}%</div>
-            <div className="text-xs text-gray-700 mt-1">
-              실제 근무시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터
+      {/* Tooltip for information - Box style formatting */}
+      <div className="mt-4 p-3 bg-white border border-gray-200 text-gray-900 rounded-lg text-sm shadow-sm">
+        <div className="grid grid-cols-2 gap-0">
+          <div className="pr-4">
+            <div className="font-semibold text-gray-900">
+              {selectedMetric === 'efficiency' && `평균 효율성 : ${avgEfficiency.toFixed(1)}%`}
+              {selectedMetric === 'workHours' && `일간 근무추정시간 : ${avgWorkHours.toFixed(1)}h`}
+              {selectedMetric === 'claimedHours' && `일간 근무시간 : ${avgClaimedHours.toFixed(1)}h`}
+              {selectedMetric === 'weeklyWorkHours' && `주간 근무추정시간 : ${avgWeeklyWorkHours.toFixed(1)}h`}
+              {selectedMetric === 'adjustedWeeklyWorkHours' && `주간 추정근태시간 : ${avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h`}
+              {selectedMetric === 'weeklyClaimedHours' && `주간 근태시간 : ${avgWeeklyClaimedHours.toFixed(1)}h`}
+              {selectedMetric === 'focusedWorkHours' && `일간 집중근무시간 : ${avgFocusedWorkHours.toFixed(1)}h`}
+              {selectedMetric === 'dataReliability' && `데이터 신뢰도 : ${avgDataReliability.toFixed(1)}%`}
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 상위({thresholds?.efficiency?.high}) | ● 중위({thresholds?.efficiency?.middle}) | ▼ 하위({thresholds?.efficiency?.low})
-            </div>
-          </>
-        ) : selectedMetric === 'workHours' ? (
-          <>
-            <div className="font-semibold text-gray-900">일간 근무추정시간 : {avgWorkHours.toFixed(1)}h</div>
-            <div className="text-xs text-gray-700 mt-1">
-              실제 근무시간 평균 | 30일 평균 데이터
-            </div>
-            <div className="text-xs text-gray-700 mt-1">
-              ▲ 상위({thresholds?.workHours?.high}) | ● 중위({thresholds?.workHours?.middle}) | ▼ 하위({thresholds?.workHours?.low})
-            </div>
-          </>
-        ) : selectedMetric === 'claimedHours' ? (
-          <>
-            <div className="font-semibold text-gray-900">일간 근무시간 : {avgClaimedHours.toFixed(1)}h</div>
-            <div className="text-xs text-gray-700 mt-1">
-              신고 근무시간 평균 | 30일 평균 데이터
+              {selectedMetric === 'efficiency' && '실제 근무시간 ÷ 총 근무시간 × 100 | 30일 평균 데이터'}
+              {selectedMetric === 'workHours' && '실제 근무시간 평균 | 30일 평균 데이터'}
+              {selectedMetric === 'claimedHours' && '신고 근무시간 평균 | 30일 평균 데이터'}
+              {selectedMetric === 'weeklyWorkHours' && '주당 실제 근무시간 평균 | 30일 평균 데이터'}
+              {selectedMetric === 'adjustedWeeklyWorkHours' && '주당 추정 근무시간 평균 | 30일 평균 데이터'}
+              {selectedMetric === 'weeklyClaimedHours' && '주당 신고 근무시간 평균 | 30일 평균 데이터'}
+              {selectedMetric === 'focusedWorkHours' && '집중적으로 업무에 몰입한 시간 | 30일 평균 데이터'}
+              {selectedMetric === 'dataReliability' && '데이터 신뢰도 점수 | 30일 평균 데이터'}
             </div>
             <div className="text-xs text-gray-700 mt-1">
-              ▲ 상위({thresholds?.claimedHours?.high}) | ● 중위({thresholds?.claimedHours?.middle}) | ▼ 하위({thresholds?.claimedHours?.low})
+              ▲ 상위({thresholds?.[selectedMetric]?.high}) | ● 중위({thresholds?.[selectedMetric]?.middle}) | ▼ 하위({thresholds?.[selectedMetric]?.low})
             </div>
-          </>
-        ) : selectedMetric === 'weeklyWorkHours' ? (
-          <>
-            <div className="font-semibold text-gray-900">주간 근무추정시간 : {avgWeeklyWorkHours.toFixed(1)}h</div>
-            <div className="text-xs text-gray-700 mt-1">
-              주당 실제 근무시간 평균 | 30일 평균 데이터
-            </div>
-            <div className="text-xs text-gray-700 mt-1">
-              ▲ 상위({thresholds?.weeklyWorkHours?.high}) | ● 중위({thresholds?.weeklyWorkHours?.middle}) | ▼ 하위({thresholds?.weeklyWorkHours?.low})
-            </div>
-          </>
-        ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
-          <div className="grid grid-cols-2 gap-0">
-            <div className="pr-4">
-              <div className="font-semibold text-gray-900">주간 추정근태시간 : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
-              <div className="text-xs text-gray-700 mt-1">
-                주당 추정 근무시간 평균 | 30일 평균 데이터
+          </div>
+          <div className="pl-4 border-l border-gray-300 grid grid-cols-2 gap-2">
+            <div>
+              <div className="text-xs font-medium text-gray-800">포함된 시간</div>
+              <div className="text-xs text-gray-600 mt-1">
+                ✓ 실제 근무시간 (출퇴근 기록)
               </div>
-              <div className="text-xs text-gray-700 mt-1">
-                ▲ 상위({thresholds?.adjustedWeeklyWorkHours?.high}) | ● 중위({thresholds?.adjustedWeeklyWorkHours?.middle}) | ▼ 하위({thresholds?.adjustedWeeklyWorkHours?.low})
+              <div className="text-xs text-gray-600">
+                ✓ 연차·휴가 시간 (8h/일, 4h/반차, 시간연차)
+              </div>
+              <div className="text-xs text-gray-600">
+                ✓ 출장·교육 시간 (8h 기본값)
               </div>
             </div>
-            <div className="pl-4 border-l border-gray-300 grid grid-cols-2 gap-2">
-              <div>
-                <div className="text-xs font-medium text-gray-800">포함된 시간</div>
-                <div className="text-xs text-gray-600 mt-1">
-                  ✓ 실제 근무시간 (출퇴근 기록)
-                </div>
-                <div className="text-xs text-gray-600">
-                  ✓ 연차·휴가 시간 (8h/일, 4h/반차, 시간연차)
-                </div>
-                <div className="text-xs text-gray-600">
-                  ✓ 출장·교육 시간 (8h 기본값)
-                </div>
+            <div>
+              <div className="text-xs font-medium text-gray-800">제외된 시간</div>
+              <div className="text-xs text-gray-600 mt-1">
+                ✗ 식사 시간
               </div>
-              <div>
-                <div className="text-xs font-medium text-gray-800">AI 보정 요소</div>
-                <div className="text-xs text-gray-600 mt-1">
-                  ✓ 데이터 신뢰도 기반 조정
-                </div>
-                <div className="text-xs text-gray-600">
-                  ✓ 팀별 업무 패턴 분석
-                </div>
-                <div className="text-xs text-gray-600">
-                  ✓ 개인별 근무 특성 반영
-                </div>
+              <div className="text-xs text-gray-600">
+                ✗ 휴식 시간
+              </div>
+              <div className="text-xs text-gray-600">
+                ✗ 비업무 이동 시간
               </div>
             </div>
           </div>
-        ) : selectedMetric === 'weeklyClaimedHours' ? (
-          <>
-            <div className="font-semibold text-gray-900">주간 근태시간 : {avgWeeklyClaimedHours.toFixed(1)}h</div>
-            <div className="text-xs text-gray-700 mt-1">
-              주당 신고 근무시간 평균 | 30일 평균 데이터
-            </div>
-            <div className="text-xs text-gray-700 mt-1">
-              ▲ 상위({thresholds?.weeklyClaimedHours?.high}) | ● 중위({thresholds?.weeklyClaimedHours?.middle}) | ▼ 하위({thresholds?.weeklyClaimedHours?.low})
-            </div>
-          </>
-        ) : selectedMetric === 'focusedWorkHours' ? (
-          <>
-            <div className="font-semibold text-gray-900">일간 집중근무시간 : {avgFocusedWorkHours.toFixed(1)}h</div>
-            <div className="text-xs text-gray-700 mt-1">
-              집중적으로 업무에 몰입한 시간 | 30일 평균 데이터
-            </div>
-            <div className="text-xs text-gray-700 mt-1">
-              ▲ 상위({thresholds?.focusedWorkHours?.high}) | ● 중위({thresholds?.focusedWorkHours?.middle}) | ▼ 하위({thresholds?.focusedWorkHours?.low})
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="font-semibold text-gray-900">데이터 신뢰도 : {avgDataReliability.toFixed(1)}%</div>
-            <div className="text-xs text-gray-700 mt-1">
-              데이터 신뢰도 점수 | 30일 평균 데이터
-            </div>
-            <div className="text-xs text-gray-700 mt-1">
-              ▲ 상위({thresholds?.dataReliability?.high}) | ● 중위({thresholds?.dataReliability?.middle}) | ▼ 하위({thresholds?.dataReliability?.low})
-            </div>
-          </>
-        )}
+        </div>
       </div>
     </div>
   );

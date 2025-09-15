@@ -237,7 +237,7 @@ export default function EnterpriseView() {
                       
                       {/* X축 레이블 - 주간 추정근태시간 */}
                       <text x="615" y="585" textAnchor="middle" className="text-lg font-bold fill-gray-800">
-                        주간 추정근태시간 (AI보정, 시간/주)
+                        주간 추정근태시간 (시간/주)
                       </text>
                       
                       {/* Y축 레이블 - 변동계수 */}

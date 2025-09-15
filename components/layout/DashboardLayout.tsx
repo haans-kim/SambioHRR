@@ -109,7 +109,7 @@ export function DashboardLayout({
                     {selectedMetric === 'efficiency' 
                       ? '평균 효율성 비율' 
                       : selectedMetric === 'adjustedWeeklyWorkHours'
-                      ? '주간 추정근태시간(AI보정)'
+                      ? '주간 추정근태시간'
                       : selectedMetric === 'weeklyClaimedHours'
                       ? '주간 근태시간'
                       : selectedMetric === 'dataReliability'
