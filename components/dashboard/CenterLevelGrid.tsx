@@ -520,7 +520,7 @@ export function CenterLevelGrid({
                 ▲ 상위({thresholds?.adjustedWeeklyWorkHours?.high || '≥40h'}) | ● 중위({thresholds?.adjustedWeeklyWorkHours?.middle || '35-40h'}) | ▼ 하위({thresholds?.adjustedWeeklyWorkHours?.low || '<35h'})
               </div>
             </div>
-            <div className="pl-4 border-l border-gray-300 grid grid-cols-2 gap-2">
+            <div className="pl-4 border-l border-gray-300 grid grid-cols-3 gap-2">
               <div>
                 <div className="text-xs font-medium text-gray-800">포함된 시간</div>
                 <div className="text-xs text-gray-600 mt-1">
@@ -531,6 +531,15 @@ export function CenterLevelGrid({
                 </div>
                 <div className="text-xs text-gray-600">
                   ✓ 출장·교육 시간 (8h 기본값)
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-800">제외된 시간</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  - 비업무구역체류
+                </div>
+                <div className="text-xs text-gray-600">
+                  - 비업무이동
                 </div>
               </div>
               <div>
