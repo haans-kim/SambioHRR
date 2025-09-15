@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
     
-    const cacheKey = `dashboard:v58:month=${selectedMonth || ''}`; // actual_work_hours = claimed - non_work_movement * 2.5
+    const cacheKey = `dashboard:v61:month=${selectedMonth || ''}`; // fixed efficiency thresholds with mixed sources
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {

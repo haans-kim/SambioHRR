@@ -38,9 +38,10 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
         ) as avgWorkEfficiency,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
         ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
-        -- 주간 근무시간
+        -- 주간 근무시간 (non-zero employees 기준)
         ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
+          SUM(dar.actual_work_hours) /
+          COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
         ) as avgWeeklyWorkHours,
         -- 주간 추정근태시간 (주간 근태시간과 동일한 계산)
@@ -55,11 +56,17 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
         AND e.center_name = ?
     `).get(endDate, startDate, endDate, startDate, startDate, endDate, org.orgName) as any;
 
+    // Calculate efficiency using consistent sources
+    // If we show claim_data hours and DAR actual hours, efficiency should be DAR actual / claim hours
+    const consistentEfficiency = (claimStats?.totalHours && darStats?.avgWeeklyWorkHours && claimStats?.avgWeeklyClaimedHours)
+      ? Math.round((darStats.avgWeeklyWorkHours / claimStats.avgWeeklyClaimedHours) * 100 * 10) / 10
+      : darStats?.avgWorkEfficiency || 0;
+
     return {
       ...org,
       stats: {
         totalEmployees: claimStats?.totalEmployees || darStats?.totalEmployees || 0,
-        avgWorkEfficiency: darStats?.avgWorkEfficiency || 0,
+        avgWorkEfficiency: consistentEfficiency,
         avgDataReliability: darStats?.avgDataReliability || 0,
         avgFocusedWorkHours: darStats?.avgFocusedWorkHours || 0,
         // claim_data 기반 정확한 주간 근태시간

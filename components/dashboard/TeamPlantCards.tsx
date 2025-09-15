@@ -90,8 +90,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
     if (!thresholds) {
       // Fallback based on metric type
       if (selectedMetric === 'efficiency') {
-        if (value >= 88.4) return "▲";
-        if (value > 73.2) return "●";
+        if (value >= 93.7) return "▲";
+        if (value > 89.5) return "●";
         return "▼";
       } else if (selectedMetric === 'workHours') {
         if (value >= 8.0) return "▲";
@@ -132,8 +132,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
     if (!thresholds) {
       // Fallback based on metric type
       if (selectedMetric === 'efficiency') {
-        if (value >= 88.4) return "text-red-600";
-        if (value > 73.2) return "text-green-600";
+        if (value >= 98.1) return "text-red-600";
+        if (value > 97.5) return "text-green-600";
         return "text-blue-600";
       } else if (selectedMetric === 'workHours') {
         if (value >= 8.0) return "text-red-600";
@@ -173,8 +173,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
     if (!thresholds) {
       // Fallback based on metric type
       if (selectedMetric === 'efficiency') {
-        if (value >= 88.4) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
-        if (value > 73.2) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
+        if (value >= 98.1) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
+        if (value > 97.5) return "border-2 border-green-500 bg-gradient-to-br from-green-50 to-white";
         return "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-white";
       } else if (selectedMetric === 'workHours') {
         if (value >= 8.0) return "border-2 border-red-500 bg-gradient-to-br from-red-50 to-white";
@@ -214,8 +214,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
     if (!thresholds) {
       // Fallback - burnout perspective: higher = red, lower = blue
       if (selectedMetric === 'efficiency') {
-        if (value >= 88.4) return "#ef4444"; // red - 상위 (번아웃 위험)
-        if (value > 73.2) return "#10b981"; // green - 중위
+        if (value >= 98.1) return "#ef4444"; // red - 상위 (번아웃 위험)
+        if (value > 97.5) return "#10b981"; // green - 중위
         return "#3b82f6"; // blue - 하위 (양호)
       } else {
         if (value >= 8.0) return "#ef4444"; // red - 상위 (번아웃 위험)
