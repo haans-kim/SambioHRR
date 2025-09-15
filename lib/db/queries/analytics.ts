@@ -372,10 +372,7 @@ export function getOrganizationWeeklyStatsForPeriod(startDate: string, endDate: 
     SELECT 
       COUNT(DISTINCT dar.employee_id) as totalEmployees,
       ROUND(
-        SUM(
-          dar.actual_work_hours * 
-          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
-        ) / SUM(dar.claimed_work_hours) * 100, 
+        SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 
         1
       ) as avgEfficiencyRatio,
       -- 자연 평균화 방식: 탄력근무제 직원의 실제 근무 패턴이 자동 반영
@@ -443,7 +440,7 @@ export function getOrganizationStatsForPeriod(startDate: string, endDate: string
     WITH adjusted_efficiency AS (
       SELECT 
         dar.employee_id,
-        (dar.actual_work_hours * (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))) / dar.claimed_work_hours * 100 as ai_adjusted_efficiency,
+        dar.actual_work_hours / dar.claimed_work_hours * 100 as ai_adjusted_efficiency,
         dar.actual_work_hours,
         dar.claimed_work_hours,
         dar.confidence_score
@@ -590,10 +587,7 @@ export function getGradeEfficiencyMatrix30Days() {
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
       ROUND(
-        SUM(
-          dar.actual_work_hours * 
-          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
-        ) / SUM(dar.claimed_work_hours) * 100, 
+        SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 
         1
       ) as avgEfficiency
     FROM daily_analysis_results dar
@@ -952,9 +946,8 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'weeklyCla
         e.center_name as centerName,
         'Lv.' || e.job_grade as grade,
         ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7 * 
-          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.08)), 
+          SUM(dar.actual_work_hours) / COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 
           1
         ) as avgValue
       FROM daily_analysis_results dar
@@ -1257,10 +1250,7 @@ export function getGradeEfficiencyMatrixForPeriod(startDate: string, endDate: st
       'Lv.' || e.job_grade as grade,
       COUNT(DISTINCT dar.employee_id) as employeeCount,
       ROUND(
-        SUM(
-          dar.actual_work_hours * 
-          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
-        ) / SUM(dar.claimed_work_hours) * 100, 
+        SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100, 
         1
       ) as avgEfficiency
     FROM daily_analysis_results dar
@@ -1418,9 +1408,8 @@ export function getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate: string
       ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
       -- AI 보정된 주간 추정근태시간 = (DAR근무 * AI보정) + DAR에 저장된 휴가
       ROUND(
-        (SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
-        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7) *
-        (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.06)) +
+        SUM(dar.actual_work_hours) / COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7 +
         (SUM(dar.leave_hours) / COUNT(DISTINCT dar.employee_id) /
         (JULIANDAY(?) - JULIANDAY(?) + 1) * 7),
         1

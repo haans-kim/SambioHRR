@@ -47,10 +47,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
         COUNT(*) as manDays,
         ROUND(
-          SUM(
-            dar.actual_work_hours * 
-            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
-          ) / SUM(dar.claimed_work_hours) * 100, 
+          SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100,
           1
         ) as avgWorkEfficiency,
         -- 원본 일간 근무시간 (자연 평균화)
@@ -169,10 +166,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
         COUNT(*) as manDays,
         ROUND(
-          SUM(
-            dar.actual_work_hours * 
-            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
-          ) / SUM(dar.claimed_work_hours) * 100, 
+          SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100,
           1
         ) as avgWorkEfficiency,
         -- 원본 일간 근무시간
@@ -223,10 +217,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
         COUNT(*) as manDays,
         ROUND(
-          SUM(
-            dar.actual_work_hours * 
-            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
-          ) / SUM(dar.claimed_work_hours) * 100, 
+          SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100,
           1
         ) as avgWorkEfficiency,
         -- 원본 일간 근무시간

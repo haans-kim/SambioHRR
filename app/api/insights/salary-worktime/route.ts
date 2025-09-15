@@ -45,10 +45,10 @@ export async function GET() {
         e.center_name,
         'Lv.' || e.job_grade as grade,
         COUNT(DISTINCT dar.employee_id) as employee_count,
-        -- AI 보정 적용된 주간 근무시간
+        -- 주간 추정근태시간 (주간 근태시간과 동일한 계산)
         ROUND(
-          (SUM(dar.actual_work_hours) / COUNT(*)) * 5 * 
-          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.08)), 
+          SUM(dar.actual_work_hours) / COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
+          (JULIANDAY(dr.end_date) - JULIANDAY(dr.start_date) + 1) * 7,
           1
         ) as avg_weekly_work_hours
       FROM daily_analysis_results dar

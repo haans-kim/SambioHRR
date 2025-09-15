@@ -63,10 +63,7 @@ export function getTeamStats(centerCode?: string): Map<string, TeamStats> {
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
         COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
         ROUND(
-          SUM(
-            dar.actual_work_hours * 
-            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
-          ) / SUM(dar.claimed_work_hours) * 100, 
+          SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100,
           1
         ) as avgEfficiencyRatio,
         -- Natural averaging: SUM / COUNT(DISTINCT employees) / days * 7
@@ -202,10 +199,7 @@ export function getGroupStats(teamCode?: string): Map<string, TeamStats> {
         COUNT(DISTINCT dar.employee_id) as analyzedEmployees,
         COUNT(DISTINCT fw.employee_id) as flexibleWorkCount,
         ROUND(
-          SUM(
-            dar.actual_work_hours * 
-            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
-          ) / SUM(dar.claimed_work_hours) * 100, 
+          SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100,
           1
         ) as avgEfficiencyRatio,
         -- Natural averaging: SUM / COUNT(DISTINCT employees) / days * 7

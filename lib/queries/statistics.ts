@@ -300,7 +300,7 @@ export function getCenterTeamDistribution(centerId?: string) {
   
   const query = `
     WITH team_emp_work AS (
-      SELECT 
+      SELECT
         d.center_id,
         d.center_name,
         d.team_id,
@@ -308,10 +308,7 @@ export function getCenterTeamDistribution(centerId?: string) {
         d.employee_id,
         AVG(d.actual_work_hours) as emp_avg_hours,
         AVG(d.efficiency_ratio) as emp_efficiency,
-        AVG(d.confidence_score) as emp_reliability,
-        -- AI 보정 주간 근무시간: 일 평균 * 5일 * sigmoid 가중치 (0.92 ~ 1.0 범위)
-        AVG(d.actual_work_hours) * 5 * 
-        (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(d.confidence_score) / 100.0 - 0.65))) * 0.08)) as emp_weekly_adjusted_hours
+        AVG(d.confidence_score) as emp_reliability
       FROM daily_analysis_results d
       WHERE d.analysis_date BETWEEN '${dates.min_date}' AND '${dates.max_date}'
         AND d.team_name IS NOT NULL
@@ -320,22 +317,30 @@ export function getCenterTeamDistribution(centerId?: string) {
       GROUP BY d.center_id, d.center_name, d.team_id, d.team_name, d.employee_id
     ),
     team_stats AS (
-      SELECT 
-        center_id,
-        center_name,
-        team_id,
-        team_name,
-        COUNT(DISTINCT employee_id) as headcount,
-        AVG(emp_avg_hours) as avg_work_hours,
-        AVG(emp_weekly_adjusted_hours) as avg_weekly_adjusted_hours,
-        AVG(emp_efficiency) as avg_efficiency,
-        AVG(emp_reliability) as avg_reliability
-      FROM team_emp_work
-      GROUP BY center_id, center_name, team_id, team_name
-      HAVING COUNT(DISTINCT employee_id) > 0
+      SELECT
+        te.center_id,
+        te.center_name,
+        te.team_id,
+        te.team_name,
+        COUNT(DISTINCT te.employee_id) as headcount,
+        AVG(te.emp_avg_hours) as avg_work_hours,
+        -- 주간 추정근태시간: 팀 전체 총 시간 / 0이 아닌 인원수 / 기간일수 * 7일
+        (SELECT
+          SUM(d2.actual_work_hours) / COUNT(DISTINCT CASE WHEN d2.actual_work_hours > 0 THEN d2.employee_id END) /
+          (JULIANDAY('${dates.max_date}') - JULIANDAY('${dates.min_date}') + 1) * 7
+         FROM daily_analysis_results d2
+         WHERE d2.team_name = te.team_name
+           AND d2.analysis_date BETWEEN '${dates.min_date}' AND '${dates.max_date}'
+           AND d2.actual_work_hours > 0
+        ) as avg_weekly_adjusted_hours,
+        AVG(te.emp_efficiency) as avg_efficiency,
+        AVG(te.emp_reliability) as avg_reliability
+      FROM team_emp_work te
+      GROUP BY te.center_id, te.center_name, te.team_id, te.team_name
+      HAVING COUNT(DISTINCT te.employee_id) > 0
     ),
     team_variance AS (
-      SELECT 
+      SELECT
         t.center_id,
         t.center_name,
         t.team_id,
@@ -345,7 +350,8 @@ export function getCenterTeamDistribution(centerId?: string) {
         t.avg_weekly_adjusted_hours,
         t.avg_efficiency,
         t.avg_reliability,
-        SQRT(AVG((e.emp_weekly_adjusted_hours - t.avg_weekly_adjusted_hours) * (e.emp_weekly_adjusted_hours - t.avg_weekly_adjusted_hours))) as std_dev_hours
+        -- 표준편차 계산: 각 직원의 평균 시간과 팀 평균의 차이
+        SQRT(AVG((e.emp_avg_hours * 5 - t.avg_weekly_adjusted_hours) * (e.emp_avg_hours * 5 - t.avg_weekly_adjusted_hours))) as std_dev_hours
       FROM team_stats t
       JOIN team_emp_work e ON t.team_name = e.team_name
       GROUP BY t.center_id, t.center_name, t.team_id, t.team_name, t.headcount, t.avg_work_hours, t.avg_weekly_adjusted_hours, t.avg_efficiency, t.avg_reliability

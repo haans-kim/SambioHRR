@@ -33,10 +33,7 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
       SELECT
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
         ROUND(
-          SUM(
-            dar.actual_work_hours *
-            (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.06))
-          ) / NULLIF(SUM(dar.claimed_work_hours), 0) * 100,
+          SUM(dar.actual_work_hours) / NULLIF(SUM(dar.claimed_work_hours), 0) * 100,
           1
         ) as avgWorkEfficiency,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
@@ -46,11 +43,10 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
           SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
         ) as avgWeeklyWorkHours,
-        -- AI 보정된 주간 근무시간 (시그모이드 함수 사용)
+        -- 주간 추정근태시간 (주간 근태시간과 동일한 계산)
         ROUND(
-          (SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7) *
-          (0.92 + (1.0 / (1.0 + EXP(-12.0 * (AVG(dar.confidence_score) / 100.0 - 0.65))) * 0.06)),
+          SUM(dar.actual_work_hours) / COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
           1
         ) as avgAdjustedWeeklyWorkHours
       FROM daily_analysis_results dar
