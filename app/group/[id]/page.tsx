@@ -228,7 +228,7 @@ export default function GroupStatsPage() {
       </div>
 
       {/* 주요 지표 카드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white p-6 rounded-lg shadow border">
           <div className="flex items-center">
             <Target className="h-8 w-8 text-blue-600" />
@@ -254,13 +254,14 @@ export default function GroupStatsPage() {
           <div className="flex items-center">
             <Activity className="h-8 w-8 text-orange-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">주간 추정근태시간</p>
+              <p className="text-sm font-medium text-gray-500">주간 근무추정시간</p>
               <p className="text-2xl font-bold text-gray-900">{data.summary.avgWorkHours}h</p>
               <p className="text-xs text-gray-400">AI보정 포함</p>
             </div>
           </div>
         </div>
 
+        {/* 데이터 신뢰도 카드 - 임시로 숨김
         <div className="bg-white p-6 rounded-lg shadow border">
           <div className="flex items-center">
             <Brain className="h-8 w-8 text-purple-600" />
@@ -270,6 +271,7 @@ export default function GroupStatsPage() {
             </div>
           </div>
         </div>
+        */}
       </div>
 
 
@@ -293,7 +295,7 @@ export default function GroupStatsPage() {
             )}
             {data.metrics.avgActualWorkHours > 0 && (
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">추정근태시간</span>
+                <span className="text-sm text-gray-600">근무추정시간</span>
                 <span className="text-sm font-medium">{data.metrics.avgActualWorkHours.toFixed(1)}h</span>
               </div>
             )}

@@ -107,9 +107,9 @@ export function DashboardLayout({
                   </div>
                   <div className="text-sm text-gray-600 mt-1">
                     {selectedMetric === 'efficiency' 
-                      ? '평균 효율성 비율' 
+                      ? '평균 효율성 비율'
                       : selectedMetric === 'adjustedWeeklyWorkHours'
-                      ? '주간 추정근태시간'
+                      ? '주간 근무추정시간'
                       : selectedMetric === 'weeklyClaimedHours'
                       ? '주간 근태시간'
                       : selectedMetric === 'dataReliability'

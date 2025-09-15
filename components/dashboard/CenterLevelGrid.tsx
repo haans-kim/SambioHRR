@@ -285,8 +285,9 @@ export function CenterLevelGrid({
                 } else if (selectedMetric === 'focusedWorkHours') {
                   value = center.stats?.avgFocusedWorkHours || 0;
                 } else {
-                  // dataReliability
-                  value = center.stats?.avgDataReliability || 0;
+                  // dataReliability - 임시로 숨김, 기본값 0 사용
+                  // value = center.stats?.avgDataReliability || 0;
+                  value = 0;
                 }
                 
                 // Calculate ranking among centers for color coding
@@ -402,12 +403,13 @@ export function CenterLevelGrid({
                       value = 0; // 데이터 없음을 명확히 표시
                     }
                   } else {
-                    // Use data reliability data
-                    if (dataReliabilityMatrix?.matrix[level]?.[center.orgName]) {
-                      value = dataReliabilityMatrix.matrix[level][center.orgName];
-                    } else {
-                      value = 0; // 데이터 없음을 명확히 표시
-                    }
+                    // Use data reliability data - 임시로 숨김
+                    // if (dataReliabilityMatrix?.matrix[level]?.[center.orgName]) {
+                    //   value = dataReliabilityMatrix.matrix[level][center.orgName];
+                    // } else {
+                    //   value = 0; // 데이터 없음을 명확히 표시
+                    // }
+                    value = 0; // dataReliability 숨김 처리
                   }
                   
                   // Get appropriate thresholds based on selected metric
@@ -512,9 +514,9 @@ export function CenterLevelGrid({
         ) : selectedMetric === 'adjustedWeeklyWorkHours' ? (
           <div className="grid grid-cols-2 gap-0">
             <div className="pr-4">
-              <div className="font-semibold text-gray-900">주간 추정근태시간 : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
+              <div className="font-semibold text-gray-900">주간 근무추정시간 : {avgAdjustedWeeklyWorkHours?.toFixed(1) || '0.0'}h</div>
               <div className="text-xs text-gray-700 mt-1">
-                주당 추정 근무시간 평균 | 30일 평균 데이터
+                주당 근무추정시간 평균 | 30일 평균 데이터
               </div>
               <div className="text-xs text-gray-700 mt-1">
                 ▲ 상위({thresholds?.adjustedWeeklyWorkHours?.high || '≥40h'}) | ● 중위({thresholds?.adjustedWeeklyWorkHours?.middle || '35-40h'}) | ▼ 하위({thresholds?.adjustedWeeklyWorkHours?.low || '<35h'})

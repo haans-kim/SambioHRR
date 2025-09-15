@@ -44,7 +44,7 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
           COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
         ) as avgWeeklyWorkHours,
-        -- 주간 추정근태시간 (주간 근태시간과 동일한 계산)
+        -- 주간 근무추정시간 (주간 근태시간과 동일한 계산)
         ROUND(
           SUM(dar.actual_work_hours) / COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,

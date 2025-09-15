@@ -1432,7 +1432,7 @@ export function getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate: string
       ) as avgWeeklyWorkHours,
       -- 데이터 신뢰도 평균
       ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
-      -- 주간 추정근태시간 = DAR 근무시간 (이미 휴가 포함)
+      -- 주간 근무추정시간 = DAR 근무시간 (이미 휴가 포함)
       ROUND(
         SUM(dar.actual_work_hours) /
         COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
@@ -1454,7 +1454,7 @@ export function getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate: string
   const stmt = db.prepare(query);
   const results = stmt.all(
     endDate, startDate,  // 주간 근무시간 계산용
-    endDate, startDate,  // 주간 추정근태시간 계산용
+    endDate, startDate,  // 주간 근무추정시간 계산용
     startDate, endDate   // WHERE절 날짜 조건
   ) as any[];
 
