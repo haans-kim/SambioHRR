@@ -4,6 +4,7 @@ import "./globals.css";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { DevModeProvider } from "@/contexts/DevModeContext";
 import { Sidebar } from "@/components/navigation/Sidebar";
+import { Toaster } from "@/components/ui/toaster";
 import Providers from "./providers";
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,7 @@ export default function RootLayout({
               <main className="ml-56">
                 {children}
               </main>
+              <Toaster />
             </div>
           </DevModeProvider>
         </Providers>
