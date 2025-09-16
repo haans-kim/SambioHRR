@@ -31,10 +31,10 @@ export function CenterTabs({ centers, selectedCenter, onCenterChange, currentCen
             key={center.id}
             onClick={() => onCenterChange(center.id)}
             className={cn(
-              "px-4 py-2 rounded-lg text-sm font-medium transition-all text-center",
+              "px-4 py-2.5 rounded-lg text-base font-semibold transition-all text-center",
               selectedCenter === center.id
                 ? "bg-black text-white shadow-sm"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-gray-100 text-gray-800 hover:bg-gray-200"
             )}
           >
             {center.name}

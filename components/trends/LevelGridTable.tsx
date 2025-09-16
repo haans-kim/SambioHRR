@@ -39,7 +39,7 @@ interface LevelGridTableProps {
 }
 
 export function LevelGridTable({ levelData, companyAverageData, period, centerName }: LevelGridTableProps) {
-  const [selectedMetric, setSelectedMetric] = useState<'claimed' | 'adjusted'>('adjusted');
+  const [selectedMetric, setSelectedMetric] = useState<'claimed' | 'adjusted'>('claimed');
 
 
   // 월 배열 생성
@@ -233,7 +233,7 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
               </div>
             ))}
             <div className="w-24 text-center">
-              <span className="text-sm font-bold text-gray-900">평균</span>
+              <span className="text-sm font-semibold text-gray-900">평균</span>
             </div>
           </div>
 
@@ -242,7 +242,7 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
             <>
               <div className="flex gap-2 mb-2 min-w-[1200px]">
                 <div className="w-20 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-gray-700">전사평균</span>
+                  <span className="text-base font-semibold text-gray-700">전사평균</span>
                 </div>
                 {months.map(month => {
                   const value = calculateCompanyMonthlyAverage(month);
@@ -251,12 +251,12 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                   return (
                     <div key={month} className="flex-1">
                       <div className={cn(
-                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm min-h-[48px] flex items-center justify-center",
+                        "px-2 py-3 rounded-lg border-2 transition-all hover:shadow-sm min-h-[52px] flex items-center justify-center",
                         style.borderColor,
                         style.bgColor
                       )}>
                           {value > 0 ? (
-                            <span className={cn("text-sm font-semibold", style.textColor)}>
+                            <span className={cn("text-base font-semibold", style.textColor)}>
                               {value.toFixed(1)}
                             </span>
                           ) : null}
@@ -265,8 +265,8 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                   );
                 })}
                 <div className="w-24">
-                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100 min-h-[48px] flex items-center justify-center">
-                      <span className="text-sm font-bold text-gray-900">
+                  <div className="px-2 py-3 rounded-lg border-2 border-gray-400 bg-gray-100 min-h-[52px] flex items-center justify-center">
+                      <span className="text-base font-semibold text-gray-900">
                         {companyOverallAverage.toFixed(1)}
                       </span>
                   </div>
@@ -283,7 +283,7 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
             <>
               <div className="flex gap-2 mb-2 min-w-[1200px]">
                 <div className="w-20 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-gray-700">센터평균</span>
+                  <span className="text-base font-semibold text-gray-700">센터평균</span>
                 </div>
                 {months.map(month => {
                   const value = calculateCenterMonthlyAverage(month);
@@ -292,12 +292,12 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                   return (
                     <div key={month} className="flex-1">
                       <div className={cn(
-                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm min-h-[48px] flex items-center justify-center",
+                        "px-2 py-3 rounded-lg border-2 transition-all hover:shadow-sm min-h-[52px] flex items-center justify-center",
                         style.borderColor,
                         style.bgColor
                       )}>
                           {value > 0 ? (
-                            <span className={cn("text-sm font-semibold", style.textColor)}>
+                            <span className={cn("text-base font-semibold", style.textColor)}>
                               {value.toFixed(1)}
                             </span>
                           ) : null}
@@ -306,8 +306,8 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                   );
                 })}
                 <div className="w-24">
-                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100 min-h-[48px] flex items-center justify-center">
-                      <span className="text-sm font-bold text-gray-900">
+                  <div className="px-2 py-3 rounded-lg border-2 border-gray-400 bg-gray-100 min-h-[52px] flex items-center justify-center">
+                      <span className="text-base font-semibold text-gray-900">
                         {centerOverallAverage.toFixed(1)}
                       </span>
                   </div>
@@ -324,7 +324,7 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
             <div key={level.level}>
               <div className="flex gap-2 mb-2 min-w-[1200px]">
                 <div className="w-20 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-gray-700">{level.level}</span>
+                  <span className="text-base font-semibold text-gray-700">{level.level}</span>
                 </div>
                 {months.map(month => {
                   const monthData = level.monthlyData.find(m => m.month === month);
@@ -340,12 +340,12 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                   return (
                     <div key={month} className="flex-1">
                       <div className={cn(
-                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm min-h-[48px] flex items-center justify-center",
+                        "px-2 py-3 rounded-lg border-2 transition-all hover:shadow-sm min-h-[52px] flex items-center justify-center",
                         style.borderColor,
                         style.bgColor
                       )}>
                           {value > 0 ? (
-                            <span className={cn("text-sm font-semibold", style.textColor)}>
+                            <span className={cn("text-base font-semibold", style.textColor)}>
                               {selectedMetric === 'claimed' ? monthData?.weeklyClaimedHours?.toFixed(1) : monthData?.weeklyAdjustedHours?.toFixed(1)}
                             </span>
                           ) : null}
@@ -354,8 +354,8 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                   );
                 })}
                 <div className="w-24">
-                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100 min-h-[48px] flex items-center justify-center">
-                      <span className="text-sm font-bold text-gray-900">
+                  <div className="px-2 py-3 rounded-lg border-2 border-gray-400 bg-gray-100 min-h-[52px] flex items-center justify-center">
+                      <span className="text-base font-semibold text-gray-900">
                         {(selectedMetric === 'claimed'
                           ? level.average.weeklyClaimedHours
                           : level.average.weeklyAdjustedHours
@@ -369,11 +369,11 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
 
           {/* Monthly Bar Charts */}
           <div className="mt-6 pt-4 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700 mb-4">월별 트렌드</h4>
+            <h4 className="text-base font-semibold text-gray-800 mb-4">월별 트렌드</h4>
             <div className="flex gap-2 min-w-[1200px]">
               <div className="w-20 flex flex-col justify-end pb-8">
                 {/* Y-axis labels */}
-                <div className="flex flex-col justify-between h-64 text-xs text-gray-500 text-right pr-2 pt-8">
+                <div className="flex flex-col justify-between h-64 text-xs font-medium text-gray-600 text-right pr-2 pt-8">
                   <span>55h</span>
                   <span>40h</span>
                   <span>25h</span>
@@ -432,7 +432,7 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                                   }}
                                 >
                                   {/* Value label on top of bar */}
-                                  <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-700 whitespace-nowrap z-10">
+                                  <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600 whitespace-nowrap z-10">
                                     {(safeValue).toFixed(0)}
                                   </div>
 
@@ -444,13 +444,13 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                                   </div>
                                 </div>
                                 {/* Level label at bottom */}
-                                <div className="text-[9px] text-gray-600 mt-0.5">
+                                <div className="text-xs font-medium text-gray-700 mt-0.5">
                                   {level.level.replace('Lv.', 'L')}
                                 </div>
                               </>
                             ) : (
                               // 데이터가 없을 때는 레벨 라벨만 표시
-                              <div className="text-[9px] text-gray-400 mt-0.5">
+                              <div className="text-xs font-medium text-gray-400 mt-0.5">
                                 {level.level.replace('Lv.', 'L')}
                               </div>
                             )}
@@ -459,7 +459,7 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                       })}
                     </div>
                     <div className="text-center mt-2">
-                      <span className="text-xs text-gray-500">{month}월</span>
+                      <span className="text-sm font-medium text-gray-700">{month}월</span>
                     </div>
                   </div>
                 );
