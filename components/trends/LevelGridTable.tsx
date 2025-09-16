@@ -152,7 +152,7 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
                   )}>
                     <div className="flex items-center justify-center gap-1">
                       <span className={cn("text-sm font-semibold", style.textColor)}>
-                        {value.toFixed(1)}
+                        {(value ?? 0).toFixed(1)}
                       </span>
                       <Icon className={cn("w-3 h-3", style.iconColor)} />
                     </div>
@@ -200,7 +200,7 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
                       )}>
                         <div className="flex items-center justify-center gap-1">
                           <span className={cn("text-sm font-semibold", style.textColor)}>
-                            {value.toFixed(1)}
+                            {(value ?? 0).toFixed(1)}
                           </span>
                           <Icon className={cn("w-3 h-3", style.iconColor)} />
                         </div>
@@ -262,7 +262,8 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
                         const minValue = 0;
                         const maxValue = 55;
                         const maxHeight = 210; // max height in pixels
-                        const normalizedValue = Math.max(minValue, Math.min(value, maxValue));
+                        const safeValue = value ?? 0;
+                        const normalizedValue = Math.max(minValue, Math.min(safeValue, maxValue));
                         const heightPixels = ((normalizedValue - minValue) / (maxValue - minValue)) * maxHeight;
 
                         // Gray scale colors for each level
@@ -287,13 +288,13 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
                             >
                               {/* Value label on top of bar */}
                               <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-700 whitespace-nowrap z-10">
-                                {value.toFixed(0)}
+                                {(safeValue).toFixed(0)}
                               </div>
 
                               {/* Tooltip on hover */}
                               <div className="absolute bottom-full mb-6 left-1/2 transform -translate-x-1/2 hidden group-hover:block z-10">
                                 <div className="bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
-                                  {level.level}: {value.toFixed(1)}시간
+                                  {level.level}: {(safeValue).toFixed(1)}시간
                                 </div>
                               </div>
                             </div>

@@ -146,8 +146,11 @@ export function getMonthDateRange(monthString?: string): { startDate: string, en
   // "2025-06" 형식을 "2025-06-01" ~ "2025-06-30" 범위로 변환
   const [year, month] = monthString.split('-');
   const startDate = `${year}-${month}-01`;
-  const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0]; // 해당 월의 마지막 날
-  
+  // parseInt(month)는 1월=1, 2월=2... 이지만 Date 생성자는 0-based (1월=0, 2월=1...)
+  // 따라서 parseInt(month) 그대로 사용하면 다음 달의 0일 = 이번 달의 마지막 날
+  const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+  const endDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+
   return { startDate, endDate };
 }
 
