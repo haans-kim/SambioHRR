@@ -33,10 +33,15 @@ export function Sidebar() {
       href: "/enterprise", 
       description: "팀별 편차 모니터링"
     },
-    { 
-      name: "근무 패턴분석", 
-      href: "/insight2", 
+    {
+      name: "근무 패턴분석",
+      href: "/insight2",
       description: "팀별 근무 패턴 클러스터링"
+    },
+    {
+      name: "트렌드 분석",
+      href: "/trends",
+      description: "레벨별 월별 추이"
     }
   ];
 
