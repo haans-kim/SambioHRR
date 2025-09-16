@@ -1313,7 +1313,7 @@ export function getGradeEfficiencyMatrixForPeriod(startDate: string, endDate: st
       'Lv.' || da.job_grade as grade,
       COUNT(DISTINCT da.employee_id) as employeeCount,
       ROUND(
-        MIN(SUM(da.total_actual) / NULLIF(SUM(cc.total_claimed), 0) * 100, 98.0),
+        MIN(SUM(da.total_actual) / NULLIF(SUM(cc.total_claimed), 0), 0.98) * 100,
         1
       ) as avgEfficiency
     FROM dar_actual da

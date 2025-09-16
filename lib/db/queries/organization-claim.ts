@@ -48,6 +48,7 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.center_name = ?
+        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
     `).get(endDate, startDate, startDate, endDate, org.orgName) as any;
 
     // 주간 근무추정시간 - 주간근태시간과 동일한 로직으로 GR 이동시간만 제외
@@ -70,6 +71,7 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
         JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
         WHERE c.근무일 BETWEEN ? AND ?
           AND e.center_name = ?
+          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
         GROUP BY c.사번
         HAVING SUM(
           CASE
@@ -88,32 +90,10 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
       FROM monthly_totals
     `).get(startDate, endDate, org.orgName, endDate, startDate) as any;
 
-    // Claim 기반 효율성 계산 (DAR actual / Claim claimed) - 98% 상한
-    const efficiencyStats = db.prepare(`
-      WITH efficiency_calc AS (
-        SELECT
-          SUM(dar.actual_work_hours) as total_actual,
-          (
-            SELECT SUM(c.실제근무시간)
-            FROM claim_data c
-            JOIN employees e2 ON e2.employee_id = CAST(c.사번 AS TEXT)
-            WHERE c.근무일 BETWEEN ? AND ?
-              AND e2.center_name = ?
-          ) as total_claimed
-        FROM daily_analysis_results dar
-        JOIN employees e ON e.employee_id = dar.employee_id
-        WHERE dar.analysis_date BETWEEN ? AND ?
-          AND e.center_name = ?
-      )
-      SELECT
-        ROUND(
-          MIN(total_actual / NULLIF(total_claimed, 0) * 100, 98.0),
-          1
-        ) as avgWorkEfficiency
-      FROM efficiency_calc
-    `).get(startDate, endDate, org.orgName, startDate, endDate, org.orgName) as any;
-
-    const consistentEfficiency = efficiencyStats?.avgWorkEfficiency || 0;
+    // 효율성 = 주간근무추정시간 / 주간근태시간 (98% 상한)
+    const consistentEfficiency = claimStats?.avgWeeklyClaimedHours > 0 && adjustedStats?.avgAdjustedWeeklyWorkHours
+      ? Math.round(Math.min(adjustedStats.avgAdjustedWeeklyWorkHours / claimStats.avgWeeklyClaimedHours, 0.98) * 100 * 10) / 10
+      : 0;
 
     return {
       ...org,

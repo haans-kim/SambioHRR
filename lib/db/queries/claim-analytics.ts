@@ -79,6 +79,7 @@ export function getCenterWeeklyClaimedHoursFromClaim(centerName: string, startDa
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name = ?
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
       GROUP BY c.사번
       HAVING SUM(
         CASE

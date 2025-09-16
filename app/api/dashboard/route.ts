@@ -23,19 +23,20 @@ import {
   getAvailableMetrics,
   type AnalysisMode
 } from "@/lib/db/queries/analytics";
+import { getGradeEfficiencyMatrixCorrect } from "@/lib/db/queries/efficiency-correct";
+import { getOverallAdjustedWeeklyHours } from "@/lib/db/queries/overall-adjusted-hours";
 import {
   getWeeklyClaimedHoursFromClaim,
   getGradeWeeklyClaimedHoursMatrixFromClaim,
   getTotalEmployeesFromClaim
 } from "@/lib/db/queries/claim-analytics";
-import { calculateAdjustedWorkHours } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
     
-    const cacheKey = `dashboard:v65:month=${selectedMonth || ''}`; // v65: fixed endDate calculation
+    const cacheKey = `dashboard:v66:month=${selectedMonth || ''}`; // v66: correct efficiency calculation
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
@@ -65,19 +66,23 @@ export async function GET(request: NextRequest) {
     // claim_data 기반 정확한 계산
     const claimStats = getWeeklyClaimedHoursFromClaim(startDate, endDate);
     const totalEmployees = claimStats?.totalEmployees || getTotalEmployeesFromClaim(startDate, endDate) || 0;
-    const avgEfficiency = orgStats?.avgEfficiencyRatio || 0;
 
     const avgWeeklyWorkHours = weeklyStats?.avgWeeklyWorkHours || 40.0;
     // claim_data 기반 정확한 주간 근태시간 사용
     const avgWeeklyClaimedHours = claimStats?.avgWeeklyClaimedHours || 38.9;
     const avgDataReliability = dataReliabilityStats?.avgDataReliability || 83.6;
-    // avgWeeklyWorkHours already has flexible work adjustment applied from weeklyStats
-    const avgAdjustedWeeklyWorkHours = avgDataReliability 
-      ? calculateAdjustedWorkHours(avgWeeklyWorkHours, avgDataReliability)
+
+    // 올바른 주간근무추정시간 (claim_data - GR이동시간)
+    const adjustedHoursResult = getOverallAdjustedWeeklyHours(startDate, endDate);
+    const avgAdjustedWeeklyWorkHours = adjustedHoursResult?.avgWeeklyAdjustedHours || 35.0;
+
+    // 효율성 = 주간근무추정시간 / 주간근태시간
+    const avgEfficiency = avgWeeklyClaimedHours > 0
+      ? Math.round(Math.min(avgAdjustedWeeklyWorkHours / avgWeeklyClaimedHours, 0.98) * 100 * 10) / 10
       : 0;
     
-    // Get grade matrices for selected period
-    const gradeMatrix = getGradeEfficiencyMatrixForPeriod(startDate, endDate);
+    // Get grade matrices for selected period - 올바른 효율성 계산 사용
+    const gradeMatrix = getGradeEfficiencyMatrixCorrect(startDate, endDate);
     const weeklyWorkHoursMatrix = getGradeWeeklyWorkHoursMatrixForPeriod(startDate, endDate);
     // claim_data 기반 정확한 레벨별 주간 근태시간 매트릭스 사용
     const weeklyClaimedHoursMatrix = getGradeWeeklyClaimedHoursMatrixFromClaim(startDate, endDate);
