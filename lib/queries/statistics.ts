@@ -350,8 +350,9 @@ export function getCenterTeamDistribution(centerId?: string) {
         t.avg_weekly_adjusted_hours,
         t.avg_efficiency,
         t.avg_reliability,
-        -- 표준편차 계산: 각 직원의 평균 시간과 팀 평균의 차이
-        SQRT(AVG((e.emp_avg_hours * 5 - t.avg_weekly_adjusted_hours) * (e.emp_avg_hours * 5 - t.avg_weekly_adjusted_hours))) as std_dev_hours
+        -- 표준편차 계산: 각 직원의 주간 평균 시간과 팀 평균의 차이
+        -- emp_avg_hours는 일평균이므로 5를 곱해 주간으로 변환
+        SQRT(AVG((e.emp_avg_hours * 5 - t.avg_work_hours * 5) * (e.emp_avg_hours * 5 - t.avg_work_hours * 5))) as std_dev_hours
       FROM team_stats t
       JOIN team_emp_work e ON t.team_name = e.team_name
       GROUP BY t.center_id, t.center_name, t.team_id, t.team_name, t.headcount, t.avg_work_hours, t.avg_weekly_adjusted_hours, t.avg_efficiency, t.avg_reliability
@@ -366,10 +367,10 @@ export function getCenterTeamDistribution(centerId?: string) {
       ROUND(avg_efficiency, 1) as efficiency_rate,
       ROUND(avg_reliability, 1) as data_reliability,
       ROUND(std_dev_hours, 1) as std_dev_hours,
-      ROUND((std_dev_hours / NULLIF(avg_weekly_adjusted_hours, 0)) * 100, 1) as cv_percentage,
-      CASE 
-        WHEN (std_dev_hours / NULLIF(avg_weekly_adjusted_hours, 0)) * 100 < 15 THEN 'balanced'
-        WHEN (std_dev_hours / NULLIF(avg_weekly_adjusted_hours, 0)) * 100 < 25 THEN 'moderate'
+      ROUND((std_dev_hours / NULLIF(avg_work_hours * 5, 0)) * 100, 1) as cv_percentage,
+      CASE
+        WHEN (std_dev_hours / NULLIF(avg_work_hours * 5, 0)) * 100 < 15 THEN 'balanced'
+        WHEN (std_dev_hours / NULLIF(avg_work_hours * 5, 0)) * 100 < 25 THEN 'moderate'
         ELSE 'imbalanced'
       END as balance_status
     FROM team_variance

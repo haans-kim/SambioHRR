@@ -203,28 +203,41 @@ export default function EnterpriseView() {
           <div className="relative h-[600px] bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-300 p-2">
               <svg className="w-full h-full" viewBox="0 0 1200 600">
                 {(() => {
-                  // 실제 데이터 범위 계산
-                  const data = teamDistribution.slice(0, 24);
+                  // 실제 데이터 범위 계산 - CV가 높은 순서대로 정렬 후 상위 24개
+                  const data = [...teamDistribution]
+                    .sort((a, b) => b.cv_percentage - a.cv_percentage)
+                    .slice(0, 24);
+
+                  // 데이터가 없으면 빈 차트 표시
+                  if (data.length === 0) {
+                    return (
+                      <text x="600" y="300" textAnchor="middle" className="text-lg fill-gray-500">
+                        데이터가 없습니다
+                      </text>
+                    );
+                  }
+
                   const minHours = Math.min(...data.map(t => t.avg_weekly_adjusted_hours));
                   const maxHours = Math.max(...data.map(t => t.avg_weekly_adjusted_hours));
                   const minCV = Math.min(...data.map(t => t.cv_percentage));
                   const maxCV = Math.max(...data.map(t => t.cv_percentage));
+
+                  // 축 범위 설정 - X축은 27-42h로 고정, Y축은 동적
+                  const xMin = 27;
+                  const xMax = 42;
+                  const yMin = Math.floor(Math.min(10, minCV - 2));
+                  const yMax = Math.ceil(Math.max(30, maxCV + 2));
                   
-                  // 축 범위 설정 (X: 35-50h 주간, Y: 11-23%)
-                  const xMin = 35;
-                  const xMax = 50;
-                  const yMin = 11;
-                  const yMax = 23;
-                  
-                  // X축 눈금 생성 (2.5시간 간격)
+                  // X축 눈금 생성 (3시간 간격으로 고정: 27, 30, 33, 36, 39, 42)
                   const xTicks = [];
-                  for (let i = xMin; i <= xMax; i += 2.5) {
+                  for (let i = xMin; i <= xMax; i += 3) {
                     xTicks.push(i);
                   }
-                  
-                  // Y축 눈금 생성 (1% 간격)
+
+                  // Y축 눈금 생성 (동적 간격)
                   const yTicks = [];
-                  for (let i = yMin; i <= yMax; i += 1) {
+                  const yInterval = (yMax - yMin) > 20 ? 5 : (yMax - yMin) > 10 ? 2 : 1;
+                  for (let i = yMin; i <= yMax; i += yInterval) {
                     yTicks.push(i);
                   }
                   
@@ -289,11 +302,11 @@ export default function EnterpriseView() {
                         
                         // 버블 크기: 인원수에 따라 조정 (더 크고 뚜렷하게)
                         const radius = Math.min(Math.max(Math.sqrt(team.headcount) * 7, 35), 60); // 최소 35, 최대 60
-                        
-                        // 색상 설정 (진한 색상에 opacity 적용)
-                        const color = index < 5 ? '#ef4444' :     // 상위 5개 빨강 (red-500)
-                                     index >= 20 ? '#22c55e' :    // 하위 4개 초록 (green-500)
-                                     '#eab308';                    // 중간 15개 노랑 (yellow-600)
+
+                        // 순위에 따른 색상 설정: 상위 6개 = 빨강, 중위 12개 = 노랑, 하위 6개 = 초록
+                        const color = index < 6 ? '#ef4444' :      // 1-6위 빨강 (red-500)
+                                     index < 18 ? '#eab308' :       // 7-18위 노랑 (yellow-600)
+                                     '#22c55e';                      // 19-24위 초록 (green-500)
                         
                         return (
                           <g key={team.team_id}>
@@ -354,15 +367,18 @@ export default function EnterpriseView() {
           <p className="text-sm text-gray-600 mt-1">변동계수(CV)가 높은 상위 24개 팀 - 근무 재분배 필요</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 max-w-[90%] mx-auto">
-          {teamDistribution.slice(0, 24).map((team, index) => {
-            // 상위 20% (0-4번째) = 빨간색, 하위 20% (20-23번째) = 초록색, 나머지 = 노란색
-            const colorClass = index < 5 ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-300' :
-                              index >= 20 ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-300' :
-                              'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-300';
-            
-            const shadowClass = index < 5 ? 'hover:shadow-red-200' :
-                               index >= 20 ? 'hover:shadow-green-200' :
-                               'hover:shadow-yellow-200';
+          {teamDistribution
+            .sort((a, b) => b.cv_percentage - a.cv_percentage) // CV가 높은 순서대로 정렬
+            .slice(0, 24)
+            .map((team, index) => {
+            // 순위에 따른 색상 판정: 상위 6개(1-6위) = 빨간색, 중위 12개(7-18위) = 노란색, 하위 6개(19-24위) = 초록색
+            const colorClass = index < 6 ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-300' :
+                              index < 18 ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-300' :
+                              'bg-gradient-to-br from-green-50 to-green-100 border-green-300';
+
+            const shadowClass = index < 6 ? 'hover:shadow-red-200' :
+                               index < 18 ? 'hover:shadow-yellow-200' :
+                               'hover:shadow-green-200';
             
             return (
             <Card key={team.team_id} className={`relative hover:shadow-lg ${shadowClass} transition-all duration-200 h-[234px] border ${colorClass}`}>
