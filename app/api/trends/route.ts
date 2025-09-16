@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCenters } from '@/lib/database/queries';
 import { getGradeWeeklyClaimedHoursMatrixFromClaim } from '@/lib/db/queries/claim-analytics';
+import db from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,10 +23,46 @@ export async function GET(request: NextRequest) {
       const lastDay = new Date(year, month, 0).getDate();
       const endDate = `${year}-${monthStr}-${lastDay}`;
 
-      const result = getGradeWeeklyClaimedHoursMatrixFromClaim(startDate, endDate);
+      // 근태시간 데이터 (claim_data 테이블)
+      const claimedResult = getGradeWeeklyClaimedHoursMatrixFromClaim(startDate, endDate);
+
+      // 근무추정시간 데이터 (daily_analysis_results 테이블)
+      const actualQuery = `
+        SELECT
+          e.center_name as centerName,
+          'Lv.' || e.job_grade as grade,
+          ROUND(
+            SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
+            (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
+          ) as avgWeeklyActualHours
+        FROM daily_analysis_results dar
+        JOIN employees e ON e.employee_id = dar.employee_id
+        WHERE dar.analysis_date BETWEEN ? AND ?
+          AND e.job_grade IS NOT NULL
+          AND e.center_name IS NOT NULL
+          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        GROUP BY e.center_name, e.job_grade
+      `;
+
+      const actualResults = db.prepare(actualQuery).all(endDate, startDate, startDate, endDate) as any[];
+
+      // Transform actual work hours to matrix format
+      const actualMatrix: Record<string, Record<string, number>> = {};
+      actualResults.forEach(row => {
+        if (!actualMatrix[row.grade]) {
+          actualMatrix[row.grade] = {};
+        }
+        actualMatrix[row.grade][row.centerName] = row.avgWeeklyActualHours;
+      });
+
       monthlyResults.push({
         month,
-        data: result
+        claimedData: claimedResult,
+        actualData: {
+          grades: claimedResult.grades,
+          centers: claimedResult.centers,
+          matrix: actualMatrix
+        }
       });
     }
 
@@ -48,17 +85,23 @@ export async function GET(request: NextRequest) {
 
     // 전사평균 계산용 데이터
     const companyAverageData = levels.map(level => {
-      const monthlyData = monthlyResults.map(({ month, data }) => {
-        // 모든 센터의 평균 계산
-        const allCentersData = data.matrix[level] ?
-          Object.values(data.matrix[level]).filter(v => v > 0) : [];
-        const avgValue = allCentersData.length > 0 ?
-          allCentersData.reduce((sum, val) => sum + Number(val), 0) / allCentersData.length : 0;
+      const monthlyData = monthlyResults.map(({ month, claimedData, actualData }) => {
+        // 근태시간 - 모든 센터의 평균
+        const allClaimedData = claimedData.matrix[level] ?
+          Object.values(claimedData.matrix[level]).filter(v => v > 0) : [];
+        const avgClaimed = allClaimedData.length > 0 ?
+          allClaimedData.reduce((sum, val) => sum + Number(val), 0) / allClaimedData.length : 0;
+
+        // 근무추정시간 - 모든 센터의 평균
+        const allActualData = actualData.matrix[level] ?
+          Object.values(actualData.matrix[level]).filter(v => v > 0) : [];
+        const avgActual = allActualData.length > 0 ?
+          allActualData.reduce((sum, val) => sum + Number(val), 0) / allActualData.length : 0;
 
         return {
           month,
-          weeklyClaimedHours: isNaN(avgValue) ? 0 : avgValue,
-          weeklyAdjustedHours: isNaN(avgValue) ? 0 : avgValue,
+          weeklyClaimedHours: isNaN(avgClaimed) ? 0 : avgClaimed,
+          weeklyAdjustedHours: isNaN(avgActual) ? 0 : avgActual,
           employeeCount: 0
         };
       });
@@ -82,24 +125,34 @@ export async function GET(request: NextRequest) {
 
     // 레벨별 월별 데이터 정리 (선택된 센터)
     const levelData = levels.map(level => {
-      const monthlyData = monthlyResults.map(({ month, data }) => {
-        // 선택된 센터의 데이터 가져오기
-        const centerData = centerName && data.matrix[level] ?
-          data.matrix[level][centerName] : 0;
+      const monthlyData = monthlyResults.map(({ month, claimedData, actualData }) => {
+        // 근태시간 - 선택된 센터의 데이터
+        const centerClaimedData = centerName && claimedData.matrix[level] ?
+          claimedData.matrix[level][centerName] : 0;
+
+        // 근무추정시간 - 선택된 센터의 데이터
+        const centerActualData = centerName && actualData.matrix[level] ?
+          actualData.matrix[level][centerName] : 0;
 
         // 전체 센터 평균 계산 (선택된 센터가 없을 경우)
-        const allCentersData = data.matrix[level] ?
-          Object.values(data.matrix[level]).filter(v => v > 0) : [];
-        const avgValue = allCentersData.length > 0 ?
-          allCentersData.reduce((sum, val) => sum + Number(val), 0) / allCentersData.length : 0;
+        const allClaimedData = claimedData.matrix[level] ?
+          Object.values(claimedData.matrix[level]).filter(v => v > 0) : [];
+        const avgClaimed = allClaimedData.length > 0 ?
+          allClaimedData.reduce((sum, val) => sum + Number(val), 0) / allClaimedData.length : 0;
 
-        const value = centerName !== '전체' ? centerData : avgValue;
+        const allActualData = actualData.matrix[level] ?
+          Object.values(actualData.matrix[level]).filter(v => v > 0) : [];
+        const avgActual = allActualData.length > 0 ?
+          allActualData.reduce((sum, val) => sum + Number(val), 0) / allActualData.length : 0;
+
+        const claimedValue = centerName !== '전체' ? centerClaimedData : avgClaimed;
+        const actualValue = centerName !== '전체' ? centerActualData : avgActual;
 
         return {
           month,
-          weeklyClaimedHours: isNaN(value) ? 0 : value, // 실제 근태시간 데이터
-          weeklyAdjustedHours: isNaN(value) ? 0 : value, // 실제 데이터 값 (현재 동일)
-          employeeCount: 0 // 추후 실제 인원수 추가 가능
+          weeklyClaimedHours: isNaN(claimedValue) ? 0 : claimedValue, // 근태시간
+          weeklyAdjustedHours: isNaN(actualValue) ? 0 : actualValue, // 근무추정시간
+          employeeCount: 0
         };
       });
 

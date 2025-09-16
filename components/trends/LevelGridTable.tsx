@@ -41,6 +41,7 @@ interface LevelGridTableProps {
 export function LevelGridTable({ levelData, companyAverageData, period, centerName }: LevelGridTableProps) {
   const [selectedMetric, setSelectedMetric] = useState<'claimed' | 'adjusted'>('adjusted');
 
+
   // 월 배열 생성
   const months = [];
   for (let m = period.startMonth; m <= period.endMonth; m++) {
@@ -233,28 +234,24 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                   return (
                     <div key={month} className="flex-1">
                       <div className={cn(
-                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm",
+                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm min-h-[48px] flex items-center justify-center",
                         style.borderColor,
                         style.bgColor
                       )}>
-                        <div className="flex items-center justify-center">
                           {value > 0 ? (
                             <span className={cn("text-sm font-semibold", style.textColor)}>
                               {value.toFixed(1)}
                             </span>
                           ) : null}
-                        </div>
                       </div>
                     </div>
                   );
                 })}
                 <div className="w-24">
-                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100">
-                    <div className="flex items-center justify-center">
+                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100 min-h-[48px] flex items-center justify-center">
                       <span className="text-sm font-bold text-gray-900">
                         {companyOverallAverage.toFixed(1)}
                       </span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -278,28 +275,24 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                   return (
                     <div key={month} className="flex-1">
                       <div className={cn(
-                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm",
+                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm min-h-[48px] flex items-center justify-center",
                         style.borderColor,
                         style.bgColor
                       )}>
-                        <div className="flex items-center justify-center">
                           {value > 0 ? (
                             <span className={cn("text-sm font-semibold", style.textColor)}>
                               {value.toFixed(1)}
                             </span>
                           ) : null}
-                        </div>
                       </div>
                     </div>
                   );
                 })}
                 <div className="w-24">
-                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100">
-                    <div className="flex items-center justify-center">
+                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100 min-h-[48px] flex items-center justify-center">
                       <span className="text-sm font-bold text-gray-900">
                         {centerOverallAverage.toFixed(1)}
                       </span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -323,36 +316,34 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                         ? monthData.weeklyClaimedHours
                         : monthData.weeklyAdjustedHours)
                     : 0;
+
+
                   const style = getValueStyle(value);
 
                   return (
                     <div key={month} className="flex-1">
                       <div className={cn(
-                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm",
+                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm min-h-[48px] flex items-center justify-center",
                         style.borderColor,
                         style.bgColor
                       )}>
-                        <div className="flex items-center justify-center">
                           {value > 0 ? (
                             <span className={cn("text-sm font-semibold", style.textColor)}>
-                              {value.toFixed(1)}
+                              {selectedMetric === 'claimed' ? monthData?.weeklyClaimedHours?.toFixed(1) : monthData?.weeklyAdjustedHours?.toFixed(1)}
                             </span>
                           ) : null}
-                        </div>
                       </div>
                     </div>
                   );
                 })}
                 <div className="w-24">
-                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100">
-                    <div className="flex items-center justify-center">
+                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100 min-h-[48px] flex items-center justify-center">
                       <span className="text-sm font-bold text-gray-900">
                         {(selectedMetric === 'claimed'
                           ? level.average.weeklyClaimedHours
                           : level.average.weeklyAdjustedHours
                         ).toFixed(1)}
                       </span>
-                    </div>
                   </div>
                 </div>
               </div>
