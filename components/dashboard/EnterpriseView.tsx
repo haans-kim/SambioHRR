@@ -309,7 +309,7 @@ export default function EnterpriseView() {
                                      '#22c55e';                      // 19-24위 초록 (green-500)
                         
                         return (
-                          <g key={team.team_id}>
+                          <g key={`${team.team_id || team.team_name}-${index}`}>
                             {/* 그림자 효과 */}
                             <circle
                               cx={adjustedX + 2}

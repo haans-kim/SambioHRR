@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { precomputeMonthlyStats, precomputeAllMonthlyStats } from '@/lib/db/queries/precompute-stats';
+import { precomputeMonthlyStats, precomputeAllMonthlyStats, precomputeGroupStats } from '@/lib/db/queries/precompute-stats';
 
 /**
  * Admin API to recalculate precomputed statistics
@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       // Single month recalculation
       console.log(`Recalculating stats for ${month}...`);
       precomputeMonthlyStats(month);
+      precomputeGroupStats(month);
 
       const endTime = Date.now();
       return NextResponse.json({

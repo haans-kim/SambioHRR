@@ -234,6 +234,99 @@ export function precomputeMonthlyStats(month: string) {
 }
 
 /**
+ * 그룹별 통계를 미리 계산하여 저장
+ */
+export function precomputeGroupStats(month: string) {
+  const startDate = `${month}-01`;
+  const endDate = `${month}-31`;
+
+  // 그룹 통계 테이블 생성 (없으면)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS monthly_group_stats (
+      month TEXT,
+      group_name TEXT,
+      center_name TEXT,
+      team_name TEXT,
+      total_employees INTEGER,
+      total_records INTEGER,
+      weekly_claimed_hours REAL,
+      weekly_work_hours REAL,
+      efficiency REAL,
+      confidence_score REAL,
+      work_minutes REAL,
+      meeting_minutes REAL,
+      meal_minutes REAL,
+      movement_minutes REAL,
+      rest_minutes REAL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (month, group_name)
+    )
+  `).run();
+
+  // 기존 데이터 삭제
+  const deleteOldGroupStats = db.prepare('DELETE FROM monthly_group_stats WHERE month = ?');
+
+  // 그룹별 통계 계산 및 저장
+  const insertGroupStats = db.prepare(`
+    INSERT INTO monthly_group_stats (
+      month, group_name, center_name, team_name,
+      total_employees, total_records,
+      weekly_claimed_hours, weekly_work_hours,
+      efficiency, confidence_score,
+      work_minutes, meeting_minutes, meal_minutes,
+      movement_minutes, rest_minutes
+    )
+    SELECT
+      ?,
+      dar.group_name,
+      dar.center_name,
+      dar.team_name,
+      COUNT(DISTINCT dar.employee_id),
+      COUNT(*),
+      ROUND(
+        SUM(dar.claimed_work_hours) /
+        COUNT(DISTINCT dar.employee_id) /
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
+        1
+      ),
+      ROUND(
+        SUM(dar.actual_work_hours) /
+        COUNT(DISTINCT dar.employee_id) /
+        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
+        1
+      ),
+      ROUND(AVG(CASE
+        WHEN dar.claimed_work_hours > 0
+        THEN MIN((dar.actual_work_hours / dar.claimed_work_hours) * 100, 98)
+        ELSE 0
+      END), 1),
+      ROUND(AVG(dar.confidence_score), 1),
+      ROUND(AVG(dar.work_minutes), 1),
+      ROUND(AVG(dar.meeting_minutes), 1),
+      ROUND(AVG(dar.meal_minutes), 1),
+      ROUND(AVG(dar.movement_minutes), 1),
+      ROUND(AVG(dar.rest_minutes), 1)
+    FROM daily_analysis_results dar
+    WHERE dar.analysis_date BETWEEN ? AND ?
+      AND dar.group_name IS NOT NULL
+      AND dar.group_name != ''
+    GROUP BY dar.group_name, dar.center_name, dar.team_name
+  `);
+
+  const transaction = db.transaction(() => {
+    deleteOldGroupStats.run(month);
+    insertGroupStats.run(
+      month,
+      endDate, startDate, // JULIANDAY for weekly_claimed_hours
+      endDate, startDate, // JULIANDAY for weekly_work_hours
+      startDate, endDate  // WHERE clause
+    );
+  });
+
+  transaction();
+}
+
+/**
  * 모든 월의 통계를 미리 계산
  */
 export function precomputeAllMonthlyStats() {
@@ -244,6 +337,7 @@ export function precomputeAllMonthlyStats() {
   months.forEach(month => {
     console.log(`Computing stats for ${month}...`);
     precomputeMonthlyStats(month);
+    precomputeGroupStats(month);
   });
 }
 
@@ -252,7 +346,17 @@ export function precomputeAllMonthlyStats() {
  */
 export function getPrecomputedStats(month: string) {
   const overall = db.prepare('SELECT * FROM monthly_overall_stats WHERE month = ?').get(month);
-  const centers = db.prepare('SELECT * FROM monthly_center_stats WHERE month = ?').all(month);
+  const centers = db.prepare(`
+    SELECT DISTINCT
+      mcs.*,
+      om.org_code,
+      (SELECT COUNT(*) FROM organization_master WHERE parent_org_code = om.org_code) as children_count
+    FROM monthly_center_stats mcs
+    LEFT JOIN organization_master om ON om.org_name = mcs.center_name
+      AND om.org_level = 'center'
+      AND om.is_active = 1
+    WHERE mcs.month = ?
+  `).all(month);
   const grades = db.prepare('SELECT * FROM monthly_grade_stats WHERE month = ?').all(month);
 
   return {
@@ -261,4 +365,16 @@ export function getPrecomputedStats(month: string) {
     grades,
     isPrecomputed: !!overall
   };
+}
+
+/**
+ * 사전 계산된 그룹 통계 가져오기
+ */
+export function getPrecomputedGroupStats(month: string, groupName: string) {
+  const groupStats = db.prepare(`
+    SELECT * FROM monthly_group_stats
+    WHERE month = ? AND group_name = ?
+  `).get(month, groupName);
+
+  return groupStats;
 }

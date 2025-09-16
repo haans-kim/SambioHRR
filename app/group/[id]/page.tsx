@@ -96,13 +96,15 @@ export default function GroupStatsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`/api/group-stats/${groupId}?month=${selectedMonth}`);
+        // 먼저 fast API를 시도
+        const response = await fetch(`/api/group-stats-fast/${groupId}?month=${selectedMonth}`);
         if (!response.ok) throw new Error('Failed to fetch');
         const statsData = await response.json();
         console.log('Fetched stats for', groupId, ':', {
           totalEmployees: statsData.summary?.totalEmployees,
           totalRecords: statsData.summary?.totalRecords,
-          avgEfficiency: statsData.summary?.avgEfficiency
+          avgEfficiency: statsData.summary?.avgEfficiency,
+          isPrecomputed: statsData.isPrecomputed
         });
         setData(statsData);
       } catch (error) {

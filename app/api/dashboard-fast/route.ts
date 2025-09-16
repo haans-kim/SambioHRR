@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month'); // "2025-06" 형식
 
-    const cacheKey = `dashboard-fast:v2:month=${selectedMonth || ''}`;
+    const cacheKey = `dashboard-fast:v5:month=${selectedMonth || ''}`;
     const cached = getFromCache<any>(cacheKey);
     if (cached) {
       return new NextResponse(JSON.stringify(cached), {
@@ -34,30 +34,11 @@ export async function GET(request: NextRequest) {
 
     // 센터별 데이터 변환
     const centers = stats.centers.map((center: any, index: number) => {
-      // 한글과 영문, 숫자를 모두 포함하여 orgCode 생성
-      let orgCode = center.center_name ?
-        center.center_name
-          .replace(/센터$/g, '') // "센터" 제거
-          .replace(/연구소$/g, 'lab') // "연구소" -> "lab"
-          .replace(/개발/g, 'dev') // "개발" -> "dev"
-          .replace(/경영지원/g, 'mgmt') // "경영지원" -> "mgmt"
-          .replace(/영업/g, 'sales') // "영업" -> "sales"
-          .replace(/바이오/g, 'bio') // "바이오" -> "bio"
-          .replace(/전략기획/g, 'strategy') // "전략기획" -> "strategy"
-          .replace(/품질관리/g, 'qa') // "품질관리" -> "qa"
-          .replace(/[^a-z0-9]/gi, '') // 나머지 특수문자 제거
-          .toLowerCase()
-        : `center_${index}`;
-
-      // 빈 문자열이 되면 인덱스 사용
-      if (!orgCode) {
-        orgCode = `center_${index}`;
-      }
-
       return {
-        orgCode,
+        orgCode: center.org_code || `CENTER_${index}`,
         orgName: center.center_name,
         orgLevel: 'center',
+        childrenCount: center.children_count || 0,
         stats: {
         totalEmployees: center.total_employees,
         avgWorkEfficiency: center.efficiency,
