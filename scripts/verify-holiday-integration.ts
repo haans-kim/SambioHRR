@@ -21,10 +21,10 @@ function formatComparison(results: ComparisonResult[]) {
   console.log('\n=== 휴일 반영 전후 비교 분석 ===\n');
   console.table(results.map(r => ({
     '지표': r.metric,
-    '수정 전': r.before.toFixed(1),
-    '수정 후': r.after.toFixed(1),
-    '차이': r.difference > 0 ? `+${r.difference.toFixed(1)}` : r.difference.toFixed(1),
-    '변화율': r.percentChange > 0 ? `+${r.percentChange.toFixed(1)}%` : `${r.percentChange.toFixed(1)}%`
+    '수정 전': r.before ? r.before.toFixed(1) : 'N/A',
+    '수정 후': r.after ? r.after.toFixed(1) : 'N/A',
+    '차이': r.difference ? (r.difference > 0 ? `+${r.difference.toFixed(1)}` : r.difference.toFixed(1)) : 'N/A',
+    '변화율': r.percentChange ? (r.percentChange > 0 ? `+${r.percentChange.toFixed(1)}%` : `${r.percentChange.toFixed(1)}%`) : 'N/A'
   })));
 }
 

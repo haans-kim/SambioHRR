@@ -25,6 +25,7 @@ export function getWeeklyClaimedHoursFromClaim(startDate: string, endDate: strin
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
       GROUP BY c.사번
       HAVING SUM(
         CASE
@@ -132,6 +133,7 @@ export function getGradeWeeklyClaimedHoursMatrixFromClaim(startDate: string, end
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
         AND c.employee_level IS NOT NULL
       GROUP BY c.사번, c.employee_level, e.center_name
       HAVING SUM(
@@ -212,6 +214,7 @@ export function getTotalEmployeesFromClaim(startDate: string, endDate: string) {
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
       GROUP BY c.사번
       HAVING SUM(
         CASE
