@@ -79,10 +79,16 @@ interface MetricIndicatorProps {
   metricType: MetricType;
   thresholds?: { low: number; high: number };
   onClick?: () => void;
+  isAverage?: boolean;
 }
 
-function MetricIndicator({ value, label, metricType, thresholds, onClick }: MetricIndicatorProps) {
+function MetricIndicator({ value, label, metricType, thresholds, onClick, isAverage = false }: MetricIndicatorProps) {
   const getStatusIcon = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
+    // Average cards don't show icons
+    if (isAverage) {
+      return "";
+    }
+
     if (!thresholds || typeof thresholds.low !== 'number' || typeof thresholds.high !== 'number') {
       // thresholds가 없거나 불완전하면 아이콘 표시하지 않음
       return "";
@@ -125,6 +131,11 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
   };
 
   const getBorderColor = (value: number, metricType: MetricType, thresholds?: { low: number; high: number }) => {
+    // Average cards always get gray color
+    if (isAverage) {
+      return "border-gray-400 bg-gray-100";
+    }
+
     if (!thresholds) {
       // Fallback to hardcoded values if thresholds are not available
       if (metricType === 'efficiency') {
@@ -180,16 +191,16 @@ function MetricIndicator({ value, label, metricType, thresholds, onClick }: Metr
   };
 
   return (
-    <div 
+    <div
       className={cn(
-        "flex items-center justify-center gap-1 p-3 rounded-lg border transition-all w-full min-w-[100px]",
+        "flex items-center justify-center gap-1 px-1.5 py-2.5 rounded-lg border transition-all w-full",
         onClick && "cursor-pointer hover:shadow-md hover:scale-105",
         getBorderColor(value, metricType, thresholds)
       )}
       onClick={onClick}
     >
       <span className="text-base font-medium">{formatValue(value, metricType)}</span>
-      <span className={cn(getIconStyle(value, metricType, thresholds), getIconColor(value, metricType, thresholds))}>
+      <span className={cn("text-base", getIconColor(value, metricType, thresholds))}>
         {getStatusIcon(value, metricType, thresholds)}
       </span>
     </div>
@@ -245,23 +256,24 @@ export function CenterLevelGrid({
       <h2 className="text-xl font-semibold mb-4">전체 현황</h2>
       
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1400px]">
+        <table className="w-full">
           <thead>
             <tr>
-              <th className="text-center p-2 text-base font-medium text-gray-600">구분</th>
+              <th className="text-center p-2 text-base font-semibold text-gray-600 w-[90px]">구분</th>
               {centers.map(center => (
-                <th key={center.orgCode} className="text-center p-2 text-base font-medium text-gray-600 min-w-[100px]">
+                <th key={center.orgCode} className="text-center p-2 text-sm font-medium text-gray-600">
                   <TextAnimate delay={0.1}>
-                    {center.orgName}
+                    <span className="text-base font-semibold">{center.orgName}</span>
                   </TextAnimate>
                 </th>
               ))}
+              <th className="text-center p-2 text-base font-semibold text-gray-600 min-w-[100px]">평균</th>
             </tr>
           </thead>
           <tbody>
             {/* Center Average Row */}
             <tr key="center-avg" className="border-t-2 border-gray-400">
-              <td className="p-2 font-medium text-gray-700 text-base bg-gray-50 whitespace-nowrap min-w-[100px] text-center">센터평균</td>
+              <td className="p-2 font-semibold text-gray-700 text-base bg-gray-50 whitespace-nowrap text-center">센터평균</td>
               {centers.map((center) => {
                 let value: number;
                 
@@ -342,12 +354,44 @@ export function CenterLevelGrid({
                   </td>
                 );
               })}
+              {/* 센터평균 평균 열 */}
+              <td className="p-2 bg-gray-50">
+                {(() => {
+                  const validValues = centers.map(c => {
+                    if (selectedMetric === 'efficiency') return c.stats?.avgWorkEfficiency || 0;
+                    else if (selectedMetric === 'workHours') return c.stats?.avgActualWorkHoursAdjusted || c.stats?.avgActualWorkHours || 0;
+                    else if (selectedMetric === 'claimedHours') return c.stats?.avgAttendanceHoursAdjusted || c.stats?.avgAttendanceHours || 0;
+                    else if (selectedMetric === 'weeklyWorkHours') return c.stats?.avgWeeklyWorkHoursAdjusted || c.stats?.avgWeeklyWorkHours || 0;
+                    else if (selectedMetric === 'weeklyClaimedHours') return c.stats?.avgWeeklyClaimedHoursAdjusted || c.stats?.avgWeeklyClaimedHours || 0;
+                    else if (selectedMetric === 'adjustedWeeklyWorkHours') return c.stats?.avgAdjustedWeeklyWorkHours || 0;
+                    else if (selectedMetric === 'focusedWorkHours') return c.stats?.avgFocusedWorkHours || 0;
+                    else return 0;
+                  }).filter(v => v > 0);
+
+                  const avg = validValues.length > 0
+                    ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length
+                    : 0;
+
+                  // 평균값을 위한 특별한 thresholds 설정 (회색 표시용)
+                  const avgThresholds = { low: avg - 1, high: avg + 1 };
+
+                  return (
+                    <MetricIndicator
+                      value={avg}
+                      label=""
+                      metricType={selectedMetric}
+                      thresholds={avgThresholds}
+                      isAverage={true}
+                    />
+                  );
+                })()}
+              </td>
             </tr>
             
             {/* Grade Level Rows */}
             {levels.map((level, levelIndex) => (
               <tr key={level} className={levelIndex === 0 ? "border-t-2 border-gray-400" : "border-t border-gray-200"}>
-                <td className="p-2 font-medium text-gray-700 text-base whitespace-nowrap min-w-[100px] text-center">{level}</td>
+                <td className="p-2 font-semibold text-gray-700 text-base whitespace-nowrap text-center">{level}</td>
                 {centers.map((center) => {
                   let value: number;
                   
@@ -424,7 +468,7 @@ export function CenterLevelGrid({
                   }
 
                   return (
-                    <td key={`${level}-${center.orgCode}`} className="p-2 w-[160px]">
+                    <td key={`${level}-${center.orgCode}`} className="p-2">
                       <MetricIndicator
                         value={value}
                         label=""
@@ -435,6 +479,63 @@ export function CenterLevelGrid({
                     </td>
                   );
                 })}
+                {/* 레벨별 평균 열 */}
+                <td className="p-2">
+                  {(() => {
+                    const levelValues = centers.map(center => {
+                      let value = 0;
+
+                      if (selectedMetric === 'efficiency') {
+                        if (gradeMatrix?.matrix[level]?.[center.orgName]) {
+                          value = gradeMatrix.matrix[level][center.orgName];
+                        }
+                      } else if (selectedMetric === 'workHours') {
+                        if (workHoursMatrix?.matrix[level]?.[center.orgName]) {
+                          value = workHoursMatrix.matrix[level][center.orgName];
+                        }
+                      } else if (selectedMetric === 'claimedHours') {
+                        if (claimedHoursMatrix?.matrix[level]?.[center.orgName]) {
+                          value = claimedHoursMatrix.matrix[level][center.orgName];
+                        }
+                      } else if (selectedMetric === 'weeklyWorkHours') {
+                        if (weeklyWorkHoursMatrix?.matrix[level]?.[center.orgName]) {
+                          value = weeklyWorkHoursMatrix.matrix[level][center.orgName];
+                        }
+                      } else if (selectedMetric === 'weeklyClaimedHours') {
+                        if (weeklyClaimedHoursMatrix?.matrix[level]?.[center.orgName]) {
+                          value = weeklyClaimedHoursMatrix.matrix[level][center.orgName];
+                        }
+                      } else if (selectedMetric === 'adjustedWeeklyWorkHours') {
+                        if (adjustedWeeklyWorkHoursMatrix?.matrix[level]?.[center.orgName]) {
+                          value = adjustedWeeklyWorkHoursMatrix.matrix[level][center.orgName];
+                        }
+                      } else if (selectedMetric === 'focusedWorkHours') {
+                        if (focusedWorkHoursMatrix?.matrix[level]?.[center.orgName]) {
+                          value = focusedWorkHoursMatrix.matrix[level][center.orgName];
+                        }
+                      }
+
+                      return value;
+                    }).filter(v => v > 0);
+
+                    const avg = levelValues.length > 0
+                      ? levelValues.reduce((sum, val) => sum + val, 0) / levelValues.length
+                      : 0;
+
+                    // 평균값을 위한 특별한 thresholds 설정 (회색 표시용)
+                    const avgThresholds = { low: avg - 1, high: avg + 1 };
+
+                    return (
+                      <MetricIndicator
+                        value={avg}
+                        label=""
+                        metricType={selectedMetric}
+                        thresholds={avgThresholds}
+                        isAverage={true}
+                      />
+                    );
+                  })()}
+                </td>
               </tr>
             ))}
           </tbody>
