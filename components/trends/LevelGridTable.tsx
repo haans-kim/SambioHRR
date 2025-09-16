@@ -100,14 +100,22 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
         const value = calculateCompanyMonthlyAverage(month);
         if (value > 0) values.push(value);
       });
+
+      // 전사 전체 평균도 추가
+      if (companyOverallAverage > 0) {
+        values.push(companyOverallAverage);
+      }
     }
 
-    // 센터평균 데이터
-    if (centerName) {
-      months.forEach(month => {
-        const value = calculateCenterMonthlyAverage(month);
-        if (value > 0) values.push(value);
-      });
+    // 센터평균 데이터 (항상 포함 - 레벨별 데이터의 평균이므로)
+    months.forEach(month => {
+      const value = calculateCenterMonthlyAverage(month);
+      if (value > 0) values.push(value);
+    });
+
+    // 센터 전체 평균도 추가
+    if (centerOverallAverage > 0) {
+      values.push(centerOverallAverage);
     }
 
     // 레벨별 데이터
@@ -118,6 +126,12 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
           : monthData.weeklyAdjustedHours;
         if (value > 0) values.push(value);
       });
+
+      // 각 레벨의 평균값도 추가
+      const avgValue = selectedMetric === 'claimed'
+        ? level.average.weeklyClaimedHours
+        : level.average.weeklyAdjustedHours;
+      if (avgValue > 0) values.push(avgValue);
     });
 
     return values.sort((a, b) => a - b);
@@ -135,6 +149,9 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
     }
 
     const allValues = getAllVisibleValues();
+    console.log('getAllVisibleValues result:', allValues);
+    console.log('Current value:', value, 'Values count:', allValues.length);
+
     if (allValues.length === 0) {
       return {
         borderColor: 'border-gray-200',

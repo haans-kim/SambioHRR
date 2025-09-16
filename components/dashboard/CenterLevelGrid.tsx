@@ -217,7 +217,7 @@ export function CenterLevelGrid({
   adjustedWeeklyWorkHoursMatrix,
   focusedWorkHoursMatrix,
   dataReliabilityMatrix,
-  avgEfficiency = 88, 
+  avgEfficiency = 88,
   avgWorkHours = 8.2,
   avgClaimedHours = 8.5,
   avgWeeklyWorkHours = 40.0,
@@ -230,18 +230,68 @@ export function CenterLevelGrid({
   thresholds
 }: CenterLevelGridProps) {
   const router = useRouter();
-  
+
   // Use grade levels from matrix if available, otherwise default (high to low)
   // Filter out Special group
   const levelsFromMatrix = gradeMatrix?.grades || ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
   const levels = levelsFromMatrix.filter(level => level !== 'Special');
-  
+
   // Use actual center names from database
   const centers = organizations.filter(org => org.orgLevel === 'center');
-  
-  // Debug: Check if 경영진단팀 is in the centers array
-  console.log('Centers from organizations:', centers.map(c => c.orgName));
-  console.log('Centers from gradeMatrix:', gradeMatrix?.centers);
+
+  // 현재 화면에 표시된 모든 값을 수집하여 동적 임계값 계산
+  const calculateDynamicThresholds = () => {
+    const values: number[] = [];
+
+    // 선택된 메트릭의 매트릭스 가져오기
+    let currentMatrix: any = null;
+    if (selectedMetric === 'efficiency') currentMatrix = gradeMatrix;
+    else if (selectedMetric === 'workHours') currentMatrix = workHoursMatrix;
+    else if (selectedMetric === 'claimedHours') currentMatrix = claimedHoursMatrix;
+    else if (selectedMetric === 'weeklyWorkHours') currentMatrix = weeklyWorkHoursMatrix;
+    else if (selectedMetric === 'weeklyClaimedHours') currentMatrix = weeklyClaimedHoursMatrix;
+    else if (selectedMetric === 'adjustedWeeklyWorkHours') currentMatrix = adjustedWeeklyWorkHoursMatrix;
+    else if (selectedMetric === 'focusedWorkHours') currentMatrix = focusedWorkHoursMatrix;
+    else if (selectedMetric === 'dataReliability') currentMatrix = dataReliabilityMatrix;
+
+    // 센터 평균 값 수집
+    centers.forEach(center => {
+      let value = 0;
+      if (selectedMetric === 'efficiency') value = center.stats?.avgWorkEfficiency || 0;
+      else if (selectedMetric === 'workHours') value = center.stats?.avgActualWorkHoursAdjusted || center.stats?.avgActualWorkHours || 0;
+      else if (selectedMetric === 'claimedHours') value = center.stats?.avgAttendanceHoursAdjusted || center.stats?.avgAttendanceHours || 0;
+      else if (selectedMetric === 'weeklyWorkHours') value = center.stats?.avgWeeklyWorkHoursAdjusted || center.stats?.avgWeeklyWorkHours || 0;
+      else if (selectedMetric === 'weeklyClaimedHours') value = center.stats?.avgWeeklyClaimedHoursAdjusted || center.stats?.avgWeeklyClaimedHours || 0;
+      else if (selectedMetric === 'adjustedWeeklyWorkHours') value = center.stats?.avgAdjustedWeeklyWorkHours || 0;
+      else if (selectedMetric === 'focusedWorkHours') value = center.stats?.avgFocusedWorkHours || 0;
+      else if (selectedMetric === 'dataReliability') value = 0; // 임시 숨김
+
+      if (value > 0) values.push(value);
+    });
+
+    // 레벨별 데이터 값 수집
+    if (currentMatrix?.matrix) {
+      levels.forEach(level => {
+        centers.forEach(center => {
+          const value = currentMatrix.matrix[level]?.[center.orgName] || 0;
+          if (value > 0) values.push(value);
+        });
+      });
+    }
+
+    // 값을 정렬하여 백분위수 계산
+    values.sort((a, b) => a - b);
+
+    if (values.length === 0) return null;
+
+    // 20%, 80% 백분위수 계산
+    const percentile20 = values[Math.floor(values.length * 0.2)];
+    const percentile80 = values[Math.floor(values.length * 0.8)];
+
+    return { low: percentile20, high: percentile80 };
+  };
+
+  const dynamicThresholds = calculateDynamicThresholds();
   
   const handleCellClick = (center: OrganizationWithStats) => {
     // Check if center has divisions (담당)
@@ -344,11 +394,11 @@ export function CenterLevelGrid({
                 
                 return (
                   <td key={`center-avg-${center.orgCode}`} className="p-2 bg-gray-50">
-                    <MetricIndicator 
-                      value={value} 
+                    <MetricIndicator
+                      value={value}
                       label=""
                       metricType={selectedMetric}
-                      thresholds={customThresholds}
+                      thresholds={dynamicThresholds || customThresholds}
                       onClick={() => handleCellClick(center)}
                     />
                   </td>
@@ -473,7 +523,7 @@ export function CenterLevelGrid({
                         value={value}
                         label=""
                         metricType={selectedMetric}
-                        thresholds={metricThresholds}
+                        thresholds={dynamicThresholds || metricThresholds}
                         onClick={() => handleCellClick(center)}
                       />
                     </td>
