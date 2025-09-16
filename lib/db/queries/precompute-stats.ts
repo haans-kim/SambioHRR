@@ -1,0 +1,264 @@
+import db from '../client';
+
+/**
+ * 특정 월의 통계를 미리 계산하여 저장
+ */
+export function precomputeMonthlyStats(month: string) {
+  const startDate = `${month}-01`;
+  const endDate = `${month}-31`; // SQLite will handle month-end correctly
+
+  // 트랜잭션 시작
+  const deleteOldStats = db.prepare('DELETE FROM monthly_center_stats WHERE month = ?');
+  const deleteOldGradeStats = db.prepare('DELETE FROM monthly_grade_stats WHERE month = ?');
+  const deleteOldOverallStats = db.prepare('DELETE FROM monthly_overall_stats WHERE month = ?');
+
+  // 센터별 통계 계산 및 저장
+  const insertCenterStats = db.prepare(`
+    INSERT INTO monthly_center_stats (month, center_name, total_employees, weekly_claimed_hours, weekly_adjusted_hours, efficiency, data_reliability)
+    WITH claimed AS (
+      SELECT
+        e.center_name,
+        COUNT(DISTINCT c.사번) as total_employees,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) as total_claimed
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+      GROUP BY e.center_name
+    ),
+    adjusted AS (
+      SELECT
+        e.center_name,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END - COALESCE(dar.movement_minutes / 60.0, 0)
+        ) as total_adjusted
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      LEFT JOIN daily_analysis_results dar
+        ON dar.employee_id = CAST(c.사번 AS TEXT)
+        AND DATE(dar.analysis_date) = DATE(c.근무일)
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+      GROUP BY e.center_name
+    ),
+    reliability AS (
+      SELECT
+        e.center_name,
+        ROUND(AVG(dar.confidence_score), 1) as avg_reliability
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+      GROUP BY e.center_name
+    )
+    SELECT
+      ?,
+      c.center_name,
+      c.total_employees,
+      ROUND(c.total_claimed / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1),
+      r.avg_reliability
+    FROM claimed c
+    LEFT JOIN adjusted a ON c.center_name = a.center_name
+    LEFT JOIN reliability r ON c.center_name = r.center_name
+  `);
+
+  // 등급별 통계 계산 및 저장
+  const insertGradeStats = db.prepare(`
+    INSERT INTO monthly_grade_stats (month, center_name, grade_level, total_employees, weekly_claimed_hours, weekly_adjusted_hours, efficiency)
+    WITH claimed AS (
+      SELECT
+        e.center_name,
+        c.employee_level as grade_level,
+        COUNT(DISTINCT c.사번) as total_employees,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) as total_claimed
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        AND c.employee_level IS NOT NULL
+      GROUP BY e.center_name, c.employee_level
+    ),
+    adjusted AS (
+      SELECT
+        e.center_name,
+        c.employee_level as grade_level,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END - COALESCE(dar.movement_minutes / 60.0, 0)
+        ) as total_adjusted
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      LEFT JOIN daily_analysis_results dar
+        ON dar.employee_id = CAST(c.사번 AS TEXT)
+        AND DATE(dar.analysis_date) = DATE(c.근무일)
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        AND c.employee_level IS NOT NULL
+      GROUP BY e.center_name, c.employee_level
+    )
+    SELECT
+      ?,
+      c.center_name,
+      c.grade_level,
+      c.total_employees,
+      ROUND(c.total_claimed / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1)
+    FROM claimed c
+    LEFT JOIN adjusted a ON c.center_name = a.center_name AND c.grade_level = a.grade_level
+  `);
+
+  // 전체 통계 계산 및 저장
+  const insertOverallStats = db.prepare(`
+    INSERT INTO monthly_overall_stats (month, total_employees, avg_weekly_claimed_hours, avg_weekly_adjusted_hours, avg_efficiency, avg_data_reliability)
+    WITH claimed AS (
+      SELECT
+        COUNT(DISTINCT c.사번) as total_employees,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) as total_claimed
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+    ),
+    adjusted AS (
+      SELECT
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END - COALESCE(dar.movement_minutes / 60.0, 0)
+        ) as total_adjusted
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      LEFT JOIN daily_analysis_results dar
+        ON dar.employee_id = CAST(c.사번 AS TEXT)
+        AND DATE(dar.analysis_date) = DATE(c.근무일)
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+    ),
+    reliability AS (
+      SELECT
+        ROUND(AVG(dar.confidence_score), 1) as avg_reliability
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+    )
+    SELECT
+      ?,
+      c.total_employees,
+      ROUND(c.total_claimed / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1),
+      r.avg_reliability
+    FROM claimed c, adjusted a, reliability r
+  `);
+
+  const transaction = db.transaction(() => {
+    // 기존 데이터 삭제
+    deleteOldStats.run(month);
+    deleteOldGradeStats.run(month);
+    deleteOldOverallStats.run(month);
+
+    // 새 데이터 삽입
+    insertCenterStats.run(
+      startDate, endDate, // claimed
+      startDate, endDate, // adjusted
+      startDate, endDate, // reliability
+      month,
+      endDate, startDate, // JULIANDAY for weekly_claimed
+      endDate, startDate  // JULIANDAY for weekly_adjusted
+    );
+
+    insertGradeStats.run(
+      startDate, endDate, // claimed
+      startDate, endDate, // adjusted
+      month,
+      endDate, startDate, // JULIANDAY for weekly_claimed
+      endDate, startDate  // JULIANDAY for weekly_adjusted
+    );
+
+    insertOverallStats.run(
+      startDate, endDate, // claimed
+      startDate, endDate, // adjusted
+      startDate, endDate, // reliability
+      month,
+      endDate, startDate, // JULIANDAY for weekly_claimed
+      endDate, startDate  // JULIANDAY for weekly_adjusted
+    );
+  });
+
+  transaction();
+}
+
+/**
+ * 모든 월의 통계를 미리 계산
+ */
+export function precomputeAllMonthlyStats() {
+  const months = [
+    '2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06'
+  ];
+
+  months.forEach(month => {
+    console.log(`Computing stats for ${month}...`);
+    precomputeMonthlyStats(month);
+  });
+}
+
+/**
+ * 사전 계산된 통계 가져오기
+ */
+export function getPrecomputedStats(month: string) {
+  const overall = db.prepare('SELECT * FROM monthly_overall_stats WHERE month = ?').get(month);
+  const centers = db.prepare('SELECT * FROM monthly_center_stats WHERE month = ?').all(month);
+  const grades = db.prepare('SELECT * FROM monthly_grade_stats WHERE month = ?').all(month);
+
+  return {
+    overall,
+    centers,
+    grades,
+    isPrecomputed: !!overall
+  };
+}

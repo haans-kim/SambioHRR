@@ -87,7 +87,7 @@ export default function HomePage() {
           month: selectedMonth
         });
 
-        const response = await fetch(`/api/dashboard?${params}`, {
+        const response = await fetch(`/api/dashboard-fast?${params}`, {
           cache: 'no-cache',
           headers: {
             'Cache-Control': 'no-cache',

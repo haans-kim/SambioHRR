@@ -35,7 +35,11 @@
       "Read(//var/folders/cg/hnykq8n5159dxh1w7lmpmcsc0000gn/T/TemporaryItems/NSIRD_screencaptureui_KitZFV/**)",
       "Bash(pip3 install:*)",
       "Bash(python3:*)",
-      "Read(//var/folders/cg/hnykq8n5159dxh1w7lmpmcsc0000gn/T/TemporaryItems/NSIRD_screencaptureui_sutqy3/**)"
+      "Read(//var/folders/cg/hnykq8n5159dxh1w7lmpmcsc0000gn/T/TemporaryItems/NSIRD_screencaptureui_sutqy3/**)",
+      "Bash(time curl:*)",
+      "Bash(for month in 2025-01 2025-03 2025-05)",
+      "Bash(do)",
+      "Bash(echo \"Month: $month\")"
     ],
     "deny": []
   }

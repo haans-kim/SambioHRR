@@ -310,8 +310,8 @@ export function CenterLevelGrid({
           <thead>
             <tr>
               <th className="text-center p-2 text-base font-semibold text-gray-600 w-[90px]">구분</th>
-              {centers.map(center => (
-                <th key={center.orgCode} className="text-center p-2 text-sm font-medium text-gray-600">
+              {centers.map((center, index) => (
+                <th key={center.orgCode || `center-${index}`} className="text-center p-2 text-sm font-medium text-gray-600">
                   <TextAnimate delay={0.1}>
                     <span className="text-base font-semibold">{center.orgName}</span>
                   </TextAnimate>
@@ -324,7 +324,7 @@ export function CenterLevelGrid({
             {/* Center Average Row */}
             <tr key="center-avg" className="border-t-2 border-gray-400">
               <td className="p-2 font-semibold text-gray-700 text-base bg-gray-50 whitespace-nowrap text-center">센터평균</td>
-              {centers.map((center) => {
+              {centers.map((center, centerIndex) => {
                 let value: number;
                 
                 // Calculate center average based on selected metric
@@ -393,7 +393,7 @@ export function CenterLevelGrid({
                 }
                 
                 return (
-                  <td key={`center-avg-${center.orgCode}`} className="p-2 bg-gray-50">
+                  <td key={`center-avg-${center.orgCode || centerIndex}`} className="p-2 bg-gray-50">
                     <MetricIndicator
                       value={value}
                       label=""
