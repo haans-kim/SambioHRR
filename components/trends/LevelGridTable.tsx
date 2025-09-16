@@ -89,8 +89,41 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
     sum + (selectedMetric === 'claimed' ? l.average.weeklyClaimedHours : l.average.weeklyAdjustedHours), 0
   ) / levelData.length;
 
-  // 값에 따른 색상 결정
-  const getValueStyle = (value: number, baseValue: number = 42) => {
+  // 현재 화면에 표시된 모든 데이터 값들 수집
+  const getAllVisibleValues = () => {
+    const values: number[] = [];
+
+    // 전사평균 데이터
+    if (companyAverageData) {
+      months.forEach(month => {
+        const value = calculateCompanyMonthlyAverage(month);
+        if (value > 0) values.push(value);
+      });
+    }
+
+    // 센터평균 데이터
+    if (centerName) {
+      months.forEach(month => {
+        const value = calculateCenterMonthlyAverage(month);
+        if (value > 0) values.push(value);
+      });
+    }
+
+    // 레벨별 데이터
+    levelData.forEach(level => {
+      level.monthlyData.forEach(monthData => {
+        const value = selectedMetric === 'claimed'
+          ? monthData.weeklyClaimedHours
+          : monthData.weeklyAdjustedHours;
+        if (value > 0) values.push(value);
+      });
+    });
+
+    return values.sort((a, b) => a - b);
+  };
+
+  // 값에 따른 색상 결정 (상위 20%, 하위 20% 기준)
+  const getValueStyle = (value: number) => {
     // 데이터가 없는 경우 (0 또는 NaN)
     if (!value || value === 0) {
       return {
@@ -100,25 +133,39 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
       };
     }
 
-    const diff = value - baseValue;
-
-    if (Math.abs(diff) < 0.5) {
+    const allValues = getAllVisibleValues();
+    if (allValues.length === 0) {
       return {
-        borderColor: 'border-green-300',
-        bgColor: 'bg-green-50',
-        textColor: 'text-green-700'
+        borderColor: 'border-gray-200',
+        bgColor: 'bg-white',
+        textColor: 'text-gray-400'
       };
-    } else if (diff > 0) {
+    }
+
+    // 상위 20%, 하위 20% 경계값 계산
+    const percentile20 = allValues[Math.floor(allValues.length * 0.2)];
+    const percentile80 = allValues[Math.floor(allValues.length * 0.8)];
+
+    if (value >= percentile80) {
+      // 상위 20%
       return {
         borderColor: 'border-red-300',
         bgColor: 'bg-red-50',
         textColor: 'text-red-700'
       };
-    } else {
+    } else if (value <= percentile20) {
+      // 하위 20%
       return {
         borderColor: 'border-blue-300',
         bgColor: 'bg-blue-50',
         textColor: 'text-blue-700'
+      };
+    } else {
+      // 중위 60%
+      return {
+        borderColor: 'border-green-300',
+        bgColor: 'bg-green-50',
+        textColor: 'text-green-700'
       };
     }
   };
@@ -419,15 +466,15 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-red-300 rounded"></div>
-                <span>상위(&gt;42.5시간)</span>
+                <span>상위 20%</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-green-300 rounded"></div>
-                <span>중위(41.5~42.5시간)</span>
+                <span>중위 60%</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-blue-300 rounded"></div>
-                <span>하위(&lt;41.5시간)</span>
+                <span>하위 20%</span>
               </div>
             </div>
             <span>* 주간 근무시간은 일평균을 주 5일 기준으로 환산한 값입니다</span>
