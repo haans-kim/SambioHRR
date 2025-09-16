@@ -36,7 +36,7 @@ export function getGradeEfficiencyMatrixCorrect(startDate: string, endDate: stri
       ) > 0
     ),
     adjusted_hours AS (
-      -- 주간근무추정시간: claim_data - GR이동시간
+      -- 주간근무추정시간: claim_data - (GR이동시간 * 0.5)
       SELECT
         c.employee_level as grade_level,
         e.center_name,
@@ -45,7 +45,7 @@ export function getGradeEfficiencyMatrixCorrect(startDate: string, endDate: stri
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
             ELSE c.실제근무시간
-          END - COALESCE(dar.movement_minutes / 60.0, 0)
+          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
         ) as total_adjusted_hours
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
@@ -135,14 +135,14 @@ export function getCenterEfficiencyCorrect(centerName: string, startDate: string
       HAVING total_claimed > 0
     ),
     adjusted_hours AS (
-      -- 주간근무추정시간
+      -- 주간근무추정시간: claim_data - (GR이동시간 * 0.5)
       SELECT
         SUM(
           CASE
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
             ELSE c.실제근무시간
-          END - COALESCE(dar.movement_minutes / 60.0, 0)
+          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
         ) as total_adjusted
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date

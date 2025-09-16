@@ -42,7 +42,7 @@ export function precomputeMonthlyStats(month: string) {
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
             ELSE c.실제근무시간
-          END - COALESCE(dar.movement_minutes / 60.0, 0)
+          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
         ) as total_adjusted
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
@@ -112,7 +112,7 @@ export function precomputeMonthlyStats(month: string) {
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
             ELSE c.실제근무시간
-          END - COALESCE(dar.movement_minutes / 60.0, 0)
+          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
         ) as total_adjusted
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
@@ -165,7 +165,7 @@ export function precomputeMonthlyStats(month: string) {
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
             ELSE c.실제근무시간
-          END - COALESCE(dar.movement_minutes / 60.0, 0)
+          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
         ) as total_adjusted
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
