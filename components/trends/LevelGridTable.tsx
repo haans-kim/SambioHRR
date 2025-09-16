@@ -2,10 +2,22 @@
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface LevelGridTableProps {
   levelData: {
+    level: string;
+    monthlyData: {
+      month: number;
+      weeklyClaimedHours: number;
+      weeklyAdjustedHours: number;
+      employeeCount: number;
+    }[];
+    average: {
+      weeklyClaimedHours: number;
+      weeklyAdjustedHours: number;
+    };
+  }[];
+  companyAverageData?: {
     level: string;
     monthlyData: {
       month: number;
@@ -23,9 +35,10 @@ interface LevelGridTableProps {
     startMonth: number;
     endMonth: number;
   };
+  centerName?: string;
 }
 
-export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
+export function LevelGridTable({ levelData, companyAverageData, period, centerName }: LevelGridTableProps) {
   const [selectedMetric, setSelectedMetric] = useState<'claimed' | 'adjusted'>('adjusted');
 
   // 월 배열 생성
@@ -34,8 +47,31 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
     months.push(m);
   }
 
-  // 전사 평균 계산
-  const calculateMonthlyAverage = (month: number) => {
+  // 전사 평균 계산 (모든 센터의 평균)
+  const calculateCompanyMonthlyAverage = (month: number) => {
+    if (!companyAverageData || companyAverageData.length === 0) return 0;
+
+    const monthData = companyAverageData
+      .map(l => l.monthlyData.find(m => m.month === month))
+      .filter(Boolean);
+
+    if (monthData.length === 0) return 0;
+
+    const sum = monthData.reduce((acc, d) =>
+      acc + (selectedMetric === 'claimed' ? d!.weeklyClaimedHours : d!.weeklyAdjustedHours), 0
+    );
+    return sum / monthData.length;
+  };
+
+  // 전사 전체 평균
+  const companyOverallAverage = companyAverageData && companyAverageData.length > 0
+    ? companyAverageData.reduce((sum, l) =>
+        sum + (selectedMetric === 'claimed' ? l.average.weeklyClaimedHours : l.average.weeklyAdjustedHours), 0
+      ) / companyAverageData.length
+    : 0;
+
+  // 센터 평균 계산 (레벨별 평균)
+  const calculateCenterMonthlyAverage = (month: number) => {
     const monthData = levelData
       .map(l => l.monthlyData.find(m => m.month === month))
       .filter(Boolean);
@@ -48,38 +84,41 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
     return sum / monthData.length;
   };
 
-  // 전체 평균
-  const overallAverage = levelData.reduce((sum, l) =>
+  // 센터 전체 평균
+  const centerOverallAverage = levelData.reduce((sum, l) =>
     sum + (selectedMetric === 'claimed' ? l.average.weeklyClaimedHours : l.average.weeklyAdjustedHours), 0
   ) / levelData.length;
 
-  // 값에 따른 색상과 아이콘 결정
+  // 값에 따른 색상 결정
   const getValueStyle = (value: number, baseValue: number = 42) => {
+    // 데이터가 없는 경우 (0 또는 NaN)
+    if (!value || value === 0) {
+      return {
+        borderColor: 'border-gray-200',
+        bgColor: 'bg-white',
+        textColor: 'text-gray-400'
+      };
+    }
+
     const diff = value - baseValue;
 
     if (Math.abs(diff) < 0.5) {
       return {
         borderColor: 'border-green-300',
         bgColor: 'bg-green-50',
-        textColor: 'text-green-700',
-        icon: Minus,
-        iconColor: 'text-green-600'
+        textColor: 'text-green-700'
       };
     } else if (diff > 0) {
       return {
         borderColor: 'border-red-300',
         bgColor: 'bg-red-50',
-        textColor: 'text-red-700',
-        icon: TrendingUp,
-        iconColor: 'text-red-600'
+        textColor: 'text-red-700'
       };
     } else {
       return {
         borderColor: 'border-blue-300',
         bgColor: 'bg-blue-50',
-        textColor: 'text-blue-700',
-        icon: TrendingDown,
-        iconColor: 'text-blue-600'
+        textColor: 'text-blue-700'
       };
     }
   };
@@ -95,7 +134,7 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
               className={cn(
                 "px-3 py-1 rounded-lg text-sm font-medium transition-all",
                 selectedMetric === 'claimed'
-                  ? "bg-blue-100 text-blue-700"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
             >
@@ -106,7 +145,7 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
               className={cn(
                 "px-3 py-1 rounded-lg text-sm font-medium transition-all",
                 selectedMetric === 'adjusted'
-                  ? "bg-blue-100 text-blue-700"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-600 hover:bg-gray-100"
               )}
             >
@@ -133,46 +172,95 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
             </div>
           </div>
 
-          {/* 전사 평균 Row and Bar Charts */}
-          <div className="flex gap-2 mb-4 min-w-[1200px]">
-            <div className="w-20 flex items-center justify-center">
-              <span className="text-sm font-semibold text-gray-700">전사평균</span>
-            </div>
-            {months.map(month => {
-              const value = calculateMonthlyAverage(month);
-              const style = getValueStyle(value);
-              const Icon = style.icon;
+          {/* 전사 평균 Row */}
+          {companyAverageData && (
+            <>
+              <div className="flex gap-2 mb-2 min-w-[1200px]">
+                <div className="w-20 flex items-center justify-center">
+                  <span className="text-sm font-semibold text-gray-700">전사평균</span>
+                </div>
+                {months.map(month => {
+                  const value = calculateCompanyMonthlyAverage(month);
+                  const style = getValueStyle(value);
 
-              return (
-                <div key={month} className="flex-1">
-                  <div className={cn(
-                    "px-2 py-3 rounded-lg border transition-all hover:shadow-sm",
-                    style.borderColor,
-                    style.bgColor
-                  )}>
-                    <div className="flex items-center justify-center gap-1">
-                      <span className={cn("text-sm font-semibold", style.textColor)}>
-                        {(value ?? 0).toFixed(1)}
+                  return (
+                    <div key={month} className="flex-1">
+                      <div className={cn(
+                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm",
+                        style.borderColor,
+                        style.bgColor
+                      )}>
+                        <div className="flex items-center justify-center">
+                          {value > 0 ? (
+                            <span className={cn("text-sm font-semibold", style.textColor)}>
+                              {value.toFixed(1)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="w-24">
+                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100">
+                    <div className="flex items-center justify-center">
+                      <span className="text-sm font-bold text-gray-900">
+                        {companyOverallAverage.toFixed(1)}
                       </span>
-                      <Icon className={cn("w-3 h-3", style.iconColor)} />
                     </div>
                   </div>
                 </div>
-              );
-            })}
-            <div className="w-24">
-              <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100">
-                <div className="flex items-center justify-center">
-                  <span className="text-sm font-bold text-gray-900">
-                    {overallAverage.toFixed(1)}
-                  </span>
+              </div>
+
+              {/* Divider between 전사평균 and 센터평균 */}
+              <div className="my-3 border-t border-gray-300"></div>
+            </>
+          )}
+
+          {/* 센터 평균 Row */}
+          {centerName && (
+            <>
+              <div className="flex gap-2 mb-2 min-w-[1200px]">
+                <div className="w-20 flex items-center justify-center">
+                  <span className="text-sm font-semibold text-gray-700">센터평균</span>
+                </div>
+                {months.map(month => {
+                  const value = calculateCenterMonthlyAverage(month);
+                  const style = getValueStyle(value);
+
+                  return (
+                    <div key={month} className="flex-1">
+                      <div className={cn(
+                        "px-2 py-3 rounded-lg border transition-all hover:shadow-sm",
+                        style.borderColor,
+                        style.bgColor
+                      )}>
+                        <div className="flex items-center justify-center">
+                          {value > 0 ? (
+                            <span className={cn("text-sm font-semibold", style.textColor)}>
+                              {value.toFixed(1)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="w-24">
+                  <div className="px-2 py-3 rounded-lg border border-gray-400 bg-gray-100">
+                    <div className="flex items-center justify-center">
+                      <span className="text-sm font-bold text-gray-900">
+                        {centerOverallAverage.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Divider between 전사평균 and Level rows */}
-          <div className="my-3 border-t border-gray-300"></div>
+              {/* Divider between 센터평균 and Level rows */}
+              <div className="my-3 border-t border-gray-300"></div>
+            </>
+          )}
 
           {/* Level Rows */}
           {levelData.map((level, levelIndex) => (
@@ -189,7 +277,6 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
                         : monthData.weeklyAdjustedHours)
                     : 0;
                   const style = getValueStyle(value);
-                  const Icon = style.icon;
 
                   return (
                     <div key={month} className="flex-1">
@@ -198,11 +285,12 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
                         style.borderColor,
                         style.bgColor
                       )}>
-                        <div className="flex items-center justify-center gap-1">
-                          <span className={cn("text-sm font-semibold", style.textColor)}>
-                            {(value ?? 0).toFixed(1)}
-                          </span>
-                          <Icon className={cn("w-3 h-3", style.iconColor)} />
+                        <div className="flex items-center justify-center">
+                          {value > 0 ? (
+                            <span className={cn("text-sm font-semibold", style.textColor)}>
+                              {value.toFixed(1)}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -277,31 +365,40 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
 
                         return (
                           <div key={level.level} className="relative group flex-1 flex flex-col items-center justify-end">
-                            <div
-                              className={cn(
-                                "w-5 transition-all rounded-t relative",
-                                bgColor
-                              )}
-                              style={{
-                                height: `${Math.max(heightPixels, 20)}px`
-                              }}
-                            >
-                              {/* Value label on top of bar */}
-                              <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-700 whitespace-nowrap z-10">
-                                {(safeValue).toFixed(0)}
-                              </div>
+                            {safeValue > 0 ? (
+                              <>
+                                <div
+                                  className={cn(
+                                    "w-5 transition-all rounded-t relative",
+                                    bgColor
+                                  )}
+                                  style={{
+                                    height: `${Math.max(heightPixels, 20)}px`
+                                  }}
+                                >
+                                  {/* Value label on top of bar */}
+                                  <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-700 whitespace-nowrap z-10">
+                                    {(safeValue).toFixed(0)}
+                                  </div>
 
-                              {/* Tooltip on hover */}
-                              <div className="absolute bottom-full mb-6 left-1/2 transform -translate-x-1/2 hidden group-hover:block z-10">
-                                <div className="bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
-                                  {level.level}: {(safeValue).toFixed(1)}시간
+                                  {/* Tooltip on hover */}
+                                  <div className="absolute bottom-full mb-6 left-1/2 transform -translate-x-1/2 hidden group-hover:block z-10">
+                                    <div className="bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
+                                      {level.level}: {(safeValue).toFixed(1)}시간
+                                    </div>
+                                  </div>
                                 </div>
+                                {/* Level label at bottom */}
+                                <div className="text-[9px] text-gray-600 mt-0.5">
+                                  {level.level.replace('Lv.', 'L')}
+                                </div>
+                              </>
+                            ) : (
+                              // 데이터가 없을 때는 레벨 라벨만 표시
+                              <div className="text-[9px] text-gray-400 mt-0.5">
+                                {level.level.replace('Lv.', 'L')}
                               </div>
-                            </div>
-                            {/* Level label at bottom */}
-                            <div className="text-[9px] text-gray-600 mt-0.5">
-                              {level.level.replace('Lv.', 'L')}
-                            </div>
+                            )}
                           </div>
                         );
                       })}
@@ -321,16 +418,16 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
           <div className="flex items-center justify-between text-xs text-gray-500">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-red-600" />
-                <span>상위(≥43시간)</span>
+                <div className="w-3 h-3 bg-red-300 rounded"></div>
+                <span>상위(&gt;42.5시간)</span>
               </div>
               <div className="flex items-center gap-1">
-                <Minus className="w-3 h-3 text-green-600" />
-                <span>중위(41.5-43시간)</span>
+                <div className="w-3 h-3 bg-green-300 rounded"></div>
+                <span>중위(41.5~42.5시간)</span>
               </div>
               <div className="flex items-center gap-1">
-                <TrendingDown className="w-3 h-3 text-blue-600" />
-                <span>하위(≤41.5시간)</span>
+                <div className="w-3 h-3 bg-blue-300 rounded"></div>
+                <span>하위(&lt;41.5시간)</span>
               </div>
             </div>
             <span>* 주간 근무시간은 일평균을 주 5일 기준으로 환산한 값입니다</span>

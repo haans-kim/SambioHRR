@@ -43,8 +43,44 @@ export async function GET(request: NextRequest) {
     const selectedCenter = center ? centersFromDB.find(c => c.code === center) : null;
     const centerName = selectedCenter ? selectedCenter.name : availableCenters[0]?.name || '전체';
 
-    // 레벨별 월별 데이터 정리
+    // 레벨 정의
     const levels = ['Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
+
+    // 전사평균 계산용 데이터
+    const companyAverageData = levels.map(level => {
+      const monthlyData = monthlyResults.map(({ month, data }) => {
+        // 모든 센터의 평균 계산
+        const allCentersData = data.matrix[level] ?
+          Object.values(data.matrix[level]).filter(v => v > 0) : [];
+        const avgValue = allCentersData.length > 0 ?
+          allCentersData.reduce((sum, val) => sum + Number(val), 0) / allCentersData.length : 0;
+
+        return {
+          month,
+          weeklyClaimedHours: isNaN(avgValue) ? 0 : avgValue,
+          weeklyAdjustedHours: isNaN(avgValue) ? 0 : avgValue,
+          employeeCount: 0
+        };
+      });
+
+      // 평균 계산
+      const validData = monthlyData.filter(d => d.weeklyAdjustedHours > 0);
+      const avgClaimed = validData.length > 0 ?
+        validData.reduce((sum, d) => sum + d.weeklyClaimedHours, 0) / validData.length : 0;
+      const avgAdjusted = validData.length > 0 ?
+        validData.reduce((sum, d) => sum + d.weeklyAdjustedHours, 0) / validData.length : 0;
+
+      return {
+        level,
+        monthlyData,
+        average: {
+          weeklyClaimedHours: isNaN(avgClaimed) ? 0 : Math.round(avgClaimed * 10) / 10,
+          weeklyAdjustedHours: isNaN(avgAdjusted) ? 0 : Math.round(avgAdjusted * 10) / 10
+        }
+      };
+    });
+
+    // 레벨별 월별 데이터 정리 (선택된 센터)
     const levelData = levels.map(level => {
       const monthlyData = monthlyResults.map(({ month, data }) => {
         // 선택된 센터의 데이터 가져오기
@@ -61,8 +97,8 @@ export async function GET(request: NextRequest) {
 
         return {
           month,
-          weeklyClaimedHours: value, // 실제 근태시간 데이터
-          weeklyAdjustedHours: value, // 실제 데이터 값 (현재 동일)
+          weeklyClaimedHours: isNaN(value) ? 0 : value, // 실제 근태시간 데이터
+          weeklyAdjustedHours: isNaN(value) ? 0 : value, // 실제 데이터 값 (현재 동일)
           employeeCount: 0 // 추후 실제 인원수 추가 가능
         };
       });
@@ -78,8 +114,8 @@ export async function GET(request: NextRequest) {
         level,
         monthlyData,
         average: {
-          weeklyClaimedHours: Math.round(avgClaimed * 10) / 10,
-          weeklyAdjustedHours: Math.round(avgAdjusted * 10) / 10
+          weeklyClaimedHours: isNaN(avgClaimed) ? 0 : Math.round(avgClaimed * 10) / 10,
+          weeklyAdjustedHours: isNaN(avgAdjusted) ? 0 : Math.round(avgAdjusted * 10) / 10
         }
       };
     });
@@ -98,6 +134,7 @@ export async function GET(request: NextRequest) {
         endMonth
       },
       levelData,
+      companyAverageData,  // 전사평균 데이터 추가
       summary: {
         totalEmployees,
         avgWeeklyClaimedHours,

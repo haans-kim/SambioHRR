@@ -24,7 +24,9 @@ export function TrendDashboard({ data, selectedCenter, onCenterChange }: TrendDa
       {/* 레벨별 월별 통계 그리드 */}
       <LevelGridTable
         levelData={data.levelData}
+        companyAverageData={data.companyAverageData}
         period={data.period}
+        centerName={data.centerName}
       />
     </div>
   );
