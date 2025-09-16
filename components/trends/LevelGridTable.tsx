@@ -230,7 +230,7 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
             <div className="flex gap-2 min-w-[1200px]">
               <div className="w-20 flex flex-col justify-end pb-8">
                 {/* Y-axis labels */}
-                <div className="flex flex-col justify-between h-48 text-xs text-gray-500 text-right pr-2">
+                <div className="flex flex-col justify-between h-64 text-xs text-gray-500 text-right pr-2 pt-8">
                   <span>55h</span>
                   <span>40h</span>
                   <span>25h</span>
@@ -240,9 +240,9 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
               {months.map(month => {
                 return (
                   <div key={month} className="flex-1">
-                    <div className="h-48 bg-gray-50 border border-gray-200 rounded-lg flex items-end gap-0.5 justify-center px-1 pb-1 relative">
+                    <div className="h-64 bg-gray-50 border border-gray-200 rounded-lg flex items-end gap-0.5 justify-center px-1 pb-1 pt-8 relative">
                       {/* Grid lines */}
-                      <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                      <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pt-8 pb-1">
                         <div className="border-b border-gray-200 opacity-30"></div>
                         <div className="border-b border-gray-200 opacity-30"></div>
                         <div className="border-b border-gray-200 opacity-30"></div>
@@ -258,10 +258,10 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
                           : 0;
 
                         // Calculate height in pixels for better visibility
-                        // Map 0-55 hour range to 0-180px height
+                        // Map 0-55 hour range to 0-210px height (increased from 180)
                         const minValue = 0;
                         const maxValue = 55;
-                        const maxHeight = 180; // max height in pixels
+                        const maxHeight = 210; // max height in pixels
                         const normalizedValue = Math.max(minValue, Math.min(value, maxValue));
                         const heightPixels = ((normalizedValue - minValue) / (maxValue - minValue)) * maxHeight;
 
@@ -286,7 +286,7 @@ export function LevelGridTable({ levelData, period }: LevelGridTableProps) {
                               }}
                             >
                               {/* Value label on top of bar */}
-                              <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-[10px] font-medium text-gray-700 whitespace-nowrap">
+                              <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-700 whitespace-nowrap z-10">
                                 {value.toFixed(0)}
                               </div>
 
