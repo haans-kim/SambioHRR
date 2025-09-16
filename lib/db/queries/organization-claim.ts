@@ -32,35 +32,88 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
     const darStats = db.prepare(`
       SELECT
         COUNT(DISTINCT dar.employee_id) as totalEmployees,
+        ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
         ROUND(
           SUM(dar.actual_work_hours) / NULLIF(SUM(dar.claimed_work_hours), 0) * 100,
           1
         ) as avgWorkEfficiency,
-        ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
         ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
         -- 주간 근무시간 (non-zero employees 기준)
         ROUND(
           SUM(dar.actual_work_hours) /
           COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
           (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyWorkHours,
-        -- 주간 근무추정시간 (주간 근태시간과 동일한 계산)
-        ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
-          1
-        ) as avgAdjustedWeeklyWorkHours
+        ) as avgWeeklyWorkHours
       FROM daily_analysis_results dar
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.center_name = ?
-    `).get(endDate, startDate, endDate, startDate, startDate, endDate, org.orgName) as any;
+    `).get(endDate, startDate, startDate, endDate, org.orgName) as any;
 
-    // Calculate efficiency using consistent sources
-    // If we show claim_data hours and DAR actual hours, efficiency should be DAR actual / claim hours
-    const consistentEfficiency = (claimStats?.totalHours && darStats?.avgWeeklyWorkHours && claimStats?.avgWeeklyClaimedHours)
-      ? Math.round((darStats.avgWeeklyWorkHours / claimStats.avgWeeklyClaimedHours) * 100 * 10) / 10
-      : darStats?.avgWorkEfficiency || 0;
+    // 주간 근무추정시간 - 주간근태시간과 동일한 로직으로 GR 이동시간만 제외
+    const adjustedStats = db.prepare(`
+      WITH monthly_totals AS (
+        SELECT
+          c.사번,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END - COALESCE(dar.movement_minutes / 60.0, 0)
+          ) as month_adjusted_hours
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN daily_analysis_results dar
+          ON dar.employee_id = CAST(c.사번 AS TEXT)
+          AND DATE(dar.analysis_date) = DATE(c.근무일)
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.center_name = ?
+        GROUP BY c.사번
+        HAVING SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) > 0
+      )
+      SELECT
+        ROUND(
+          SUM(month_adjusted_hours) / COUNT(DISTINCT 사번) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
+          1
+        ) as avgAdjustedWeeklyWorkHours
+      FROM monthly_totals
+    `).get(startDate, endDate, org.orgName, endDate, startDate) as any;
+
+    // Claim 기반 효율성 계산 (DAR actual / Claim claimed) - 98% 상한
+    const efficiencyStats = db.prepare(`
+      WITH efficiency_calc AS (
+        SELECT
+          SUM(dar.actual_work_hours) as total_actual,
+          (
+            SELECT SUM(c.실제근무시간)
+            FROM claim_data c
+            JOIN employees e2 ON e2.employee_id = CAST(c.사번 AS TEXT)
+            WHERE c.근무일 BETWEEN ? AND ?
+              AND e2.center_name = ?
+          ) as total_claimed
+        FROM daily_analysis_results dar
+        JOIN employees e ON e.employee_id = dar.employee_id
+        WHERE dar.analysis_date BETWEEN ? AND ?
+          AND e.center_name = ?
+      )
+      SELECT
+        ROUND(
+          MIN(total_actual / NULLIF(total_claimed, 0) * 100, 98.0),
+          1
+        ) as avgWorkEfficiency
+      FROM efficiency_calc
+    `).get(startDate, endDate, org.orgName, startDate, endDate, org.orgName) as any;
+
+    const consistentEfficiency = efficiencyStats?.avgWorkEfficiency || 0;
 
     return {
       ...org,
@@ -75,8 +128,8 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
         // daily_analysis_results 기반 주간 근무시간
         avgWeeklyWorkHours: darStats?.avgWeeklyWorkHours || 0,
         avgWeeklyWorkHoursAdjusted: darStats?.avgWeeklyWorkHours || 0,
-        // AI 보정된 주간 근무시간
-        avgAdjustedWeeklyWorkHours: darStats?.avgAdjustedWeeklyWorkHours || 0,
+        // AI 보정된 주간 근무추정시간 (Claim - GR이동)
+        avgAdjustedWeeklyWorkHours: adjustedStats?.avgAdjustedWeeklyWorkHours || 0,
         // 기타 필드들은 필요시 추가
         manDays: 0,
         avgActualWorkHours: 0,

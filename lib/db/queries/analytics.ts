@@ -440,36 +440,40 @@ export function getOrganizationFocusedStats30Days() {
 export function getOrganizationStatsForPeriod(startDate: string, endDate: string) {
   
   const query = `
-    WITH adjusted_efficiency AS (
-      SELECT 
-        dar.employee_id,
-        dar.actual_work_hours / dar.claimed_work_hours * 100 as ai_adjusted_efficiency,
-        dar.actual_work_hours,
-        dar.claimed_work_hours,
-        dar.confidence_score
+    WITH total_stats AS (
+      SELECT
+        SUM(dar.actual_work_hours) as total_actual,
+        SUM(dar.claimed_work_hours) as total_claimed_dar,
+        (
+          SELECT SUM(c.실제근무시간)
+          FROM claim_data c
+          JOIN employees e2 ON e2.employee_id = CAST(c.사번 AS TEXT)
+          WHERE c.근무일 BETWEEN ? AND ?
+            AND e2.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        ) as total_claimed_claim,
+        COUNT(DISTINCT dar.employee_id) as totalEmployees,
+        AVG(dar.confidence_score) as avgConfidenceScore
       FROM daily_analysis_results dar
       LEFT JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND (e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문') OR e.center_name IS NULL)
         AND dar.actual_work_hours IS NOT NULL
-        AND dar.claimed_work_hours IS NOT NULL
-        AND dar.confidence_score IS NOT NULL
     )
-    SELECT 
-      COUNT(DISTINCT employee_id) as totalEmployees,
-      ROUND(AVG(ai_adjusted_efficiency), 1) as avgEfficiencyRatio,
-      ROUND(AVG(actual_work_hours), 1) as avgActualWorkHours,
-      ROUND(AVG(claimed_work_hours), 1) as avgClaimedHours,
-      ROUND(AVG(confidence_score), 1) as avgConfidenceScore,
-      SUM(CASE WHEN ai_adjusted_efficiency >= 90 THEN 1 ELSE 0 END) as efficiency90Plus,
-      SUM(CASE WHEN ai_adjusted_efficiency >= 80 AND ai_adjusted_efficiency < 90 THEN 1 ELSE 0 END) as efficiency80To90,
-      SUM(CASE WHEN ai_adjusted_efficiency >= 70 AND ai_adjusted_efficiency < 80 THEN 1 ELSE 0 END) as efficiency70To80,
-      SUM(CASE WHEN ai_adjusted_efficiency < 70 THEN 1 ELSE 0 END) as efficiencyBelow70
-    FROM adjusted_efficiency
+    SELECT
+      totalEmployees,
+      ROUND(MIN(total_actual / NULLIF(total_claimed_claim, 0) * 100, 98.0), 1) as avgEfficiencyRatio,
+      ROUND(total_actual / totalEmployees / 22, 1) as avgActualWorkHours,
+      ROUND(total_claimed_claim / totalEmployees / 22, 1) as avgClaimedHours,
+      ROUND(avgConfidenceScore, 1) as avgConfidenceScore,
+      0 as efficiency90Plus,
+      0 as efficiency80To90,
+      0 as efficiency70To80,
+      0 as efficiencyBelow70
+    FROM total_stats
   `;
-  
+
   const stmt = db.prepare(query);
-  return stmt.get(startDate, endDate) as {
+  return stmt.get(startDate, endDate, startDate, endDate) as {
     totalEmployees: number;
     avgEfficiencyRatio: number;
     avgActualWorkHours: number;
@@ -910,7 +914,7 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'weeklyCla
       column = 'confidence_score';
       break;
     case 'adjustedWeeklyWorkHours':
-      column = 'actual_work_hours';
+      column = 'ground_rules_work_hours';  // Use Ground Rules hours instead of actual
       isWeekly = true;
       break;
   }
@@ -943,25 +947,50 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'weeklyCla
       ORDER BY avgValue ASC
     `;
   } else if (metricType === 'adjustedWeeklyWorkHours') {
-    // For adjustedWeeklyWorkHours, calculate with natural averaging and AI adjustment
+    // 주간 근태시간과 동일한 로직으로 GR 이동시간만 제외
     dataQuery = `
-      SELECT 
-        e.center_name as centerName,
-        'Lv.' || e.job_grade as grade,
+      WITH monthly_totals AS (
+        SELECT
+          c.사번,
+          e.center_name,
+          e.job_grade,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END - COALESCE(dar.movement_minutes / 60.0, 0)
+          ) as month_adjusted_hours
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN daily_analysis_results dar
+          ON dar.employee_id = CAST(c.사번 AS TEXT)
+          AND DATE(dar.analysis_date) = DATE(c.근무일)
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.job_grade IS NOT NULL
+          AND e.center_name IS NOT NULL
+          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY c.사번, e.center_name, e.job_grade
+        HAVING SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) > 0
+      )
+      SELECT
+        center_name as centerName,
+        'Lv.' || job_grade as grade,
         ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 
+          SUM(month_adjusted_hours) / COUNT(*) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
           1
         ) as avgValue
-      FROM daily_analysis_results dar
-      JOIN employees e ON e.employee_id = dar.employee_id
-      WHERE dar.analysis_date BETWEEN ? AND ?
-        AND e.job_grade IS NOT NULL
-        AND e.center_name IS NOT NULL
-        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND dar.actual_work_hours IS NOT NULL
-        AND dar.confidence_score IS NOT NULL
-      GROUP BY e.center_name, e.job_grade
+      FROM monthly_totals
+      GROUP BY center_name, job_grade
       ORDER BY avgValue ASC
     `;
   } else if (metricType === 'weeklyClaimedHours') {
@@ -1042,7 +1071,7 @@ export function getMetricThresholdsForGrid(metricType: 'efficiency' | 'weeklyCla
     // CTE를 사용하므로 파라미터가 더 많음: monthly_totals WHERE, JULIANDAY 계산, 최종 WHERE
     results = stmt.all(startDate, endDate, endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
   } else if (metricType === 'adjustedWeeklyWorkHours') {
-    results = stmt.all(endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
+    results = stmt.all(startDate, endDate, endDate, startDate) as { centerName: string; grade: string; avgValue: number }[];
   } else if (isWeekly) {
     results = stmt.all(endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
   } else {
@@ -1284,7 +1313,7 @@ export function getGradeEfficiencyMatrixForPeriod(startDate: string, endDate: st
       'Lv.' || da.job_grade as grade,
       COUNT(DISTINCT da.employee_id) as employeeCount,
       ROUND(
-        SUM(da.total_actual) / NULLIF(SUM(cc.total_claimed), 0) * 100,
+        MIN(SUM(da.total_actual) / NULLIF(SUM(cc.total_claimed), 0) * 100, 98.0),
         1
       ) as avgEfficiency
     FROM dar_actual da
@@ -1424,41 +1453,56 @@ export function getGradeWeeklyWorkHoursMatrixForPeriod(startDate: string, endDat
 // Get grade-level adjusted weekly work hours matrix (AI보정) for specified period
 export function getGradeAdjustedWeeklyWorkHoursMatrixForPeriod(startDate: string, endDate: string) {
   const query = `
+    WITH monthly_totals AS (
+      SELECT
+        c.사번,
+        e.center_name,
+        e.job_grade,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END - COALESCE(dar.movement_minutes / 60.0, 0)
+        ) as month_adjusted_hours
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      LEFT JOIN daily_analysis_results dar
+        ON dar.employee_id = CAST(c.사번 AS TEXT)
+        AND DATE(dar.analysis_date) = DATE(c.근무일)
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.job_grade IS NOT NULL
+        AND e.center_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+      GROUP BY c.사번, e.center_name, e.job_grade
+      HAVING SUM(
+        CASE
+          WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+          THEN COALESCE(h.standard_hours, 8.0)
+          ELSE c.실제근무시간
+        END
+      ) > 0
+    )
     SELECT
-      e.center_name as centerName,
-      'Lv.' || e.job_grade as grade,
-      COUNT(DISTINCT dar.employee_id) as employeeCount,
-      -- 주간 근무시간 (DAR 기준)
+      center_name as centerName,
+      'Lv.' || job_grade as grade,
+      COUNT(DISTINCT 사번) as employeeCount,
       ROUND(
-        SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
-        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-      ) as avgWeeklyWorkHours,
-      -- 데이터 신뢰도 평균
-      ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
-      -- 주간 근무추정시간 = DAR 근무시간 (이미 휴가 포함)
-      ROUND(
-        SUM(dar.actual_work_hours) /
-        COUNT(DISTINCT CASE WHEN dar.actual_work_hours > 0 THEN dar.employee_id END) /
+        SUM(month_adjusted_hours) / COUNT(DISTINCT 사번) /
         (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
         1
       ) as avgAdjustedWeeklyWorkHours
-    FROM daily_analysis_results dar
-    JOIN employees e ON e.employee_id = dar.employee_id
-    WHERE dar.analysis_date BETWEEN ? AND ?
-      AND e.job_grade IS NOT NULL
-      AND e.center_name IS NOT NULL
-      AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-      AND dar.actual_work_hours IS NOT NULL
-      AND dar.confidence_score IS NOT NULL
-    GROUP BY e.center_name, e.job_grade
-    ORDER BY e.center_name, e.job_grade
+    FROM monthly_totals
+    GROUP BY center_name, job_grade
+    ORDER BY center_name, job_grade
   `;
 
   const stmt = db.prepare(query);
   const results = stmt.all(
-    endDate, startDate,  // 주간 근무시간 계산용
-    endDate, startDate,  // 주간 근무추정시간 계산용
-    startDate, endDate   // WHERE절 날짜 조건
+    startDate, endDate,  // monthly_totals WHERE절
+    endDate, startDate   // JULIANDAY 계산용
   ) as any[];
 
   // Transform to matrix format
@@ -1577,7 +1621,7 @@ export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | '
         da.center_name as centerName,
         'Lv.' || da.job_grade as grade,
         ROUND(
-          da.total_actual / NULLIF(cc.total_claimed, 0) * 100,
+          MIN(da.total_actual / NULLIF(cc.total_claimed, 0) * 100, 98.0),
           1
         ) as avgValue
       FROM dar_actual da
@@ -1587,23 +1631,50 @@ export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | '
       ORDER BY avgValue ASC
     `;
   } else if (metricType === 'adjustedWeeklyWorkHours') {
-    // For adjustedWeeklyWorkHours, calculate with natural averaging and AI adjustment to match grid display
+    // 주간 근태시간과 동일한 로직으로 GR 이동시간만 제외
     dataQuery = `
-      SELECT 
-        e.center_name as centerName,
-        'Lv.' || e.job_grade as grade,
+      WITH monthly_totals AS (
+        SELECT
+          c.사번,
+          e.center_name,
+          e.job_grade,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END - COALESCE(dar.movement_minutes / 60.0, 0)
+          ) as month_adjusted_hours
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN daily_analysis_results dar
+          ON dar.employee_id = CAST(c.사번 AS TEXT)
+          AND DATE(dar.analysis_date) = DATE(c.근무일)
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.job_grade IS NOT NULL
+          AND e.center_name IS NOT NULL
+          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY c.사번, e.center_name, e.job_grade
+        HAVING SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) > 0
+      )
+      SELECT
+        center_name as centerName,
+        'Lv.' || job_grade as grade,
         ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
+          SUM(month_adjusted_hours) / COUNT(*) /
+          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
+          1
         ) as avgValue
-      FROM daily_analysis_results dar
-      JOIN employees e ON e.employee_id = dar.employee_id
-      WHERE dar.analysis_date BETWEEN ? AND ?
-        AND e.job_grade IS NOT NULL
-        AND e.center_name IS NOT NULL
-        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND dar.actual_work_hours IS NOT NULL
-      GROUP BY e.center_name, e.job_grade
+      FROM monthly_totals
+      GROUP BY center_name, job_grade
       ORDER BY avgValue ASC
     `;
   } else if (metricType === 'weeklyClaimedHours') {
@@ -1669,7 +1740,7 @@ export function getMetricThresholdsForGridForPeriod(metricType: 'efficiency' | '
     // CTE를 사용하므로 파라미터가 더 많음: monthly_totals WHERE, JULIANDAY 계산, 최종 WHERE
     results = stmt.all(startDate, endDate, endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
   } else if (metricType === 'adjustedWeeklyWorkHours') {
-    results = stmt.all(endDate, startDate, startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
+    results = stmt.all(startDate, endDate, endDate, startDate) as { centerName: string; grade: string; avgValue: number }[];
   } else {
     results = stmt.all(startDate, endDate) as { centerName: string; grade: string; avgValue: number }[];
   }
