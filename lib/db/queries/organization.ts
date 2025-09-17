@@ -42,64 +42,79 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
   
   if (level === 'center') {
     const centerStats = db.prepare(`
-      SELECT 
-        e.center_name as orgName,
-        COUNT(DISTINCT dar.employee_id) as totalEmployees,
-        COUNT(*) as manDays,
-        ROUND(
-          SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100,
-          1
-        ) as avgWorkEfficiency,
-        -- 원본 일간 근무시간 (자연 평균화)
-        ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1
-        ) as avgActualWorkHours,
-        ROUND(
-          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1
-        ) as avgAttendanceHours,
+      WITH claimed_stats AS (
+        -- claim_data 기반 공휴일/연차 고려한 시간 계산
+        SELECT
+          e.center_name as orgName,
+          COUNT(DISTINCT c.사번) as totalEmployees,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END
+          ) as total_claimed_hours,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          ) as total_adjusted_hours
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN daily_analysis_results dar
+          ON dar.employee_id = CAST(c.사번 AS TEXT)
+          AND DATE(dar.analysis_date) = DATE(c.근무일)
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.center_name
+      ),
+      dar_stats AS (
+        -- daily_analysis_results 기반 추가 통계
+        SELECT
+          e.center_name as orgName,
+          COUNT(DISTINCT dar.employee_id) as dar_employees,
+          ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
+          ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours
+        FROM daily_analysis_results dar
+        JOIN employees e ON e.employee_id = dar.employee_id
+        WHERE dar.analysis_date BETWEEN ? AND ?
+          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+          AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.center_name
+      )
+      SELECT
+        cs.orgName,
+        cs.totalEmployees,
+        cs.totalEmployees as manDays,
+        ROUND(MIN(cs.total_adjusted_hours / NULLIF(cs.total_claimed_hours, 0), 0.98) * 100, 1) as avgWorkEfficiency,
+        -- 일간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgActualWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgAttendanceHours,
         -- Ground Rules 보정 일간 근무시간
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
-        -- 자연 평균화 주간 근무시간: analytics.ts와 정확히 동일한 공식
-        ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyWorkHours,
-        ROUND(
-          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyClaimedHours,
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgGroundRulesWorkHours,
+        -- 주간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHours,
         -- Ground Rules 보정 주간 근무시간
-        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
-        -- 자연 평균화 일간 근무시간 (Adjusted): 자연 평균화 적용
-        ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1
-        ) as avgActualWorkHoursAdjusted,
-        ROUND(
-          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1
-        ) as avgAttendanceHoursAdjusted,
-        -- 자연 평균화 주간 근무시간 (Adjusted): analytics.ts와 정확히 동일한 공식
-        ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyWorkHoursAdjusted,
-        ROUND(
-          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyClaimedHoursAdjusted,
-        ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
-        ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
-      FROM daily_analysis_results dar
-      JOIN employees e ON e.employee_id = dar.employee_id
-      WHERE dar.analysis_date BETWEEN ? AND ?
-        AND e.center_name IS NOT NULL
-        AND e.job_grade IS NOT NULL
-        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-      GROUP BY e.center_name
-    `).all(endDate, startDate, endDate, startDate, endDate, startDate, endDate, startDate, endDate, startDate, endDate, startDate, endDate, startDate, endDate, startDate, startDate, endDate) as any[];
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 5, 1) as avgWeeklyGroundRulesWorkHours,
+        -- Adjusted 값들
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgActualWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgAttendanceHoursAdjusted,
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHoursAdjusted,
+        ds.avgFocusedWorkHours,
+        ds.avgDataReliability
+      FROM claimed_stats cs
+      LEFT JOIN dar_stats ds ON cs.orgName = ds.orgName
+    `).all(startDate, endDate, startDate, endDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate) as any[];
     console.log('DEBUG: centerStats result:', centerStats.slice(0, 2));
     
     centerStats.forEach(stat => {
@@ -109,50 +124,88 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     // Division은 하위 팀들의 데이터를 집계하거나 직접 속한 직원 데이터를 집계
     organizations.forEach(div => {
       const divStats = db.prepare(`
-        SELECT 
-          MIN(e.center_name) as centerName,
-          COUNT(DISTINCT dar.employee_id) as totalEmployees,
-          COUNT(*) as manDays,
-          ROUND(
+        WITH claimed_stats AS (
+          -- claim_data 기반 공휴일/연차 고려한 시간 계산
+          SELECT
+            MIN(e.center_name) as centerName,
+            COUNT(DISTINCT c.사번) as totalEmployees,
             SUM(
-              dar.actual_work_hours * 
-              (0.92 + (1.0 / (1.0 + EXP(-12.0 * (dar.confidence_score / 100.0 - 0.65))) * 0.08))
-            ) / SUM(dar.claimed_work_hours) * 100, 
-            1
-          ) as avgWorkEfficiency,
-          -- 원본 값
-          ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
-          ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
-          -- Ground Rules 보정 값
-          ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
-          ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyWorkHours,
-          ROUND((SUM(dar.claimed_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyClaimedHours,
-          -- Ground Rules 보정 주간 근무시간
-          ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
-          -- 자연 평균화 보정 값: analytics.ts와 정확히 동일한 공식
-          ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHoursAdjusted,
-          ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHoursAdjusted,
-          ROUND(
-            SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-            (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-          ) as avgWeeklyWorkHoursAdjusted,
-          ROUND(
-            SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-            (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-          ) as avgWeeklyClaimedHoursAdjusted,
-          ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
-          ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
-        FROM daily_analysis_results dar
-        JOIN employees e ON e.employee_id = dar.employee_id
-        WHERE dar.analysis_date BETWEEN ? AND ?
-          AND (
-            e.team_name IN (
-              SELECT org_name FROM organization_master
-              WHERE parent_org_code = ? AND org_level = 'team'
+              CASE
+                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+                THEN COALESCE(h.standard_hours, 8.0)
+                ELSE c.실제근무시간
+              END
+            ) as total_claimed_hours,
+            SUM(
+              CASE
+                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+                THEN COALESCE(h.standard_hours, 8.0)
+                ELSE c.실제근무시간
+              END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+            ) as total_adjusted_hours
+          FROM claim_data c
+          LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+          LEFT JOIN daily_analysis_results dar
+            ON dar.employee_id = CAST(c.사번 AS TEXT)
+            AND DATE(dar.analysis_date) = DATE(c.근무일)
+          JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+          WHERE c.근무일 BETWEEN ? AND ?
+            AND (
+              e.team_name IN (
+                SELECT org_name FROM organization_master
+                WHERE parent_org_code = ? AND org_level = 'team'
+              )
+              OR e.team_name = ?
             )
-            OR e.team_name = ?
-          )
-      `).get(endDate, startDate, endDate, startDate, startDate, endDate, div.orgCode, div.orgName) as any;
+        ),
+        dar_stats AS (
+          -- daily_analysis_results 기반 추가 통계
+          SELECT
+            COUNT(DISTINCT dar.employee_id) as dar_employees,
+            ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
+            ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours
+          FROM daily_analysis_results dar
+          JOIN employees e ON e.employee_id = dar.employee_id
+          WHERE dar.analysis_date BETWEEN ? AND ?
+            AND (
+              e.team_name IN (
+                SELECT org_name FROM organization_master
+                WHERE parent_org_code = ? AND org_level = 'team'
+              )
+              OR e.team_name = ?
+            )
+        )
+        SELECT
+          cs.centerName,
+          cs.totalEmployees,
+          cs.totalEmployees as manDays,
+          ROUND(MIN(cs.total_adjusted_hours / NULLIF(cs.total_claimed_hours, 0), 0.98) * 100, 1) as avgWorkEfficiency,
+          -- 일간 근무시간
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgActualWorkHours,
+          ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgAttendanceHours,
+          -- Ground Rules 보정 일간 근무시간
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgGroundRulesWorkHours,
+          -- 주간 근무시간
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHours,
+          ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHours,
+          -- Ground Rules 보정 주간 근무시간
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 5, 1) as avgWeeklyGroundRulesWorkHours,
+          -- Adjusted 값들
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgActualWorkHoursAdjusted,
+          ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgAttendanceHoursAdjusted,
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHoursAdjusted,
+          ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHoursAdjusted,
+          ds.avgFocusedWorkHours,
+          ds.avgDataReliability
+        FROM claimed_stats cs
+        CROSS JOIN dar_stats ds
+      `).get(startDate, endDate, div.orgCode, div.orgName,
+             startDate, endDate, div.orgCode, div.orgName,
+             endDate, startDate, endDate, startDate,
+             endDate, startDate, endDate, startDate,
+             endDate, startDate, endDate, startDate,
+             endDate, startDate, endDate, startDate,
+             endDate, startDate, endDate, startDate) as any;
       
       if (divStats) {
         statsMap.set(div.orgName, divStats);
@@ -160,102 +213,160 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     });
   } else if (level === 'team') {
     const teamStats = db.prepare(`
-      SELECT 
-        e.team_name as orgName,
-        e.center_name as centerName,
-        COUNT(DISTINCT dar.employee_id) as totalEmployees,
-        COUNT(*) as manDays,
-        ROUND(
-          SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100,
-          1
-        ) as avgWorkEfficiency,
-        -- 원본 일간 근무시간
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
-        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
+      WITH claimed_stats AS (
+        -- claim_data 기반 공휴일/연차 고려한 시간 계산
+        SELECT
+          e.team_name as orgName,
+          e.center_name as centerName,
+          COUNT(DISTINCT c.사번) as totalEmployees,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END
+          ) as total_claimed_hours,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          ) as total_adjusted_hours
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN daily_analysis_results dar
+          ON dar.employee_id = CAST(c.사번 AS TEXT)
+          AND DATE(dar.analysis_date) = DATE(c.근무일)
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.team_name IS NOT NULL
+          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.team_name, e.center_name
+      ),
+      dar_stats AS (
+        -- daily_analysis_results 기반 추가 통계
+        SELECT
+          e.team_name as orgName,
+          ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
+          ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours
+        FROM daily_analysis_results dar
+        JOIN employees e ON e.employee_id = dar.employee_id
+        WHERE dar.analysis_date BETWEEN ? AND ?
+          AND e.team_name IS NOT NULL
+          AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.team_name
+      )
+      SELECT
+        cs.orgName,
+        cs.centerName,
+        cs.totalEmployees,
+        cs.totalEmployees as manDays,
+        ROUND(MIN(cs.total_adjusted_hours / NULLIF(cs.total_claimed_hours, 0), 0.98) * 100, 1) as avgWorkEfficiency,
+        -- 일간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgActualWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgAttendanceHours,
         -- Ground Rules 보정 일간 근무시간
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
-        -- 자연 평균화 주간 근무시간: analytics.ts와 정확히 동일한 공식
-        ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyWorkHours,
-        ROUND(
-          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyClaimedHours,
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgGroundRulesWorkHours,
+        -- 주간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHours,
         -- Ground Rules 보정 주간 근무시간
-        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
-        -- 자연 평균화 일간 근무시간 (Adjusted): 단순한 자연 평균화 사용
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHoursAdjusted,
-        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHoursAdjusted,
-        -- 자연 평균화 주간 근무시간 (Adjusted): analytics.ts와 정확히 동일한 공식
-        ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyWorkHoursAdjusted,
-        ROUND(
-          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyClaimedHoursAdjusted,
-        ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
-        ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
-      FROM daily_analysis_results dar
-      JOIN employees e ON e.employee_id = dar.employee_id
-      WHERE dar.analysis_date BETWEEN ? AND ?
-        AND e.team_name IS NOT NULL
-      GROUP BY e.team_name, e.center_name
-    `).all(endDate, startDate, endDate, startDate, endDate, startDate, endDate, startDate, startDate, endDate) as any[];
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 5, 1) as avgWeeklyGroundRulesWorkHours,
+        -- Adjusted 값들
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgActualWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgAttendanceHoursAdjusted,
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHoursAdjusted,
+        ds.avgFocusedWorkHours,
+        ds.avgDataReliability
+      FROM claimed_stats cs
+      LEFT JOIN dar_stats ds ON cs.orgName = ds.orgName
+    `).all(startDate, endDate, startDate, endDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate) as any[];
     
     teamStats.forEach(stat => {
       statsMap.set(stat.orgName, stat);
     });
   } else if (level === 'group') {
     const groupStats = db.prepare(`
-      SELECT 
-        e.group_name as orgName,
-        e.center_name as centerName,
-        COUNT(DISTINCT dar.employee_id) as totalEmployees,
-        COUNT(*) as manDays,
-        ROUND(
-          SUM(dar.actual_work_hours) / SUM(dar.claimed_work_hours) * 100,
-          1
-        ) as avgWorkEfficiency,
-        -- 원본 일간 근무시간
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHours,
-        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHours,
+      WITH claimed_stats AS (
+        -- claim_data 기반 공휴일/연차 고려한 시간 계산
+        SELECT
+          e.group_name as orgName,
+          e.center_name as centerName,
+          COUNT(DISTINCT c.사번) as totalEmployees,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END
+          ) as total_claimed_hours,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          ) as total_adjusted_hours
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN daily_analysis_results dar
+          ON dar.employee_id = CAST(c.사번 AS TEXT)
+          AND DATE(dar.analysis_date) = DATE(c.근무일)
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.group_name IS NOT NULL
+          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.group_name, e.center_name
+      ),
+      dar_stats AS (
+        -- daily_analysis_results 기반 추가 통계
+        SELECT
+          e.group_name as orgName,
+          ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
+          ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours
+        FROM daily_analysis_results dar
+        JOIN employees e ON e.employee_id = dar.employee_id
+        WHERE dar.analysis_date BETWEEN ? AND ?
+          AND e.group_name IS NOT NULL
+          AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.group_name
+      )
+      SELECT
+        cs.orgName,
+        cs.centerName,
+        cs.totalEmployees,
+        cs.totalEmployees as manDays,
+        ROUND(MIN(cs.total_adjusted_hours / NULLIF(cs.total_claimed_hours, 0), 0.98) * 100, 1) as avgWorkEfficiency,
+        -- 일간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgActualWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgAttendanceHours,
         -- Ground Rules 보정 일간 근무시간
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgGroundRulesWorkHours,
-        -- 자연 평균화 주간 근무시간: analytics.ts와 정확히 동일한 공식
-        ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyWorkHours,
-        ROUND(
-          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyClaimedHours,
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgGroundRulesWorkHours,
+        -- 주간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHours,
         -- Ground Rules 보정 주간 근무시간
-        ROUND((SUM(dar.actual_work_hours) / COUNT(*)) * 5, 1) as avgWeeklyGroundRulesWorkHours,
-        -- 자연 평균화 일간 근무시간 (Adjusted): 단순한 자연 평균화 사용
-        ROUND(SUM(dar.actual_work_hours) / COUNT(*), 1) as avgActualWorkHoursAdjusted,
-        ROUND(SUM(dar.claimed_work_hours) / COUNT(*), 1) as avgAttendanceHoursAdjusted,
-        -- 자연 평균화 주간 근무시간 (Adjusted): analytics.ts와 정확히 동일한 공식
-        ROUND(
-          SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyWorkHoursAdjusted,
-        ROUND(
-          SUM(dar.claimed_work_hours) / COUNT(DISTINCT dar.employee_id) / 
-          (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-        ) as avgWeeklyClaimedHoursAdjusted,
-        ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours,
-        ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
-      FROM daily_analysis_results dar
-      JOIN employees e ON e.employee_id = dar.employee_id
-      WHERE dar.analysis_date BETWEEN ? AND ?
-        AND e.group_name IS NOT NULL
-      GROUP BY e.group_name, e.center_name
-    `).all(endDate, startDate, endDate, startDate, endDate, startDate, endDate, startDate, startDate, endDate) as any[];
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 5, 1) as avgWeeklyGroundRulesWorkHours,
+        -- Adjusted 값들
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgActualWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgAttendanceHoursAdjusted,
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHoursAdjusted,
+        ds.avgFocusedWorkHours,
+        ds.avgDataReliability
+      FROM claimed_stats cs
+      LEFT JOIN dar_stats ds ON cs.orgName = ds.orgName
+    `).all(startDate, endDate, startDate, endDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate) as any[];
     
     groupStats.forEach(stat => {
       statsMap.set(stat.orgName, stat);
@@ -498,8 +609,259 @@ export function getOrganizationsWithStatsForPeriod(level: OrgLevel, startDate: s
     centerStats.forEach(stat => {
       statsMap.set(stat.orgName, stat);
     });
+  } else if (level === 'division') {
+    // Division 레벨도 claim_data 기반으로 처리 (이미 수정된 쿼리 복사)
+    organizations.forEach(div => {
+      const divStats = db.prepare(`
+        WITH claimed_stats AS (
+          -- claim_data 기반 공휴일/연차 고려한 시간 계산
+          SELECT
+            MIN(e.center_name) as centerName,
+            COUNT(DISTINCT c.사번) as totalEmployees,
+            SUM(
+              CASE
+                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+                THEN COALESCE(h.standard_hours, 8.0)
+                ELSE c.실제근무시간
+              END
+            ) as total_claimed_hours,
+            SUM(
+              CASE
+                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+                THEN COALESCE(h.standard_hours, 8.0)
+                ELSE c.실제근무시간
+              END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+            ) as total_adjusted_hours
+          FROM claim_data c
+          LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+          LEFT JOIN daily_analysis_results dar
+            ON dar.employee_id = CAST(c.사번 AS TEXT)
+            AND DATE(dar.analysis_date) = DATE(c.근무일)
+          JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+          WHERE c.근무일 BETWEEN ? AND ?
+            AND (
+              e.team_name IN (
+                SELECT org_name FROM organization_master
+                WHERE parent_org_code = ? AND org_level = 'team'
+              )
+              OR e.team_name = ?
+            )
+        ),
+        dar_stats AS (
+          -- daily_analysis_results 기반 추가 통계
+          SELECT
+            COUNT(DISTINCT dar.employee_id) as dar_employees,
+            ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
+            ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours
+          FROM daily_analysis_results dar
+          JOIN employees e ON e.employee_id = dar.employee_id
+          WHERE dar.analysis_date BETWEEN ? AND ?
+            AND (
+              e.team_name IN (
+                SELECT org_name FROM organization_master
+                WHERE parent_org_code = ? AND org_level = 'team'
+              )
+              OR e.team_name = ?
+            )
+        )
+        SELECT
+          cs.centerName,
+          cs.totalEmployees,
+          cs.totalEmployees as manDays,
+          ROUND(MIN(cs.total_adjusted_hours / NULLIF(cs.total_claimed_hours, 0), 0.98) * 100, 1) as avgWorkEfficiency,
+          -- 일간 근무시간
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgActualWorkHours,
+          ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgAttendanceHours,
+          -- Ground Rules 보정 일간 근무시간
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgGroundRulesWorkHours,
+          -- 주간 근무시간
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHours,
+          ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHours,
+          -- Ground Rules 보정 주간 근무시간
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 5, 1) as avgWeeklyGroundRulesWorkHours,
+          -- Adjusted 값들
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgActualWorkHoursAdjusted,
+          ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 1.4, 1) as avgAttendanceHoursAdjusted,
+          ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHoursAdjusted,
+          ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHoursAdjusted,
+          ds.avgFocusedWorkHours,
+          ds.avgDataReliability
+        FROM claimed_stats cs
+        CROSS JOIN dar_stats ds
+      `).get(startDate, endDate, div.orgCode, div.orgName,
+             startDate, endDate, div.orgCode, div.orgName,
+             endDate, startDate, endDate, startDate,
+             endDate, startDate, endDate, startDate,
+             endDate, startDate, endDate, startDate,
+             endDate, startDate, endDate, startDate,
+             endDate, startDate, endDate, startDate) as any;
+
+      if (divStats) {
+        statsMap.set(div.orgName, divStats);
+      }
+    });
+  } else if (level === 'team') {
+    const teamStats = db.prepare(`
+      WITH claimed_stats AS (
+        -- claim_data 기반 공휴일/연차 고려한 시간 계산
+        SELECT
+          e.team_name as orgName,
+          e.center_name as centerName,
+          COUNT(DISTINCT c.사번) as totalEmployees,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END
+          ) as total_claimed_hours,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          ) as total_adjusted_hours
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN daily_analysis_results dar
+          ON dar.employee_id = CAST(c.사번 AS TEXT)
+          AND DATE(dar.analysis_date) = DATE(c.근무일)
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.team_name IS NOT NULL
+          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.team_name, e.center_name
+      ),
+      dar_stats AS (
+        -- daily_analysis_results 기반 추가 통계
+        SELECT
+          e.team_name as orgName,
+          ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
+          ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours
+        FROM daily_analysis_results dar
+        JOIN employees e ON e.employee_id = dar.employee_id
+        WHERE dar.analysis_date BETWEEN ? AND ?
+          AND e.team_name IS NOT NULL
+          AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.team_name
+      )
+      SELECT
+        cs.orgName,
+        cs.centerName,
+        cs.totalEmployees,
+        cs.totalEmployees as manDays,
+        ROUND(MIN(cs.total_adjusted_hours / NULLIF(cs.total_claimed_hours, 0), 0.98) * 100, 1) as avgWorkEfficiency,
+        -- 일간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgActualWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgAttendanceHours,
+        -- Ground Rules 보정 일간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgGroundRulesWorkHours,
+        -- 주간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHours,
+        -- Ground Rules 보정 주간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 5, 1) as avgWeeklyGroundRulesWorkHours,
+        -- Adjusted 값들
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgActualWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgAttendanceHoursAdjusted,
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHoursAdjusted,
+        ds.avgFocusedWorkHours,
+        ds.avgDataReliability
+      FROM claimed_stats cs
+      LEFT JOIN dar_stats ds ON cs.orgName = ds.orgName
+    `).all(startDate, endDate, startDate, endDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate) as any[];
+
+    teamStats.forEach(stat => {
+      statsMap.set(stat.orgName, stat);
+    });
+  } else if (level === 'group') {
+    const groupStats = db.prepare(`
+      WITH claimed_stats AS (
+        -- claim_data 기반 공휴일/연차 고려한 시간 계산
+        SELECT
+          e.group_name as orgName,
+          e.center_name as centerName,
+          COUNT(DISTINCT c.사번) as totalEmployees,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END
+          ) as total_claimed_hours,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          ) as total_adjusted_hours
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN daily_analysis_results dar
+          ON dar.employee_id = CAST(c.사번 AS TEXT)
+          AND DATE(dar.analysis_date) = DATE(c.근무일)
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.group_name IS NOT NULL
+          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.group_name, e.center_name
+      ),
+      dar_stats AS (
+        -- daily_analysis_results 기반 추가 통계
+        SELECT
+          e.group_name as orgName,
+          ROUND(AVG(dar.confidence_score), 1) as avgDataReliability,
+          ROUND(AVG(CASE WHEN dar.focused_work_minutes >= 30 THEN dar.focused_work_minutes / 60.0 ELSE NULL END), 1) as avgFocusedWorkHours
+        FROM daily_analysis_results dar
+        JOIN employees e ON e.employee_id = dar.employee_id
+        WHERE dar.analysis_date BETWEEN ? AND ?
+          AND e.group_name IS NOT NULL
+          AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+        GROUP BY e.group_name
+      )
+      SELECT
+        cs.orgName,
+        cs.centerName,
+        cs.totalEmployees,
+        cs.totalEmployees as manDays,
+        ROUND(MIN(cs.total_adjusted_hours / NULLIF(cs.total_claimed_hours, 0), 0.98) * 100, 1) as avgWorkEfficiency,
+        -- 일간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgActualWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgAttendanceHours,
+        -- Ground Rules 보정 일간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgGroundRulesWorkHours,
+        -- 주간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHours,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHours,
+        -- Ground Rules 보정 주간 근무시간
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 5, 1) as avgWeeklyGroundRulesWorkHours,
+        -- Adjusted 값들
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgActualWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1), 1) as avgAttendanceHoursAdjusted,
+        ROUND(cs.total_adjusted_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyWorkHoursAdjusted,
+        ROUND(cs.total_claimed_hours / cs.totalEmployees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1) as avgWeeklyClaimedHoursAdjusted,
+        ds.avgFocusedWorkHours,
+        ds.avgDataReliability
+      FROM claimed_stats cs
+      LEFT JOIN dar_stats ds ON cs.orgName = ds.orgName
+    `).all(startDate, endDate, startDate, endDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate, endDate, startDate, endDate, startDate,
+           endDate, startDate) as any[];
+
+    groupStats.forEach(stat => {
+      statsMap.set(stat.orgName, stat);
+    });
   }
-  
+
   // 3. 조직과 통계 매핑 (기존 함수와 동일한 형식으로)
   return organizations.map(org => {
     const stats = statsMap.get(org.orgName);

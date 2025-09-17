@@ -59,7 +59,8 @@ export default function TeamsPage() {
         const params = new URLSearchParams();
         if (centerCode) params.append('center', centerCode);
         if (divisionCode) params.append('division', divisionCode);
-        
+        params.append('month', selectedMonth);
+
         const response = await fetch(`/api/teams?${params}`);
         if (!response.ok) throw new Error('Failed to fetch');
         const teamData = await response.json();
@@ -72,7 +73,7 @@ export default function TeamsPage() {
     };
 
     fetchData();
-  }, [centerCode, divisionCode]);
+  }, [centerCode, divisionCode, selectedMonth]);
 
   if (loading) {
     return (

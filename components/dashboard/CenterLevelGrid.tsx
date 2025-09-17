@@ -323,7 +323,7 @@ export function CenterLevelGrid({
           <tbody>
             {/* Center Average Row */}
             <tr key="center-avg" className="border-t-2 border-gray-400">
-              <td className="p-2 font-semibold text-gray-700 text-base bg-gray-50 whitespace-nowrap text-center">센터평균</td>
+              <td className="p-2 font-semibold text-gray-700 text-base bg-gray-50 whitespace-nowrap text-center">전체 평균</td>
               {centers.map((center, centerIndex) => {
                 let value: number;
                 
@@ -404,23 +404,28 @@ export function CenterLevelGrid({
                   </td>
                 );
               })}
-              {/* 센터평균 평균 열 */}
+              {/* 전체 평균 열 - API에서 받은 실제 가중평균 사용 */}
               <td className="p-2 bg-gray-50">
                 {(() => {
-                  const validValues = centers.map(c => {
-                    if (selectedMetric === 'efficiency') return c.stats?.avgWorkEfficiency || 0;
-                    else if (selectedMetric === 'workHours') return c.stats?.avgActualWorkHoursAdjusted || c.stats?.avgActualWorkHours || 0;
-                    else if (selectedMetric === 'claimedHours') return c.stats?.avgAttendanceHoursAdjusted || c.stats?.avgAttendanceHours || 0;
-                    else if (selectedMetric === 'weeklyWorkHours') return c.stats?.avgWeeklyWorkHoursAdjusted || c.stats?.avgWeeklyWorkHours || 0;
-                    else if (selectedMetric === 'weeklyClaimedHours') return c.stats?.avgWeeklyClaimedHoursAdjusted || c.stats?.avgWeeklyClaimedHours || 0;
-                    else if (selectedMetric === 'adjustedWeeklyWorkHours') return c.stats?.avgAdjustedWeeklyWorkHours || 0;
-                    else if (selectedMetric === 'focusedWorkHours') return c.stats?.avgFocusedWorkHours || 0;
-                    else return 0;
-                  }).filter(v => v > 0);
-
-                  const avg = validValues.length > 0
-                    ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length
-                    : 0;
+                  // Use the actual weighted averages from API props
+                  let avg = 0;
+                  if (selectedMetric === 'efficiency') {
+                    avg = avgEfficiency;
+                  } else if (selectedMetric === 'workHours') {
+                    avg = avgWorkHours;
+                  } else if (selectedMetric === 'claimedHours') {
+                    avg = avgClaimedHours;
+                  } else if (selectedMetric === 'weeklyWorkHours') {
+                    avg = avgWeeklyWorkHours;
+                  } else if (selectedMetric === 'weeklyClaimedHours') {
+                    avg = avgWeeklyClaimedHours;
+                  } else if (selectedMetric === 'adjustedWeeklyWorkHours') {
+                    avg = avgAdjustedWeeklyWorkHours;
+                  } else if (selectedMetric === 'focusedWorkHours') {
+                    avg = avgFocusedWorkHours;
+                  } else if (selectedMetric === 'dataReliability') {
+                    avg = avgDataReliability;
+                  }
 
                   // 평균값을 위한 특별한 thresholds 설정 (회색 표시용)
                   const avgThresholds = { low: avg - 1, high: avg + 1 };

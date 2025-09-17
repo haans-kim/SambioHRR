@@ -276,50 +276,85 @@ export function precomputeGroupStats(month: string) {
       work_minutes, meeting_minutes, meal_minutes,
       movement_minutes, rest_minutes
     )
+    WITH claimed_stats AS (
+      -- claim_data 기반 공휴일/연차 고려한 시간 계산
+      SELECT
+        e.group_name,
+        e.center_name,
+        e.team_name,
+        COUNT(DISTINCT c.사번) as total_employees,
+        COUNT(*) as total_records,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) as total_claimed_hours,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+        ) as total_adjusted_hours
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      LEFT JOIN daily_analysis_results dar
+        ON dar.employee_id = CAST(c.사번 AS TEXT)
+        AND DATE(dar.analysis_date) = DATE(c.근무일)
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.group_name IS NOT NULL
+        AND e.group_name != ''
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+      GROUP BY e.group_name, e.center_name, e.team_name
+    ),
+    dar_stats AS (
+      -- daily_analysis_results 기반 추가 통계
+      SELECT
+        e.group_name,
+        ROUND(AVG(dar.confidence_score), 1) as avg_confidence,
+        ROUND(AVG(dar.work_minutes), 1) as avg_work_minutes,
+        ROUND(AVG(dar.meeting_minutes), 1) as avg_meeting_minutes,
+        ROUND(AVG(dar.meal_minutes), 1) as avg_meal_minutes,
+        ROUND(AVG(dar.movement_minutes), 1) as avg_movement_minutes,
+        ROUND(AVG(dar.rest_minutes), 1) as avg_rest_minutes
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.group_name IS NOT NULL
+        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+      GROUP BY e.group_name
+    )
     SELECT
       ?,
-      dar.group_name,
-      dar.center_name,
-      dar.team_name,
-      COUNT(DISTINCT dar.employee_id),
-      COUNT(*),
-      ROUND(
-        SUM(dar.claimed_work_hours) /
-        COUNT(DISTINCT dar.employee_id) /
-        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
-        1
-      ),
-      ROUND(
-        SUM(dar.actual_work_hours) /
-        COUNT(DISTINCT dar.employee_id) /
-        (JULIANDAY(?) - JULIANDAY(?) + 1) * 7,
-        1
-      ),
-      ROUND(AVG(CASE
-        WHEN dar.claimed_work_hours > 0
-        THEN MIN((dar.actual_work_hours / dar.claimed_work_hours) * 100, 98)
-        ELSE 0
-      END), 1),
-      ROUND(AVG(dar.confidence_score), 1),
-      ROUND(AVG(dar.work_minutes), 1),
-      ROUND(AVG(dar.meeting_minutes), 1),
-      ROUND(AVG(dar.meal_minutes), 1),
-      ROUND(AVG(dar.movement_minutes), 1),
-      ROUND(AVG(dar.rest_minutes), 1)
-    FROM daily_analysis_results dar
-    WHERE dar.analysis_date BETWEEN ? AND ?
-      AND dar.group_name IS NOT NULL
-      AND dar.group_name != ''
-    GROUP BY dar.group_name, dar.center_name, dar.team_name
+      cs.group_name,
+      cs.center_name,
+      cs.team_name,
+      cs.total_employees,
+      cs.total_records,
+      ROUND(cs.total_claimed_hours / cs.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(cs.total_adjusted_hours / cs.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(MIN(cs.total_adjusted_hours / NULLIF(cs.total_claimed_hours, 0), 0.98) * 100, 1),
+      ds.avg_confidence,
+      ds.avg_work_minutes,
+      ds.avg_meeting_minutes,
+      ds.avg_meal_minutes,
+      ds.avg_movement_minutes,
+      ds.avg_rest_minutes
+    FROM claimed_stats cs
+    LEFT JOIN dar_stats ds ON cs.group_name = ds.group_name
   `);
 
   const transaction = db.transaction(() => {
     deleteOldGroupStats.run(month);
     insertGroupStats.run(
-      month,
-      endDate, startDate, // JULIANDAY for weekly_claimed_hours
-      endDate, startDate, // JULIANDAY for weekly_work_hours
-      startDate, endDate  // WHERE clause
+      startDate, endDate,  // WHERE clause for claimed_stats
+      startDate, endDate,  // WHERE clause for dar_stats
+      month,               // month parameter
+      endDate, startDate,  // JULIANDAY for weekly_claimed_hours
+      endDate, startDate   // JULIANDAY for weekly_work_hours
     );
   });
 

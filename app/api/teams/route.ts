@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
+import {
   getOrganizationsWithStats,
+  getOrganizationsWithStatsForPeriod,
   getOrganizationById,
   getChildOrganizations,
   getOrganizationByName
@@ -13,12 +14,12 @@ import { getMetricThresholdsForGrid } from '@/lib/db/queries/analytics';
 // Helper function to get 30-day date range
 function get30DayDateRange(): { startDate: string; endDate: string } {
   const result = db.prepare(`
-    SELECT 
-      date(MAX(analysis_date), '-30 days') as startDate, 
-      MAX(analysis_date) as endDate 
+    SELECT
+      date(MAX(analysis_date), '-30 days') as startDate,
+      MAX(analysis_date) as endDate
     FROM daily_analysis_results
   `).get() as any;
-  
+
   return {
     startDate: result?.startDate || new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0],
     endDate: result?.endDate || new Date().toISOString().split('T')[0]
@@ -29,11 +30,16 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
-  const cacheKey = `teams:v9:center=${centerCode || ''}:division=${divisionCode || ''}`;
+  const selectedMonth = searchParams.get('month') || '2025-06';
+  const cacheKey = `teams:v10:center=${centerCode || ''}:division=${divisionCode || ''}:month=${selectedMonth}`;
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
   }
+
+  // 월별 데이터 사용
+  const startDate = `${selectedMonth}-01`;
+  const endDate = `${selectedMonth}-31`;
   
   let parentOrg = null;
   let teams = [];
@@ -60,8 +66,8 @@ export async function GET(request: NextRequest) {
       teams = getChildOrganizations(resolvedDivisionCode).filter((org: any) => org.orgLevel === 'team');
     }
     
-    // 통합 함수로 팀 통계 가져오기
-    const teamsWithStats = getOrganizationsWithStats('team');
+    // 통합 함수로 팀 통계 가져오기 - 월별 데이터 사용
+    const teamsWithStats = getOrganizationsWithStatsForPeriod('team', startDate, endDate);
     teams = teams.map((team: any) => {
       const statsData = teamsWithStats.find(t => t.orgCode === team.orgCode);
       return {
@@ -92,10 +98,10 @@ export async function GET(request: NextRequest) {
     parentOrg = getOrganizationById(centerCode);
     const children = getChildOrganizations(centerCode);
     
-    // 센터 직속 팀과 담당 모두 표시
-    const centerTeams = getOrganizationsWithStats('team')
+    // 센터 직속 팀과 담당 모두 표시 - 월별 데이터 사용
+    const centerTeams = getOrganizationsWithStatsForPeriod('team', startDate, endDate)
       .filter((team: any) => team.parentOrgCode === centerCode);
-    const centerDivisions = getOrganizationsWithStats('division')
+    const centerDivisions = getOrganizationsWithStatsForPeriod('division', startDate, endDate)
       .filter((div: any) => div.parentOrgCode === centerCode);
     teams = [...centerDivisions, ...centerTeams];
     
@@ -111,12 +117,12 @@ export async function GET(request: NextRequest) {
   // Filter out teams with 0 employees
   teams = teams.filter((team: any) => team.stats?.totalEmployees > 0);
   
-  // Calculate totals and weighted averages based on 30-day data
-  const { startDate, endDate } = get30DayDateRange();
+  // Calculate totals and weighted averages based on monthly data
+  // startDate와 endDate는 이미 위에서 선언됨
   let totalEmployees = 0;
   let avgEfficiency = 0;
   let avgDataReliability = 0;
-  
+
   try {
     let where = 'dar.analysis_date BETWEEN ? AND ?';
     const params: any[] = [startDate, endDate];
