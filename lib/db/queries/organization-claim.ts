@@ -20,7 +20,20 @@ export function getOrganizationsWithClaimStats(level: string, startDate: string,
     FROM organization_master o
     WHERE o.org_level = ? AND o.is_active = 1
       AND o.org_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-    ORDER BY o.display_order, o.org_name
+    ORDER BY
+      CASE
+        WHEN o.org_name = '영업센터' THEN 1
+        WHEN o.org_name = '오퍼레이션센터' THEN 2
+        WHEN o.org_name = 'EPCV센터' THEN 3
+        WHEN o.org_name = '품질운영센터' THEN 4
+        WHEN o.org_name = 'CDO개발센터' THEN 5
+        WHEN o.org_name = '바이오연구소' THEN 6
+        WHEN o.org_name = '경영지원센터' THEN 7
+        WHEN o.org_name = 'People센터' THEN 8
+        WHEN o.org_name = '상생협력센터' THEN 9
+        ELSE 99
+      END,
+      o.org_name
   `).all(level) as any[];
 
   // 2. 각 센터별 claim_data 기반 통계 계산
