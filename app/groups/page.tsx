@@ -50,7 +50,8 @@ export default function GroupsPage() {
       try {
         const params = new URLSearchParams();
         if (teamCode) params.append('team', teamCode);
-        
+        params.append('month', selectedMonth);
+
         const response = await fetch(`/api/groups?${params}`);
         if (!response.ok) throw new Error('Failed to fetch');
         const groupData = await response.json();
@@ -63,7 +64,7 @@ export default function GroupsPage() {
     };
 
     fetchData();
-  }, [teamCode]);
+  }, [teamCode, selectedMonth]);
 
   if (loading) {
     return (

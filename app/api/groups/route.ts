@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
+import {
   getOrganizationsWithStats,
+  getOrganizationsWithStatsForPeriod,
   getOrganizationById,
   getChildOrganizations,
   getOrganizationByName
@@ -8,17 +9,21 @@ import {
 import { getGroupStats } from '@/lib/db/queries/teamStats';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
-import { get30DayDateRange } from '@/lib/db/queries/analytics';
 import { calculateAdjustedWorkHours, calculateAIAdjustmentFactor, FLEXIBLE_WORK_ADJUSTMENT_FACTOR } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const teamCode = searchParams.get('team');
-  const cacheKey = `groups:v9:team=${teamCode || ''}`; // v9으로 변경하여 캐시 무효화
+  const selectedMonth = searchParams.get('month') || '2025-06';
+  const cacheKey = `groups:v10:team=${teamCode || ''}:month=${selectedMonth}`;
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
   }
+
+  // 월별 데이터 사용
+  const startDate = `${selectedMonth}-01`;
+  const endDate = `${selectedMonth}-31`;
   
   let parentOrg = null;
   let groups = [];
@@ -64,42 +69,37 @@ export async function GET(request: NextRequest) {
       breadcrumb.push({ label: parentOrg.orgName, href: `/groups?team=${parentOrg.orgCode}` });
     }
   } else {
-    // Default: show all groups
-    groups = getOrganizationsWithStats('group');
+    // Default: show all groups - 월별 데이터 사용
+    groups = getOrganizationsWithStatsForPeriod('group', startDate, endDate);
   }
-  
-  // Get aggregated group stats from database
-  const groupStatsMap = getGroupStats(teamCode || undefined);
-  console.log('GroupStatsMap size:', groupStatsMap.size);
-  console.log('GroupStatsMap keys:', Array.from(groupStatsMap.keys()));
-  
-  // Merge stats with group info
-  groups = groups.map((group: any) => {
-    const stats = groupStatsMap.get(group.orgCode);
-    console.log(`Looking for ${group.orgCode} (${group.orgName}), found:`, stats?.totalEmployees || 0);
-    if (stats) {
-      group.stats = stats;
-    } else {
-      // No data available for this group
-      group.stats = {
-        avgWorkEfficiency: 0,
-        avgWeeklyWorkHours: 0,
-        avgWeeklyClaimedHours: 0,
-        avgAdjustedWeeklyWorkHours: 0,
-        avgDataReliability: 0,
-        totalEmployees: 0
+
+  // getOrganizationsWithStatsForPeriod already has stats, so we don't need getGroupStats
+  // If groups don't have stats (when filtered by teamCode), get them
+  if (teamCode && groups.length > 0) {
+    const groupsWithStats = getOrganizationsWithStatsForPeriod('group', startDate, endDate);
+    groups = groups.map((group: any) => {
+      const statsData = groupsWithStats.find(g => g.orgCode === group.orgCode);
+      return {
+        ...group,
+        stats: statsData?.stats || {
+          avgWorkEfficiency: 0,
+          avgWeeklyWorkHours: 0,
+          avgWeeklyClaimedHours: 0,
+          avgAdjustedWeeklyWorkHours: 0,
+          avgDataReliability: 0,
+          totalEmployees: 0
+        }
       };
-    }
-    return group;
-  });
+    });
+  }
   
   // Filter out groups with 0 employees
   console.log('Groups before filtering:', groups.length, groups.map(g => ({name: g.orgName, employees: g.stats?.totalEmployees})));
   groups = groups.filter((group: any) => group.stats?.totalEmployees > 0);
   console.log('Groups after filtering:', groups.length);
   
-  // Calculate totals and weighted averages based on real man-days (30일 누적)
-  const { startDate, endDate } = get30DayDateRange();
+  // Calculate totals and weighted averages based on monthly data
+  // startDate와 endDate는 이미 위에서 선언됨
   let totalEmployees = 0;
   let avgEfficiency = 0;
   let avgDataReliability = 0;

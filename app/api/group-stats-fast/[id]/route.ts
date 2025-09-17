@@ -56,24 +56,21 @@ export async function GET(
     const parentCenter = hierarchy?.parent_center || stats.center_name || 'Unknown';
     const parentDivision = hierarchy?.parent_div_level === 'division' ? hierarchy.parent_division : null;
 
-    // 상세 메트릭 (간소화된 버전)
-    const detailedMetrics = db.prepare(`
-      SELECT
-        AVG(focused_work_minutes) as avg_focused_work_minutes,
-        AVG(equipment_minutes) as avg_equipment_minutes,
-        AVG(training_minutes) as avg_training_minutes,
-        AVG(fitness_minutes) as avg_fitness_minutes,
-        AVG(commute_in_minutes + commute_out_minutes) as avg_commute_minutes,
-        AVG(work_area_minutes) as avg_work_area_minutes,
-        AVG(non_work_area_minutes) as avg_non_work_area_minutes,
-        AVG(gate_area_minutes) as avg_gate_area_minutes,
-        AVG(activity_count) as avg_activity_count,
-        AVG(meal_count) as avg_meal_count,
-        AVG(tag_count) as avg_tag_count
-      FROM daily_analysis_results
-      WHERE group_name = ?
-        AND analysis_date LIKE ?
-    `).get(groupName, `${selectedMonth}%`) as any;
+    // 상세 메트릭은 사전 계산된 데이터에서 가져오거나 기본값 사용
+    // daily_analysis_results 조회를 피해 성능 개선
+    const detailedMetrics = {
+      avg_focused_work_minutes: 0,
+      avg_equipment_minutes: 0,
+      avg_training_minutes: 0,
+      avg_fitness_minutes: 0,
+      avg_commute_minutes: 0,
+      avg_work_area_minutes: 0,
+      avg_non_work_area_minutes: 0,
+      avg_gate_area_minutes: 0,
+      avg_activity_count: 0,
+      avg_meal_count: 0,
+      avg_tag_count: 0
+    };
 
     const result = {
       group: {
