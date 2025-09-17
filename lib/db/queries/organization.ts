@@ -34,7 +34,20 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     FROM organization_master o
     WHERE o.org_level = ? AND o.is_active = 1
       AND o.org_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-    ORDER BY o.display_order, o.org_name
+    ORDER BY
+      CASE
+        WHEN o.org_name = '영업센터' THEN 1
+        WHEN o.org_name = '오퍼레이션센터' THEN 2
+        WHEN o.org_name = 'EPCV센터' THEN 3
+        WHEN o.org_name = '품질운영센터' THEN 4
+        WHEN o.org_name = 'CDO개발센터' THEN 5
+        WHEN o.org_name = '바이오연구소' THEN 6
+        WHEN o.org_name = '경영지원센터' THEN 7
+        WHEN o.org_name = 'People센터' THEN 8
+        WHEN o.org_name = '상생협력센터' THEN 9
+        ELSE 99
+      END,
+      o.org_name
   `).all(level) as any[];
   
   // 2. 30일 기반 통계 계산 (레벨별 처리)
@@ -543,7 +556,20 @@ export function getOrganizationsWithStatsForPeriod(level: OrgLevel, startDate: s
     FROM organization_master o
     WHERE o.org_level = ? AND o.is_active = 1
       AND o.org_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-    ORDER BY o.display_order, o.org_name
+    ORDER BY
+      CASE
+        WHEN o.org_name = '영업센터' THEN 1
+        WHEN o.org_name = '오퍼레이션센터' THEN 2
+        WHEN o.org_name = 'EPCV센터' THEN 3
+        WHEN o.org_name = '품질운영센터' THEN 4
+        WHEN o.org_name = 'CDO개발센터' THEN 5
+        WHEN o.org_name = '바이오연구소' THEN 6
+        WHEN o.org_name = '경영지원센터' THEN 7
+        WHEN o.org_name = 'People센터' THEN 8
+        WHEN o.org_name = '상생협력센터' THEN 9
+        ELSE 99
+      END,
+      o.org_name
   `).all(level) as any[];
   
   // 2. Period-based 통계 계산 (레벨별 처리)
