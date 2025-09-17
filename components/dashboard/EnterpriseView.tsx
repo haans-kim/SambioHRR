@@ -381,7 +381,7 @@ export default function EnterpriseView() {
                                'hover:shadow-green-200';
             
             return (
-            <Card key={team.team_id} className={`relative hover:shadow-lg ${shadowClass} transition-all duration-200 h-[234px] border ${colorClass}`}>
+            <Card key={`${team.team_id}_${index}`} className={`relative hover:shadow-lg ${shadowClass} transition-all duration-200 h-[234px] border ${colorClass}`}>
               <CardContent className="px-3 pb-3 flex flex-col h-full !pt-0.5">
                 <span className="text-sm font-bold text-gray-600">#{index + 1}</span>
                 

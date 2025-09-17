@@ -177,30 +177,31 @@ export async function GET(request: NextRequest) {
   // Calculate weekly averages from teams stats
   let avgWeeklyWorkHours = 0;
   let avgWeeklyClaimedHours = 0;
-  
+  let avgAdjustedWeeklyWorkHours = 0;
+
   if (teams.length > 0) {
     let totalWeightedWeeklyWorkHours = 0;
     let totalWeightedWeeklyClaimedHours = 0;
+    let totalWeightedAdjustedWeeklyWorkHours = 0;
     let totalTeamEmployees = 0;
-    
+
     teams.forEach(team => {
       const employees = team.stats?.totalEmployees || 0;
       // Natural 방식 사용 (30일 합계 / 30일 * 7)
       const weeklyWorkHours = team.stats?.avgWeeklyWorkHoursAdjusted || team.stats?.avgWeeklyWorkHours || 0;
       const weeklyClaimedHours = team.stats?.avgWeeklyClaimedHoursAdjusted || team.stats?.avgWeeklyClaimedHours || 0;
-      
+      const adjustedWeeklyWorkHours = team.stats?.avgAdjustedWeeklyWorkHours || 0;
+
       totalWeightedWeeklyWorkHours += weeklyWorkHours * employees;
       totalWeightedWeeklyClaimedHours += weeklyClaimedHours * employees;
+      totalWeightedAdjustedWeeklyWorkHours += adjustedWeeklyWorkHours * employees;
       totalTeamEmployees += employees;
     });
-    
+
     avgWeeklyWorkHours = totalTeamEmployees > 0 ? totalWeightedWeeklyWorkHours / totalTeamEmployees : 0;
     avgWeeklyClaimedHours = totalTeamEmployees > 0 ? totalWeightedWeeklyClaimedHours / totalTeamEmployees : 0;
+    avgAdjustedWeeklyWorkHours = totalTeamEmployees > 0 ? totalWeightedAdjustedWeeklyWorkHours / totalTeamEmployees : 0;
   }
-  
-  const avgAdjustedWeeklyWorkHours = avgWeeklyWorkHours && avgDataReliability 
-    ? calculateAdjustedWorkHours(avgWeeklyWorkHours, avgDataReliability)
-    : 0;
   
   // Use local thresholds for drill-down views (relative comparison within organization) - Natural 방식 사용
   const efficiencyValues = teams.map((org: any) => org.stats?.avgWorkEfficiency || 0).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);

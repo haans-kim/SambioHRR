@@ -31,30 +31,10 @@ export async function GET(
       return NextResponse.redirect(new URL(`/api/group-stats/${id}?month=${selectedMonth}`, request.url));
     }
 
-    // 계층 정보 가져오기
-    const hierarchy = db.prepare(`
-      SELECT
-        g.org_name as group_name,
-        t.org_name as parent_team,
-        dt.org_name as parent_division,
-        dt.org_level as parent_div_level,
-        c.org_name as parent_center
-      FROM organization_master g
-      LEFT JOIN organization_master t ON g.parent_org_code = t.org_code
-      LEFT JOIN organization_master dt ON t.parent_org_code = dt.org_code
-      LEFT JOIN organization_master c ON (
-        CASE
-          WHEN dt.org_level = 'center' THEN dt.org_code
-          ELSE dt.parent_org_code
-        END = c.org_code AND c.org_level = 'center'
-      )
-      WHERE g.org_name = ? AND g.org_level = 'group'
-      LIMIT 1
-    `).get(groupName) as any;
-
-    const parentTeam = hierarchy?.parent_team || stats.team_name || 'Unknown';
-    const parentCenter = hierarchy?.parent_center || stats.center_name || 'Unknown';
-    const parentDivision = hierarchy?.parent_div_level === 'division' ? hierarchy.parent_division : null;
+    // 계층 정보는 이미 precomputed stats에 있으므로 사용
+    const parentTeam = stats.team_name || 'Unknown';
+    const parentCenter = stats.center_name || 'Unknown';
+    const parentDivision = null; // 필요시 stats에 추가 가능
 
     // 상세 메트릭은 사전 계산된 데이터에서 가져오거나 기본값 사용
     // daily_analysis_results 조회를 피해 성능 개선

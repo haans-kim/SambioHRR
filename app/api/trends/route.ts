@@ -26,25 +26,44 @@ export async function GET(request: NextRequest) {
       // 근태시간 데이터 (claim_data 테이블)
       const claimedResult = getGradeWeeklyClaimedHoursMatrixFromClaim(startDate, endDate);
 
-      // 근무추정시간 데이터 (daily_analysis_results 테이블)
+      // 근무추정시간 데이터 (claim_data에서 휴일 반영 후 비업무이동시간 50% 제외)
       const actualQuery = `
+        WITH adjusted_hours AS (
+          SELECT
+            e.center_name as centerName,
+            'Lv.' || e.job_grade as grade,
+            c.사번,
+            SUM(
+              CASE
+                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+                THEN COALESCE(h.standard_hours, 8.0)
+                ELSE c.실제근무시간
+              END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+            ) as total_adjusted_hours
+          FROM claim_data c
+          LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+          LEFT JOIN daily_analysis_results dar
+            ON dar.employee_id = CAST(c.사번 AS TEXT)
+            AND DATE(dar.analysis_date) = DATE(c.근무일)
+          JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+          WHERE c.근무일 BETWEEN ? AND ?
+            AND e.job_grade IS NOT NULL
+            AND e.center_name IS NOT NULL
+            AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+          GROUP BY e.center_name, e.job_grade, c.사번
+        )
         SELECT
-          e.center_name as centerName,
-          'Lv.' || e.job_grade as grade,
+          centerName,
+          grade,
           ROUND(
-            SUM(dar.actual_work_hours) / COUNT(DISTINCT dar.employee_id) /
+            SUM(total_adjusted_hours) / COUNT(DISTINCT 사번) /
             (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
           ) as avgWeeklyActualHours
-        FROM daily_analysis_results dar
-        JOIN employees e ON e.employee_id = dar.employee_id
-        WHERE dar.analysis_date BETWEEN ? AND ?
-          AND e.job_grade IS NOT NULL
-          AND e.center_name IS NOT NULL
-          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        GROUP BY e.center_name, e.job_grade
+        FROM adjusted_hours
+        GROUP BY centerName, grade
       `;
 
-      const actualResults = db.prepare(actualQuery).all(endDate, startDate, startDate, endDate) as any[];
+      const actualResults = db.prepare(actualQuery).all(startDate, endDate, endDate, startDate) as any[];
 
       // Transform actual work hours to matrix format
       const actualMatrix: Record<string, Record<string, number>> = {};
