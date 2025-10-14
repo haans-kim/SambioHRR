@@ -29,7 +29,7 @@ export async function GET() {
 
     // 클러스터별 통계 (시간 정보 포함)
     const clusterStats = db.prepare(`
-      SELECT 
+      SELECT
         p.cluster_type as cluster_name,
         COUNT(DISTINCT p.team) as team_count,
         SUM(p.employee_count) as total_employees,
@@ -40,15 +40,13 @@ export async function GET() {
         ROUND(AVG(p.reliability_score), 2) as avg_reliability,
         ROUND(AVG(p.correction_factor), 2) as avg_correction_factor,
         ROUND(AVG(s.avg_actual_work_hours), 1) as avg_actual_work_hours,
-        ROUND(AVG(s.avg_meeting_hours), 1) as avg_meeting_hours,
-        ROUND(AVG(s.avg_movement_hours), 1) as avg_movement_hours
+        ROUND(AVG(s.avg_meeting_hours), 1) as avg_meeting_hours
       FROM dept_pattern_analysis_new p
       LEFT JOIN (
-        SELECT 
+        SELECT
           org_code,
           AVG(avg_actual_work_hours) as avg_actual_work_hours,
-          AVG(avg_meeting_hours) as avg_meeting_hours,
-          AVG(avg_movement_hours) as avg_movement_hours
+          AVG(avg_meeting_hours) as avg_meeting_hours
         FROM organization_daily_stats
         WHERE work_date >= date('now', '-30 days')
         GROUP BY org_code

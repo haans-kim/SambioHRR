@@ -39,7 +39,11 @@
       "Bash(time curl:*)",
       "Bash(for month in 2025-01 2025-03 2025-05)",
       "Bash(do)",
-      "Bash(echo \"Month: $month\")"
+      "Bash(echo \"Month: $month\")",
+      "Bash(for page in center division ground-rules-insights statistics team group)",
+      "Bash(do if [ -f \"app/$page/page.tsx\" ])",
+      "Bash([ -d \"app/$page\" ])",
+      "Bash(then echo \"=== $page ===\" head -20 \"app/$page/page.tsx\")"
     ],
     "deny": []
   }
