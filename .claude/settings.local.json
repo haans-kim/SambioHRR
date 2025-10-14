@@ -45,7 +45,11 @@
       "Bash([ -d \"app/$page\" ])",
       "Bash(then echo \"=== $page ===\" head -20 \"app/$page/page.tsx\")",
       "Bash(awk:*)",
-      "Read(//Users/hanskim/Projects/SambioHR5/**)"
+      "Read(//Users/hanskim/Projects/SambioHR5/**)",
+      "Bash(for table in meal_data knox_approval_data knox_mail_data knox_pims_data eam_data equis_data lams_data mes_data mdm_data)",
+      "Bash(venv/bin/python:*)",
+      "Bash(open http://localhost:3003/data-upload)",
+      "Bash(xargs kill:*)"
     ],
     "deny": []
   }
