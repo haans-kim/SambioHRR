@@ -46,7 +46,7 @@ DATA_TYPES: Dict[str, DataTypeInfo] = {
         table_name="claim_data",
         file_pattern="claim_data*.xlsx",
         sample_columns=["일자", "사번", "근무시간"],
-        date_column="일자",
+        date_column="근무일",
         employee_column="사번"
     ),
     "employees": DataTypeInfo(
@@ -79,8 +79,8 @@ DATA_TYPES: Dict[str, DataTypeInfo] = {
         table_name="knox_approval_data",
         file_pattern="Knox_approval*.xlsx",
         sample_columns=["기안일", "기안자ID", "결재구분"],
-        date_column="기안일",
-        employee_column="기안자ID"
+        date_column="Timestamp",
+        employee_column="UserNo"
     ),
     "knox_mail": DataTypeInfo(
         id="knox_mail",
@@ -90,8 +90,8 @@ DATA_TYPES: Dict[str, DataTypeInfo] = {
         table_name="knox_mail_data",
         file_pattern="Knox_mail*.xlsx",
         sample_columns=["발송일시", "발송자ID"],
-        date_column="발송일시",
-        employee_column="발송자ID"
+        date_column="발신일시_GMT9",
+        employee_column="발신인사번_text"
     ),
     "knox_pims": DataTypeInfo(
         id="knox_pims",
@@ -101,8 +101,8 @@ DATA_TYPES: Dict[str, DataTypeInfo] = {
         table_name="knox_pims_data",
         file_pattern="Knox_PIMS*.xlsx",
         sample_columns=["회의일자", "예약자ID"],
-        date_column="회의일자",
-        employee_column="예약자ID"
+        date_column="start_time",
+        employee_column="employee_id"
     ),
     "eam_data": DataTypeInfo(
         id="eam_data",
@@ -112,8 +112,8 @@ DATA_TYPES: Dict[str, DataTypeInfo] = {
         table_name="eam_data",
         file_pattern="EAM_*.xlsx",
         sample_columns=["로그인일시", "사번"],
-        date_column="로그인일시",
-        employee_column="사번"
+        date_column="ATTEMPTDATE",
+        employee_column="USERNO"
     ),
     "equis_data": DataTypeInfo(
         id="equis_data",
@@ -123,8 +123,8 @@ DATA_TYPES: Dict[str, DataTypeInfo] = {
         table_name="equis_data",
         file_pattern="EQUIS_*.xlsx",
         sample_columns=["사용시작일시", "사번"],
-        date_column="사용시작일시",
-        employee_column="사번"
+        date_column="Timestamp",
+        employee_column="USERNO( ID->사번매칭 )"
     ),
     "lams_data": DataTypeInfo(
         id="lams_data",
@@ -134,8 +134,8 @@ DATA_TYPES: Dict[str, DataTypeInfo] = {
         table_name="lams_data",
         file_pattern="LAMS_*.xlsx",
         sample_columns=["작성일시", "사번"],
-        date_column="작성일시",
-        employee_column="사번"
+        date_column="DATE",
+        employee_column="User_No"
     ),
     "mes_data": DataTypeInfo(
         id="mes_data",
@@ -145,8 +145,8 @@ DATA_TYPES: Dict[str, DataTypeInfo] = {
         table_name="mes_data",
         file_pattern="MES_*.xlsx",
         sample_columns=["로그인일시", "사번"],
-        date_column="로그인일시",
-        employee_column="사번"
+        date_column="login_time",
+        employee_column="USERNo"
     ),
     "mdm_data": DataTypeInfo(
         id="mdm_data",
@@ -156,8 +156,8 @@ DATA_TYPES: Dict[str, DataTypeInfo] = {
         table_name="mdm_data",
         file_pattern="MDM_*.xlsx",
         sample_columns=["처리일시", "사번"],
-        date_column="처리일시",
-        employee_column="사번"
+        date_column="Timestap",
+        employee_column="UserNo"
     ),
 }
 

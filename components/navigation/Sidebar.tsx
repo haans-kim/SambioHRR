@@ -56,9 +56,9 @@ export function Sidebar() {
       href: "/organization", 
       description: "조직별 근무 분석"
     },
-    { 
-      name: "Excel 업로드", 
-      href: "/excel-upload", 
+    {
+      name: "Excel 업로드",
+      href: "/data-upload",
       description: "데이터 업로드"
     }
   ];

@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import useAppStore from '@/stores/useAppStore'
-import MillerColumn from '@/components/organization/MillerColumn'
 import { Progress } from '@/components/ui/progress'
+
+// Lazy load MillerColumn component to improve initial page load
+const MillerColumn = lazy(() => import('@/components/organization/MillerColumn'))
 
 interface AnalysisResult {
   date: string
@@ -95,7 +97,16 @@ export default function OrganizationAnalysisPage() {
           {/* Organization Selection using Miller Column */}
           <div className="bg-white rounded-lg border border-gray-500 shadow-sm p-4">
             <h2 className="text-lg font-medium text-gray-900 mb-4">조직 선택</h2>
-            <MillerColumn />
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                  <span className="text-gray-600">조직 데이터 로딩중...</span>
+                </div>
+              </div>
+            }>
+              <MillerColumn />
+            </Suspense>
           </div>
 
           {/* Analysis Start Button Panel */}

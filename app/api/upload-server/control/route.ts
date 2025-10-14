@@ -221,8 +221,20 @@ export async function POST(request: NextRequest) {
  * Get server status
  */
 export async function GET() {
+  // Check health first (even if uploadServer is null, server might be running externally)
+  const isHealthy = await checkServerHealth();
+
+  // If health check passes but uploadServer is null, server is running externally
+  if (isHealthy && !uploadServer) {
+    return NextResponse.json({
+      status: 'running',
+      port: serverPort,
+      uptime: null,
+      external: true // Indicates server was started externally
+    });
+  }
+
   const isRunning = uploadServer !== null;
-  const isHealthy = isRunning ? await checkServerHealth() : false;
 
   return NextResponse.json({
     status: isRunning ? (isHealthy ? 'running' : 'unhealthy') : 'stopped',

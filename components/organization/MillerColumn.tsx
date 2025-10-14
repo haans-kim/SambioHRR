@@ -74,7 +74,7 @@ export default function MillerColumn() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
 
   // Fetch centers
-  const { data: centers = [] } = useQuery<OrganizationNode[]>({
+  const { data: centers = [], isLoading: centersLoading } = useQuery<OrganizationNode[]>({
     queryKey: ['centers'],
     queryFn: async () => {
       const res = await fetch('/api/organization/centers')
@@ -86,7 +86,9 @@ export default function MillerColumn() {
         name: center.orgName,
         display_order: center.displayOrder || 0
       }))
-    }
+    },
+    staleTime: 5 * 60 * 1000, // 5분간 캐시 유지
+    gcTime: 10 * 60 * 1000  // 10분간 메모리에 보관
   })
 
   // Fetch divisions by center
@@ -209,6 +211,21 @@ export default function MillerColumn() {
       })
     }
   }, [selectedEmployee, selectedCenter, selectedDivision, selectedTeam, selectedGroup, centers, divisions, teams, groups, setEmployee, setOrganizationPath, centerDirectTeams])
+
+  // Show loading state while fetching initial data
+  if (centersLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            <p className="text-gray-600 text-base">조직 데이터 로딩중...</p>
+            <p className="text-gray-500 text-sm">잠시만 기다려주세요</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

@@ -15,7 +15,7 @@ import {
 const devMenuItems = [
   { name: '개인분석', href: '/individual', icon: User },
   { name: '조직분석', href: '/organization', icon: Users },
-  { name: 'Excel 업로드', href: '/excel-upload', icon: FileSpreadsheet },
+  { name: 'Excel 업로드', href: '/data-upload', icon: FileSpreadsheet },
 ]
 
 export function MainNav() {

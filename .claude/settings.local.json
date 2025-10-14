@@ -49,7 +49,9 @@
       "Bash(for table in meal_data knox_approval_data knox_mail_data knox_pims_data eam_data equis_data lams_data mes_data mdm_data)",
       "Bash(venv/bin/python:*)",
       "Bash(open http://localhost:3003/data-upload)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(for table in claim_data meal_data knox_approval_data knox_mail_data knox_pims_data eam_data equis_data lams_data mes_data mdm_data)",
+      "Bash(do echo \"=== $table ===\" sqlite3 sambio_human.db \"PRAGMA table_info($table);\")"
     ],
     "deny": []
   }

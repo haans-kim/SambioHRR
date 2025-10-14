@@ -68,9 +68,24 @@ class DatabaseManager:
                     )
                     min_date, max_date = cursor.fetchone()
                     if min_date and max_date:
+                        # Format date string: 20250101 -> 2025-01-01 or 2025-01-01 00:00:00 -> 2025-01-01
+                        def format_date(date_str):
+                            date_str = str(date_str)
+
+                            # If already in YYYY-MM-DD format (with optional time), extract date part
+                            if '-' in date_str:
+                                return date_str[:10]  # 2025-01-01 00:00:00 -> 2025-01-01
+
+                            # If in YYYYMMDD format, convert to YYYY-MM-DD
+                            date_str = date_str[:8]  # Take first 8 characters
+                            if len(date_str) == 8 and date_str.isdigit():
+                                return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+
+                            return date_str
+
                         date_range = {
-                            "min": str(min_date)[:8] if len(str(min_date)) >= 8 else str(min_date),
-                            "max": str(max_date)[:8] if len(str(max_date)) >= 8 else str(max_date)
+                            "min": format_date(min_date),
+                            "max": format_date(max_date)
                         }
                 except Exception as e:
                     logger.warning(f"Could not get date range for {table_name}: {e}")

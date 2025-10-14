@@ -28,28 +28,40 @@ async function proxyRequest(
     console.log(`[Upload Proxy] ${request.method} ${fullUrl}`);
 
     // Forward the request to FastAPI
-    const response = await fetch(fullUrl, {
-      method: request.method,
-      headers: {
-        ...Object.fromEntries(request.headers),
-        // Remove Next.js specific headers
-        'x-middleware-subrequest': '',
-      },
-      body: request.method !== 'GET' && request.method !== 'HEAD'
-        ? await request.arrayBuffer()
-        : undefined,
-    });
+    // Set a long timeout for large file uploads (10 minutes)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes
 
-    // Get response body
-    const data = await response.json();
+    try {
+      const response = await fetch(fullUrl, {
+        method: request.method,
+        headers: {
+          ...Object.fromEntries(request.headers),
+          // Remove Next.js specific headers
+          'x-middleware-subrequest': '',
+        },
+        body: request.method !== 'GET' && request.method !== 'HEAD'
+          ? await request.arrayBuffer()
+          : undefined,
+        signal: controller.signal,
+      });
 
-    // Return proxied response
-    return NextResponse.json(data, {
-      status: response.status,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+      clearTimeout(timeoutId);
+
+      // Get response body
+      const data = await response.json();
+
+      // Return proxied response
+      return NextResponse.json(data, {
+        status: response.status,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      throw fetchError;
+    }
 
   } catch (error) {
     console.error('[Upload Proxy] Error:', error);

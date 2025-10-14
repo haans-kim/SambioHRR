@@ -1,0 +1,92 @@
+{
+  "data_types": [
+    {
+      "id": "tag_data",
+      "label": "입출문 기록",
+      "description": "출입문 태그 데이터",
+      "priority": "high",
+      "file_pattern": "입출문기록(YY.M).xlsx",
+      "sample_columns": ["emp_no", "emp_name", "work_date", "tag_time", "door_name"]
+    },
+    {
+      "id": "claim_data",
+      "label": "클레임 데이터",
+      "description": "품질 클레임 관리",
+      "priority": "medium",
+      "file_pattern": "claim_YYYYMMDD.xlsx",
+      "sample_columns": ["claim_no", "issue_date", "customer", "description"]
+    },
+    {
+      "id": "meal_data",
+      "label": "식사 데이터",
+      "description": "구내식당 식사 기록",
+      "priority": "high",
+      "file_pattern": "식사(YY.M).xlsx",
+      "sample_columns": ["emp_no", "emp_name", "meal_date", "meal_type"]
+    },
+    {
+      "id": "knox_approval_data",
+      "label": "전자결재 데이터",
+      "description": "KNOX 전자결재 시스템",
+      "priority": "high",
+      "file_pattern": "knox_approval_YYYYMM.xlsx",
+      "sample_columns": ["doc_no", "approval_date", "emp_no", "doc_type"]
+    },
+    {
+      "id": "knox_mail_data",
+      "label": "메일 데이터",
+      "description": "KNOX 메일 시스템",
+      "priority": "medium",
+      "file_pattern": "knox_mail_YYYYMM.xlsx",
+      "sample_columns": ["mail_id", "receive_date", "sender", "subject"]
+    },
+    {
+      "id": "knox_pims_data",
+      "label": "PIMS 데이터",
+      "description": "프로젝트 관리 시스템",
+      "priority": "medium",
+      "file_pattern": "knox_pims_YYYYMM.xlsx",
+      "sample_columns": ["project_id", "date", "emp_no", "hours"]
+    },
+    {
+      "id": "eam_data",
+      "label": "EAM 데이터",
+      "description": "자산 관리 시스템",
+      "priority": "low",
+      "file_pattern": "eam_*.xlsx",
+      "sample_columns": ["asset_id", "asset_name", "location"]
+    },
+    {
+      "id": "equis_data",
+      "label": "EQUIS 데이터",
+      "description": "설비 관리 시스템",
+      "priority": "low",
+      "file_pattern": "equis_*.xlsx",
+      "sample_columns": ["equip_id", "equip_name", "status"]
+    },
+    {
+      "id": "lams_data",
+      "label": "LAMS 데이터",
+      "description": "실험실 관리 시스템",
+      "priority": "low",
+      "file_pattern": "lams_*.xlsx",
+      "sample_columns": ["lab_id", "test_name", "result"]
+    },
+    {
+      "id": "mes_data",
+      "label": "MES 데이터",
+      "description": "제조 실행 시스템",
+      "priority": "low",
+      "file_pattern": "mes_*.xlsx",
+      "sample_columns": ["lot_no", "product_name", "quantity"]
+    },
+    {
+      "id": "mdm_data",
+      "label": "MDM 데이터",
+      "description": "마스터 데이터 관리",
+      "priority": "low",
+      "file_pattern": "mdm_*.xlsx",
+      "sample_columns": ["master_id", "master_type", "value"]
+    }
+  ]
+}

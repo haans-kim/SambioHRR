@@ -120,6 +120,26 @@ async def get_data_type_stats(data_type: str):
     )
 
 
+@app.get("/api/upload/progress/{upload_id}")
+async def get_upload_progress(upload_id: str):
+    """Get upload progress for a specific upload ID"""
+    if upload_id in upload_progress:
+        progress_data = upload_progress[upload_id]
+        return {
+            "upload_id": upload_id,
+            "file_name": progress_data.file_name,
+            "data_type": progress_data.data_type,
+            "total_rows": progress_data.total_rows,
+            "processed_rows": progress_data.processed_rows,
+            "progress": progress_data.progress,
+            "status": progress_data.status,
+            "message": progress_data.message,
+            "error": progress_data.error if hasattr(progress_data, 'error') else None
+        }
+    else:
+        raise HTTPException(status_code=404, detail=f"Upload ID not found: {upload_id}")
+
+
 @app.post("/api/upload/{data_type}")
 async def upload_excel(
     data_type: str,
@@ -201,6 +221,7 @@ async def upload_excel(
             status_code=200,
             content={
                 "success": True,
+                "upload_id": upload_id,
                 "data_type": data_type,
                 "file_name": file.filename,
                 "rows_inserted": rows_inserted,
