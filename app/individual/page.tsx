@@ -41,6 +41,7 @@ export default function IndividualAnalysisPage() {
         }
       })
       .catch(err => console.error('Failed to fetch dates:', err))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
   // Generate breadcrumb based on organization path

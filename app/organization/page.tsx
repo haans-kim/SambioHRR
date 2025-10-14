@@ -1,11 +1,7 @@
 'use client'
 
-import { useState, lazy, Suspense } from 'react'
-import useAppStore from '@/stores/useAppStore'
+import { useState } from 'react'
 import { Progress } from '@/components/ui/progress'
-
-// Lazy load MillerColumn component to improve initial page load
-const MillerColumn = lazy(() => import('@/components/organization/MillerColumn'))
 
 interface AnalysisResult {
   date: string
@@ -22,26 +18,26 @@ interface AnalysisResult {
     transitTime: number
     restTime: number
     reliabilityScore: number
+    groundRulesMetrics?: {
+      groundRulesWorkTime: number
+      groundRulesConfidence: number
+      t1WorkMovement: number
+      t1NonWorkMovement: number
+      teamBaselineUsed: number
+      anomalyScore: number
+      appliedRulesCount: number
+    }
   }
   claimedHours?: number
 }
 
 export default function OrganizationAnalysisPage() {
-  const { organizationPath } = useAppStore()
-
-  // 사용 가능한 월 목록 (2025-01 ~ 2025-06)
-  const availableMonths = [
-    '2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06'
-  ]
-
-  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06')
   const [startDate, setStartDate] = useState<Date>(new Date('2025-06-01'))
   const [endDate, setEndDate] = useState<Date>(new Date('2025-06-30'))
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([])
-  const [saveToDb, setSaveToDb] = useState(true) // 항상 DB에 저장
-  const [showOrgSelector, setShowOrgSelector] = useState(false) // Miller Column 표시 여부
+  const [saveToDb] = useState(true) // 항상 DB에 저장
   const [analysisMode, setAnalysisMode] = useState<'basic' | 'groundrules'>('groundrules') // 분석 방식
   const [analysisInfo, setAnalysisInfo] = useState<{
     totalRecords?: number
@@ -52,18 +48,6 @@ export default function OrganizationAnalysisPage() {
     completedMonths?: number
     totalMonths?: number
   }>({})
-
-  // 월 변경 핸들러
-  const handleMonthChange = (month: string) => {
-    setSelectedMonth(month)
-    // 날짜 범위 업데이트 (해당 월의 전체 기간으로)
-    const year = parseInt(month.split('-')[0])
-    const monthNum = parseInt(month.split('-')[1])
-    const startOfMonth = new Date(year, monthNum - 1, 1)
-    const endOfMonth = new Date(year, monthNum, 0) // 다음 달 0일 = 현재 달 마지막 일
-    setStartDate(startOfMonth)
-    setEndDate(endOfMonth)
-  }
 
   const formatMinutes = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
@@ -123,46 +107,22 @@ export default function OrganizationAnalysisPage() {
             </div>
           </div>
 
-          {/* Organization Selection (Optional) */}
-          <div className="bg-white rounded-lg border border-gray-500 shadow-sm p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-medium text-gray-900">조직 선택</h2>
-                {organizationPath.center && (
-                  <span className="text-sm text-gray-500">
-                    ({organizationPath.center}
-                    {organizationPath.division && ` > ${organizationPath.division}`}
-                    {organizationPath.team && ` > ${organizationPath.team}`}
-                    {organizationPath.group && ` > ${organizationPath.group}`})
-                  </span>
-                )}
+          {/* Info Panel - No Miller Column needed */}
+          <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-              <button
-                onClick={() => setShowOrgSelector(!showOrgSelector)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-              >
-                {showOrgSelector ? '조직 선택 닫기' : '조직 선택하기'}
-              </button>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-blue-900 mb-1">전체 조직 분석</h3>
+                <p className="text-sm text-blue-700">
+                  선택한 기간 동안 근무시간이 기록된 모든 직원을 대상으로 분석합니다.
+                  분석 방식을 선택하고 "분석 시작" 버튼을 클릭하세요.
+                </p>
+              </div>
             </div>
-
-            {!showOrgSelector && !organizationPath.center && (
-              <div className="py-4 text-center text-gray-500 text-sm">
-                전체 조직을 대상으로 분석합니다. 특정 조직만 분석하려면 "조직 선택하기"를 클릭하세요.
-              </div>
-            )}
-
-            {showOrgSelector && (
-              <Suspense fallback={
-                <div className="flex items-center justify-center py-8">
-                  <div className="flex items-center gap-3">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                    <span className="text-gray-600">조직 데이터 로딩중...</span>
-                  </div>
-                </div>
-              }>
-                <MillerColumn />
-              </Suspense>
-            )}
           </div>
 
           {/* Analysis Method Selection & Execution Panel */}

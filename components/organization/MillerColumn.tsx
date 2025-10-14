@@ -187,30 +187,7 @@ export default function MillerColumn() {
     enabled: !!selectedOrg
   })
 
-  // Update global state when employee is selected
-  useEffect(() => {
-    if (selectedEmployee) {
-      setEmployee(selectedEmployee as any)
-      const centerName = centers.find(c => c.code === selectedCenter)?.name
-      const divisionName = selectedDivision === 'center_direct' 
-        ? '센터 직속' 
-        : divisions.find(d => d.code === selectedDivision)?.name
-      const teamName = teams.find(t => t.code === selectedTeam)?.name || 
-        (selectedDivision === 'center_direct' ? centerDirectTeams.find(t => t.code === selectedTeam)?.name : undefined)
-      const groupName = groups.find(g => g.code === selectedGroup)?.name
-      
-      setOrganizationPath({
-        center: selectedCenter || undefined,
-        centerName: centerName || undefined,
-        division: selectedDivision || undefined,
-        divisionName: divisionName || undefined,
-        team: selectedTeam || undefined,
-        teamName: teamName || undefined,
-        group: selectedGroup || undefined,
-        groupName: groupName || undefined
-      })
-    }
-  }, [selectedEmployee, selectedCenter, selectedDivision, selectedTeam, selectedGroup, centers, divisions, teams, groups, setEmployee, setOrganizationPath, centerDirectTeams])
+  // No useEffect needed - organization path is updated in each selection handler
 
   // Show loading state while fetching initial data
   if (centersLoading) {
@@ -387,6 +364,27 @@ export default function MillerColumn() {
               const employee = employees.find(e => e.employee_id === employeeId)
               if (employee) {
                 setSelectedEmployee(employee)
+                setEmployee(employee as any)
+
+                // Update organization path when employee is selected
+                const centerName = centers.find(c => c.code === selectedCenter)?.name
+                const divisionName = selectedDivision === 'center_direct'
+                  ? '센터 직속'
+                  : divisions.find(d => d.code === selectedDivision)?.name
+                const teamName = teams.find(t => t.code === selectedTeam)?.name ||
+                  (selectedDivision === 'center_direct' ? centerDirectTeams.find(t => t.code === selectedTeam)?.name : undefined)
+                const groupName = groups.find(g => g.code === selectedGroup)?.name
+
+                setOrganizationPath({
+                  center: selectedCenter || undefined,
+                  centerName: centerName || undefined,
+                  division: selectedDivision || undefined,
+                  divisionName: divisionName || undefined,
+                  team: selectedTeam || undefined,
+                  teamName: teamName || undefined,
+                  group: selectedGroup || undefined,
+                  groupName: groupName || undefined
+                })
               }
             }}
             renderItem={(item: Employee) => ({
