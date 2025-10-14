@@ -40,10 +40,8 @@ DB_PATH = Path("/Users/hanskim/Projects/SambioHRR/sambio_human.db")
 
 def init_session_state():
     """세션 상태 초기화"""
-    if 'upload_files' not in st.session_state:
-        st.session_state.upload_files = {}
-        for data_type in DATA_TYPES.keys():
-            st.session_state.upload_files[data_type] = []
+    # 세션 상태는 필요할 때 동적으로 생성됨
+    pass
 
 def get_data_stats():
     """데이터베이스 통계 가져오기"""
@@ -142,25 +140,41 @@ def render_data_status_table():
     st.markdown("## SAMBIO 데이터 업로드 관리")
     st.markdown("### 데이터 업로드 및 관리")
 
-    # AgGrid 테이블 헤더 폰트 조정 (더 큰 폰트)
+    # AgGrid 테이블 헤더 폰트 조정 (데이터와 동일한 폰트)
     st.markdown("""
         <style>
-        /* AgGrid 테이블 헤더 폰트 통일 */
-        .ag-header-cell-text {
+        /* 모든 가능한 AgGrid 헤더 선택자 */
+        [class*="ag-header"] [class*="ag-header-cell"],
+        [class*="ag-header-cell"],
+        [class*="ag-header"] span,
+        .ag-header-cell,
+        .ag-header-cell-label,
+        .ag-header-cell-text,
+        .ag-header-group-cell,
+        div[col-id] .ag-header-cell-label,
+        div[role="columnheader"] {
             font-size: 18px !important;
-            font-weight: 500 !important;
+            font-weight: 400 !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
         }
 
-        /* AgGrid 헤더 중앙 정렬 통일 */
-        .ag-header-cell {
-            padding: 12px 16px !important;
+        /* 헤더 중앙 정렬 */
+        [class*="ag-header-cell"],
+        .ag-header-cell,
+        div[role="columnheader"] {
             text-align: center !important;
+            justify-content: center !important;
+        }
+
+        [class*="ag-header"] [class*="ag-cell-label-container"] {
+            justify-content: center !important;
         }
 
         /* AgGrid 셀 폰트 */
+        [class*="ag-cell"],
         .ag-cell {
             font-size: 18px !important;
+            font-weight: 400 !important;
             padding: 12px 16px !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
         }
@@ -200,9 +214,12 @@ def render_data_status_table():
                               autoHeight=False)
             gb.configure_column("데이터 수",
                               cellStyle={'textAlign': 'right', 'fontSize': '18px', 'padding': '16px 24px'},
-                              headerStyle={'textAlign': 'right'},
+                              headerStyle={'textAlign': 'center'},
                               wrapText=False,
                               autoHeight=False)
+
+            # 행 선택 가능하도록 설정
+            gb.configure_selection(selection_mode='single', use_checkbox=False)
 
             # 기타 옵션 - 페이지 폭에 맞춰 균등 분배
             gb.configure_grid_options(
@@ -213,116 +230,152 @@ def render_data_status_table():
                 domLayout='normal'
             )
 
+            # defaultColDef로 전역 헤더 스타일 설정
+            gb.configure_default_column(
+                headerClass='custom-header',
+                cellStyle={'fontSize': '18px', 'fontWeight': '400'},
+            )
+
             gridOptions = gb.build()
 
-            AgGrid(
+            # gridOptions에 직접 헤더 스타일 추가
+            gridOptions['defaultColDef'] = {
+                **gridOptions.get('defaultColDef', {}),
+                'headerClass': 'custom-header',
+            }
+
+            # 커스텀 CSS를 AgGrid에 직접 주입
+            custom_css = {
+                ".ag-header-cell-text": {"font-size": "18px", "font-weight": "400", "text-align": "center"},
+                ".ag-header-cell": {"text-align": "center", "justify-content": "center"},
+                ".ag-header-cell-label": {"text-align": "center", "justify-content": "center", "width": "100%"},
+                ".ag-header-group-cell-label": {"text-align": "center", "justify-content": "center"},
+                ".ag-cell": {"font-size": "18px", "font-weight": "400"}
+            }
+
+            grid_response = AgGrid(
                 df_status,
                 gridOptions=gridOptions,
                 height=len(df_status) * 56 + 65,
                 fit_columns_on_grid_load=True,
-                update_mode=GridUpdateMode.NO_UPDATE,
-                theme='streamlit'
+                update_mode=GridUpdateMode.SELECTION_CHANGED,
+                theme='streamlit',
+                custom_css=custom_css
             )
+
+            # 선택된 행이 있으면 세션에 저장
+            selected_rows = grid_response.get('selected_rows', None)
+            if selected_rows is not None and not selected_rows.empty:
+                # DataFrame이므로 iloc로 접근
+                selected_label = selected_rows.iloc[0]['데이터 유형']
+
+                # 데이터 유형 레이블로 ID 찾기
+                for dt_id, dt_info in DATA_TYPES.items():
+                    if dt_info.label == selected_label:
+                        st.session_state['selected_data_type'] = dt_id
+                        break
     else:
         st.warning("데이터 상태를 불러올 수 없습니다.")
 
 def render_file_upload_section():
     """파일 업로드 섹션 렌더링"""
     st.markdown("---")
-    st.markdown("#### 📁 파일 등록")
 
-    data_type_labels = {dt_id: dt_info.label for dt_id, dt_info in DATA_TYPES.items()}
-    selected_label = st.selectbox(
-        "데이터 유형 선택",
-        options=list(data_type_labels.values()),
-        key="data_type_selector"
-    )
+    # 테이블에서 선택된 데이터 타입 가져오기
+    selected_type = st.session_state.get('selected_data_type', None)
 
-    selected_type = None
-    for dt_id, label in data_type_labels.items():
-        if label == selected_label:
-            selected_type = dt_id
-            break
+    if not selected_type:
+        # 테이블과 동일하게 들여쓰기
+        col1, col2, col3 = st.columns([1, 18, 1])
+        with col2:
+            st.info("💡 위 테이블에서 데이터 유형을 선택하면 파일 업로드가 가능합니다.")
+        return
 
-    if selected_type:
-        data_type_info = DATA_TYPES[selected_type]
-        st.info(f"📊 {data_type_info.description}")
+    data_type_info = DATA_TYPES[selected_type]
 
+    # 테이블과 동일하게 들여쓰기
+    col1, col2, col3 = st.columns([1, 18, 1])
+
+    with col2:
+        st.markdown(f"#### 📁 {data_type_info.label} 업로드")
+
+        # 파일 업로더 스타일
+        st.markdown("""
+            <style>
+            /* Browse files 버튼 크기 및 스타일 */
+            [data-testid="stFileUploader"] section button {
+                font-size: 18px !important;
+                padding: 16px 32px !important;
+                height: auto !important;
+                min-height: 56px !important;
+                font-weight: 500 !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        # 파일 업로더
         uploaded_files = st.file_uploader(
-            "Excel 파일 선택 (복수 선택 가능)",
+            "Select Files (Excel 파일 복수 선택 가능)",
             type=['xlsx', 'xls'],
             accept_multiple_files=True,
-            key=f"file_uploader_{selected_type}"
+            key=f"file_uploader_{selected_type}",
+            label_visibility="visible"
         )
 
+        # 선택된 파일이 있으면 세션에 저장
         if uploaded_files:
-            if st.button("➕ 파일 추가", key="add_files"):
-                for file in uploaded_files:
-                    file_info = {
-                        "name": file.name,
-                        "size": file.size,
-                        "file": file
-                    }
-                    existing_names = [f['name'] for f in st.session_state.upload_files[selected_type]]
-                    if file_info['name'] not in existing_names:
-                        st.session_state.upload_files[selected_type].append(file_info)
-                st.success(f"{len(uploaded_files)}개 파일이 추가되었습니다.")
-                st.rerun()
+            st.session_state['uploaded_files'] = uploaded_files
 
-        if st.session_state.upload_files[selected_type]:
-            st.markdown(f"##### 📋 {data_type_info.label} 등록 파일")
-
-            for idx, file_info in enumerate(st.session_state.upload_files[selected_type]):
-                col1, col2, col3 = st.columns([3, 1, 1])
-                with col1:
-                    st.text(file_info["name"])
-                with col2:
-                    st.text(f"{file_info['size'] / (1024*1024):.2f} MB")
-                with col3:
-                    if st.button("🗑️ 삭제", key=f"remove_{selected_type}_{idx}"):
-                        st.session_state.upload_files[selected_type].pop(idx)
-                        st.rerun()
+            # 선택된 파일 목록 표시
+            st.markdown(f"**선택된 파일: {len(uploaded_files)}개**")
+            for file in uploaded_files:
+                st.text(f"📄 {file.name} ({file.size / (1024*1024):.2f} MB)")
 
 def render_action_buttons():
     """액션 버튼 렌더링"""
-    st.markdown("---")
 
-    data_type_labels = {dt_id: dt_info.label for dt_id, dt_info in DATA_TYPES.items()}
-    selected_label = st.selectbox(
-        "로드할 데이터 유형",
-        options=list(data_type_labels.values()),
-        key="load_data_type_selector"
-    )
+    # 테이블에서 선택된 데이터 타입 가져오기
+    selected_type = st.session_state.get('selected_data_type', None)
+    uploaded_files = st.session_state.get('uploaded_files', None)
 
-    selected_type = None
-    for dt_id, label in data_type_labels.items():
-        if label == selected_label:
-            selected_type = dt_id
-            break
+    if not selected_type or not uploaded_files:
+        return
 
-    col1, col2 = st.columns([1, 1])
+    # 테이블과 동일한 들여쓰기 적용
+    _, col_btn, _ = st.columns([1, 18, 1])
 
-    with col1:
-        if st.button("📤 데이터 로드", type="primary", use_container_width=True):
-            if selected_type:
-                load_data(selected_type)
-                st.rerun()
+    with col_btn:
+        # 검은색 버튼 스타일 적용
+        st.markdown("""
+        <style>
+        div.stButton > button {
+            background-color: #000000 !important;
+            color: white !important;
+            border: none !important;
+            padding: 0.75rem 1rem !important;
+            font-size: 18px !important;
+            font-weight: 500 !important;
+        }
+        div.stButton > button:hover {
+            background-color: #1a1a1a !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
-    with col2:
-        if st.button("🔄 새로고침", use_container_width=True):
+        if st.button("📤 데이터 업로드", use_container_width=True):
+            load_data(selected_type, uploaded_files)
             st.rerun()
 
-def load_data(selected_type):
+def load_data(selected_type, uploaded_files):
     """데이터 로드 처리"""
     progress_bar = st.progress(0)
     status_text = st.empty()
 
     try:
         data_type_info = DATA_TYPES[selected_type]
-        files = st.session_state.upload_files[selected_type]
 
-        if not files:
-            st.warning("등록된 파일이 없습니다.")
+        if not uploaded_files:
+            st.warning("파일을 선택해주세요.")
             return
 
         status_text.text(f"📊 {data_type_info.label} 로딩 중...")
@@ -334,18 +387,19 @@ def load_data(selected_type):
         all_dfs = []
         temp_files_to_delete = []
 
-        total_files = len(files)
-        for idx, file_info in enumerate(files):
-            status_text.text(f"📖 파일 로딩 중: {file_info['name']} ({idx+1}/{total_files})")
+        total_files = len(uploaded_files)
+        for idx, uploaded_file in enumerate(uploaded_files):
+            status_text.text(f"📖 파일 로딩 중: {uploaded_file.name} ({idx+1}/{total_files})")
             progress = 0.1 + (idx / total_files) * 0.4
             progress_bar.progress(progress)
 
             with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
-                tmp_file.write(file_info['file'].getbuffer())
+                tmp_file.write(uploaded_file.getbuffer())
                 tmp_path = tmp_file.name
 
             try:
-                df = excel_loader.load_excel(tmp_path)
+                from pathlib import Path
+                df = excel_loader.load_excel_file(Path(tmp_path))
                 if df is not None and not df.empty:
                     all_dfs.append(df)
                 temp_files_to_delete.append(tmp_path)
@@ -375,7 +429,11 @@ def load_data(selected_type):
             progress_bar.progress(1.0)
             status_text.text("✅ 로드 완료!")
 
-            st.session_state.upload_files[selected_type] = []
+            # 세션 정리
+            if 'uploaded_files' in st.session_state:
+                del st.session_state['uploaded_files']
+            if 'selected_data_type' in st.session_state:
+                del st.session_state['selected_data_type']
 
             for tmp_path in temp_files_to_delete:
                 try:
@@ -395,35 +453,6 @@ def load_data(selected_type):
     finally:
         progress_bar.empty()
         status_text.empty()
-
-def render_action_buttons():
-    """액션 버튼 렌더링"""
-    st.markdown("---")
-
-    data_type_labels = {dt_id: dt_info.label for dt_id, dt_info in DATA_TYPES.items()}
-    selected_label = st.selectbox(
-        "로드할 데이터 유형",
-        options=list(data_type_labels.values()),
-        key="load_data_type_selector"
-    )
-
-    selected_type = None
-    for dt_id, label in data_type_labels.items():
-        if label == selected_label:
-            selected_type = dt_id
-            break
-
-    col1, col2 = st.columns([1, 1])
-
-    with col1:
-        if st.button("📤 데이터 로드", type="primary", use_container_width=True):
-            if selected_type:
-                load_data(selected_type)
-                st.rerun()
-
-    with col2:
-        if st.button("🔄 새로고침", use_container_width=True):
-            st.rerun()
 
 def main():
     """메인 애플리케이션"""
