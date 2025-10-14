@@ -43,7 +43,9 @@
       "Bash(for page in center division ground-rules-insights statistics team group)",
       "Bash(do if [ -f \"app/$page/page.tsx\" ])",
       "Bash([ -d \"app/$page\" ])",
-      "Bash(then echo \"=== $page ===\" head -20 \"app/$page/page.tsx\")"
+      "Bash(then echo \"=== $page ===\" head -20 \"app/$page/page.tsx\")",
+      "Bash(awk:*)",
+      "Read(//Users/hanskim/Projects/SambioHR5/**)"
     ],
     "deny": []
   }
