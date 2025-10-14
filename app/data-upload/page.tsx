@@ -130,10 +130,10 @@ export default function DataUploadPage() {
                         key={dataType.id}
                         className="border-b hover:bg-muted/50 transition-colors"
                       >
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-left pl-6">
                           <div className="font-medium text-base">{dataType.label}</div>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-left pl-6">
                           <code className="text-base bg-muted px-2 py-1 rounded">
                             {stats?.table_name || '-'}
                           </code>

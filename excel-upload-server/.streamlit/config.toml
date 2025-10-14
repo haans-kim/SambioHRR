@@ -1,0 +1,36 @@
+[theme]
+# Primary color for interactive elements
+primaryColor = "#2E86AB"  # 깊은 블루 - 전문적이고 신뢰감 있는 느낌
+
+# Background color for the main content area
+backgroundColor = "#FFFFFF"
+
+# Background color for sidebar and most interactive widgets
+secondaryBackgroundColor = "#F7F9FC"  # 매우 연한 회색-블루
+
+# Color used for almost all text
+textColor = "#1F2937"  # 다크 그레이 - 가독성 좋음
+
+# Font family for all text in the app, except code blocks
+font = "Inter"  # 모던하고 가독성 좋은 폰트
+
+# Base theme (light or dark)
+base = "light"
+
+[server]
+# 포트 설정
+port = 8501
+
+# 브라우저 자동 실행 비활성화
+headless = true
+
+# 파일 감시 활성화 (개발 중)
+runOnSave = true
+
+[browser]
+# 탭 제목
+gatherUsageStats = false
+
+[runner]
+# 매직 명령어 활성화
+magicEnabled = true

@@ -17,7 +17,6 @@ import logging
 from datetime import datetime
 import tempfile
 import os
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 # 현재 디렉토리를 Python 경로에 추가
 current_dir = Path(__file__).parent
@@ -51,84 +50,38 @@ def get_data_stats():
         db_manager = DatabaseManager(str(DB_PATH))
         stats = []
 
-        # 각 데이터 타입별 날짜 컬럼 매핑 (Next.js API와 동일)
-        date_column_map = {
-            "tag_data": ("ENTE_DT", "number"),  # 20250101 형식
-            "claim_data": ("근무일", "datetime"),
-            "meal_data": ("취식일시", "datetime"),
-            "knox_approval": ("Timestamp", "datetime"),
-            "knox_mail": ("발신일시_GMT9", "datetime"),
-            "knox_pims": ("start_time", "datetime"),
-            "eam_data": ("ATTEMPTDATE", "datetime"),
-            "equis_data": ("Timestamp", "datetime"),
-            "lams_data": ("DATE", "datetime"),
-            "mes_data": ("login_time", "datetime"),
-            "mdm_data": ("Timestap", "datetime"),
-        }
-
-        # 스크린샷과 동일한 순서로 정렬
-        ordered_data_types = [
-            "tag_data", "claim_data", "meal_data",
-            "knox_approval", "knox_mail", "knox_pims",
-            "eam_data", "equis_data", "lams_data", "mes_data", "mdm_data"
-        ]
-
-        for data_type_id in ordered_data_types:
-            if data_type_id not in DATA_TYPES:
-                continue
-
-            data_type_info = DATA_TYPES[data_type_id]
+        for data_type_id, data_type_info in DATA_TYPES.items():
             table_name = data_type_info.table_name
 
             # 테이블 존재 여부 확인
             if not db_manager.table_exists(table_name):
                 stats.append({
                     "데이터 유형": data_type_info.label,
-                    "테이블명": table_name,
-                    "데이터 기간": "-",
-                    "마지막 업로드": "-",
-                    "데이터 수": "-"
+                    "등록 파일": "0개",
+                    "Pickle 상태": "없음",
+                    "데이터프레임": table_name,
+                    "행 수": "-",
+                    "최종 수정": "-"
                 })
                 continue
 
             # 행 수 가져오기
             row_count = db_manager.get_row_count(table_name)
 
-            # 데이터 기간 조회
-            date_range = "-"
-            last_upload = "-"
-            if row_count > 0 and data_type_id in date_column_map:
-                try:
-                    date_col, date_format = date_column_map[data_type_id]
+            # 등록된 파일 정보
+            uploaded_files = st.session_state.upload_files.get(data_type_id, [])
+            file_info = f"{len(uploaded_files)}개" if uploaded_files else "0개"
 
-                    query = f"SELECT MIN({date_col}) as min_date, MAX({date_col}) as max_date FROM {table_name} WHERE {date_col} IS NOT NULL"
-                    result = db_manager.conn.execute(query).fetchone()
-
-                    if result and result[0]:
-                        min_date = str(result[0])
-                        max_date = str(result[1])
-
-                        # 숫자 형식 (20250101) -> 날짜 문자열 (2025-01-01)
-                        if date_format == "number":
-                            min_date = f"{min_date[:4]}-{min_date[4:6]}-{min_date[6:8]}"
-                            max_date = f"{max_date[:4]}-{max_date[4:6]}-{max_date[6:8]}"
-                        # datetime 형식에서 날짜만 추출
-                        elif date_format == "datetime":
-                            min_date = min_date.split(' ')[0]
-                            max_date = max_date.split(' ')[0]
-
-                        date_range = f"{min_date} ~ {max_date}"
-                        last_upload = max_date
-
-                except Exception as e:
-                    logger.debug(f"날짜 조회 실패 ({table_name}): {e}")
+            # 최종 수정일
+            last_modified = datetime.now().strftime("%Y-%m-%d") if row_count > 0 else "-"
 
             stats.append({
                 "데이터 유형": data_type_info.label,
-                "테이블명": table_name,
-                "데이터 기간": date_range,
-                "마지막 업로드": last_upload,
-                "데이터 수": f"{row_count:,}" if row_count > 0 else "-"
+                "등록 파일": file_info,
+                "Pickle 상태": "있음" if row_count > 0 else "없음",
+                "데이터프레임": table_name,
+                "행 수": f"{row_count:,}" if row_count > 0 else "-",
+                "최종 수정": last_modified
             })
 
         return pd.DataFrame(stats)
@@ -138,91 +91,23 @@ def get_data_stats():
         return pd.DataFrame()
 
 def render_data_status_table():
-    """데이터 상태 테이블 렌더링 - AgGrid 사용"""
-    st.markdown("## SAMBIO 데이터 업로드 관리")
+    """데이터 상태 테이블 렌더링"""
+    st.markdown("## 📊 데이터 업로드 관리")
     st.markdown("### 데이터 업로드 및 관리")
-
-    # AgGrid 테이블 헤더 폰트 조정 (더 큰 폰트)
-    st.markdown("""
-        <style>
-        /* AgGrid 테이블 헤더 폰트 통일 */
-        .ag-header-cell-text {
-            font-size: 18px !important;
-            font-weight: 500 !important;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-        }
-
-        /* AgGrid 헤더 중앙 정렬 통일 */
-        .ag-header-cell {
-            padding: 12px 16px !important;
-            text-align: center !important;
-        }
-
-        /* AgGrid 셀 폰트 */
-        .ag-cell {
-            font-size: 18px !important;
-            padding: 12px 16px !important;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
 
     df_status = get_data_stats()
 
     if not df_status.empty:
-        # 테이블을 안쪽으로 들여쓰기 (좌우 여백 추가)
-        col1, col2, col3 = st.columns([1, 18, 1])
+        row_height = 35
+        header_height = 40
+        total_height = len(df_status) * row_height + header_height + 20
 
-        with col2:
-            # GridOptionsBuilder로 컬럼 설정
-            gb = GridOptionsBuilder.from_dataframe(df_status)
-
-            # 각 컬럼을 퍼센트로 균등 분배 (페이지 전체 폭 사용)
-            gb.configure_column("데이터 유형",
-                              cellStyle={'textAlign': 'left', 'fontSize': '18px', 'padding': '16px 24px'},
-                              headerStyle={'textAlign': 'center'},
-                              wrapText=False,
-                              autoHeight=False)
-            gb.configure_column("테이블명",
-                              cellStyle={'textAlign': 'left', 'fontSize': '18px', 'padding': '16px 24px'},
-                              headerStyle={'textAlign': 'center'},
-                              wrapText=False,
-                              autoHeight=False)
-            gb.configure_column("데이터 기간",
-                              cellStyle={'textAlign': 'center', 'fontSize': '18px', 'padding': '16px 24px'},
-                              headerStyle={'textAlign': 'center'},
-                              wrapText=False,
-                              autoHeight=False)
-            gb.configure_column("마지막 업로드",
-                              cellStyle={'textAlign': 'center', 'fontSize': '18px', 'padding': '16px 24px'},
-                              headerStyle={'textAlign': 'center'},
-                              wrapText=False,
-                              autoHeight=False)
-            gb.configure_column("데이터 수",
-                              cellStyle={'textAlign': 'right', 'fontSize': '18px', 'padding': '16px 24px'},
-                              headerStyle={'textAlign': 'right'},
-                              wrapText=False,
-                              autoHeight=False)
-
-            # 기타 옵션 - 페이지 폭에 맞춰 균등 분배
-            gb.configure_grid_options(
-                enableCellTextSelection=True,
-                ensureDomOrder=True,
-                suppressMovableColumns=True,
-                rowHeight=56,
-                domLayout='normal'
-            )
-
-            gridOptions = gb.build()
-
-            AgGrid(
-                df_status,
-                gridOptions=gridOptions,
-                height=len(df_status) * 56 + 65,
-                fit_columns_on_grid_load=True,
-                update_mode=GridUpdateMode.NO_UPDATE,
-                theme='streamlit'
-            )
+        st.dataframe(
+            df_status,
+            use_container_width=True,
+            hide_index=True,
+            height=total_height
+        )
     else:
         st.warning("데이터 상태를 불러올 수 없습니다.")
 

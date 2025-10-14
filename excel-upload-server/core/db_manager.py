@@ -169,3 +169,27 @@ class DatabaseManager:
         cursor.execute(query, params)
         conn.commit()
         return cursor.rowcount
+
+    def table_exists(self, table_name: str) -> bool:
+        """Check if table exists in database"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,)
+        )
+        return cursor.fetchone() is not None
+
+    def get_row_count(self, table_name: str) -> int:
+        """Get row count for a table"""
+        if not self.table_exists(table_name):
+            return 0
+
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+        return cursor.fetchone()[0]
+
+    def insert_dataframe(self, table_name: str, df: pd.DataFrame, if_exists: str = "append") -> int:
+        """Insert DataFrame into table (alias for dataframe_to_table)"""
+        return self.dataframe_to_table(df, table_name, if_exists)
