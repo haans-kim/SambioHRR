@@ -28,13 +28,21 @@ interface AnalysisResult {
 
 export default function OrganizationAnalysisPage() {
   const { organizationPath } = useAppStore()
+
+  // 사용 가능한 월 목록 (2025-01 ~ 2025-06)
+  const availableMonths = [
+    '2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06'
+  ]
+
+  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06')
   const [startDate, setStartDate] = useState<Date>(new Date('2025-06-01'))
   const [endDate, setEndDate] = useState<Date>(new Date('2025-06-30'))
-  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([])
   const [saveToDb, setSaveToDb] = useState(true) // 항상 DB에 저장
+  const [showOrgSelector, setShowOrgSelector] = useState(false) // Miller Column 표시 여부
+  const [analysisMode, setAnalysisMode] = useState<'basic' | 'groundrules'>('groundrules') // 분석 방식
   const [analysisInfo, setAnalysisInfo] = useState<{
     totalRecords?: number
     completedRecords?: number
@@ -47,15 +55,15 @@ export default function OrganizationAnalysisPage() {
 
   // 월 변경 핸들러
   const handleMonthChange = (month: string) => {
-    setSelectedMonth(month);
+    setSelectedMonth(month)
     // 날짜 범위 업데이트 (해당 월의 전체 기간으로)
-    const year = parseInt(month.split('-')[0]);
-    const monthNum = parseInt(month.split('-')[1]);
-    const startOfMonth = new Date(year, monthNum - 1, 1);
-    const endOfMonth = new Date(year, monthNum, 0); // 다음 달 0일 = 현재 달 마지막 일
-    setStartDate(startOfMonth);
-    setEndDate(endOfMonth);
-  };
+    const year = parseInt(month.split('-')[0])
+    const monthNum = parseInt(month.split('-')[1])
+    const startOfMonth = new Date(year, monthNum - 1, 1)
+    const endOfMonth = new Date(year, monthNum, 0) // 다음 달 0일 = 현재 달 마지막 일
+    setStartDate(startOfMonth)
+    setEndDate(endOfMonth)
+  }
 
   const formatMinutes = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
@@ -65,334 +73,276 @@ export default function OrganizationAnalysisPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-semibold text-gray-900">
-              조직 근무 분석
-            </h1>
-            <div className="flex items-center space-x-2">
-              <input
-                type="date"
-                value={startDate.toISOString().split('T')[0]}
-                onChange={(e) => setStartDate(new Date(e.target.value))}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-              />
-              <span className="text-gray-500">~</span>
-              <input
-                type="date"
-                value={endDate.toISOString().split('T')[0]}
-                onChange={(e) => setEndDate(new Date(e.target.value))}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-              />
-            </div>
-          </div>
+      {/* Title Section - Same as Trends */}
+      <div className="bg-gradient-to-br from-blue-50 to-white border-b border-gray-200">
+        <div className="max-w-[1600px] mx-auto px-6 py-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            조직 분석
+          </h1>
+          <p className="text-gray-600">
+            실시간 업무패턴 분석 및 근무 추정시간 모니터링
+          </p>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1600px] mx-auto px-6 py-6">
         <div className="space-y-6">
-          {/* Organization Selection using Miller Column */}
-          <div className="bg-white rounded-lg border border-gray-500 shadow-sm p-4">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">조직 선택</h2>
-            <Suspense fallback={
-              <div className="flex items-center justify-center py-8">
-                <div className="flex items-center gap-3">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                  <span className="text-gray-600">조직 데이터 로딩중...</span>
-                </div>
+          {/* Date Range Selection Panel */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">기간 선택</h2>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-gray-700 font-medium">시작일:</label>
+                <input
+                  type="date"
+                  value={startDate.toISOString().split('T')[0]}
+                  onChange={(e) => setStartDate(new Date(e.target.value))}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
-            }>
-              <MillerColumn />
-            </Suspense>
+              <span className="text-gray-400">~</span>
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-gray-700 font-medium">종료일:</label>
+                <input
+                  type="date"
+                  value={endDate.toISOString().split('T')[0]}
+                  onChange={(e) => setEndDate(new Date(e.target.value))}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setStartDate(new Date('2025-01-01'))
+                  setEndDate(new Date('2025-06-30'))
+                }}
+                className="ml-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+              >
+                전체 구간 선택
+              </button>
+            </div>
           </div>
 
-          {/* Analysis Start Button Panel */}
-          <div className="bg-white rounded-lg border border-gray-500 shadow-sm p-6">
+          {/* Organization Selection (Optional) */}
+          <div className="bg-white rounded-lg border border-gray-500 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-medium text-gray-900">조직 선택</h2>
+                {organizationPath.center && (
+                  <span className="text-sm text-gray-500">
+                    ({organizationPath.center}
+                    {organizationPath.division && ` > ${organizationPath.division}`}
+                    {organizationPath.team && ` > ${organizationPath.team}`}
+                    {organizationPath.group && ` > ${organizationPath.group}`})
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowOrgSelector(!showOrgSelector)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                {showOrgSelector ? '조직 선택 닫기' : '조직 선택하기'}
+              </button>
+            </div>
+
+            {!showOrgSelector && !organizationPath.center && (
+              <div className="py-4 text-center text-gray-500 text-sm">
+                전체 조직을 대상으로 분석합니다. 특정 조직만 분석하려면 "조직 선택하기"를 클릭하세요.
+              </div>
+            )}
+
+            {showOrgSelector && (
+              <Suspense fallback={
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                    <span className="text-gray-600">조직 데이터 로딩중...</span>
+                  </div>
+                </div>
+              }>
+                <MillerColumn />
+              </Suspense>
+            )}
+          </div>
+
+          {/* Analysis Method Selection & Execution Panel */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">분석 방식 선택</h2>
+
+            {/* Analysis Mode Radio Buttons */}
+            <div className="mb-6 space-y-3">
+              <label className="flex items-start gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="radio"
+                  name="analysisMode"
+                  value="basic"
+                  checked={analysisMode === 'basic'}
+                  onChange={(e) => setAnalysisMode(e.target.value as 'basic' | 'groundrules')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">일반 분석 (빠름)</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    개인의 태그 데이터만으로 업무시간을 추정합니다. 빠른 처리가 필요한 경우 사용하세요.
+                  </div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-4 border-2 border-blue-200 bg-blue-50 rounded-lg cursor-pointer">
+                <input
+                  type="radio"
+                  name="analysisMode"
+                  value="groundrules"
+                  checked={analysisMode === 'groundrules'}
+                  onChange={(e) => setAnalysisMode(e.target.value as 'basic' | 'groundrules')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">Ground Rules 분석 (정확함, 권장)</span>
+                    <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">추천</span>
+                  </div>
+                  <div className="text-sm text-gray-700 mt-1">
+                    팀별 이동 패턴의 조직 집단지성을 활용하여 T1 태그의 업무 관련성을 정확하게 판단합니다.
+                    <span className="font-medium text-blue-700"> 평균 15-25% 향상된 정확도</span>를 제공합니다.
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            {/* Analysis Execution Area */}
             <div className="flex items-center gap-4">
               <button
                 onClick={async () => {
-                  if (!organizationPath.center) {
-                    alert('조직을 선택해주세요.')
-                    return
-                  }
-                  
                   const analysisStartTime = Date.now()
                   setIsAnalyzing(true)
                   setProgress(0)
                   setAnalysisResults([])
                   setAnalysisInfo({ startTime: analysisStartTime })
-                  
+
                   try {
-                    // Step 1: Extract employees from selected organization
-                    setProgress(10)
-                    const extractRes = await fetch('/api/organization/extract-employees', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ organizationPath })
-                    })
-                    
-                    const extractData = await extractRes.json()
-                    
-                    if (!extractData.employees || extractData.employees.length === 0) {
-                      alert('선택한 조직에 직원이 없습니다.')
-                      setIsAnalyzing(false)
-                      setProgress(0)
-                      return
-                    }
-                    
-                    // Calculate total records to analyze
-                    const startTime = startDate.getTime()
-                    const endTime = endDate.getTime()
-                    const dayCount = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24)) + 1)
-                    const totalRecords = extractData.employees.length * dayCount
-                    setAnalysisInfo(prev => ({ ...prev, totalRecords }))
-                    
-                    // Step 2: Perform batch analysis in chunks (10% at a time)
-                    const allResults: AnalysisResult[] = []
-                    const batchSize = Math.ceil(extractData.employees.length / 10) // 10% chunks
-                    let processedCount = 0
-                    
-                    for (let i = 0; i < extractData.employees.length; i += batchSize) {
-                      const batch = extractData.employees.slice(i, i + batchSize)
-                      
-                      // Update progress (20% to 90%)
-                      const progressPercent = 20 + Math.floor((i / extractData.employees.length) * 70)
-                      setProgress(progressPercent)
-                      
-                      const analysisRes = await fetch('/api/organization/batch-analysis', {
+                    if (analysisMode === 'basic') {
+                      // 기본 분석 로직
+                      setProgress(5)
+                      const extractRes = await fetch('/api/organization/extract-employees-all', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          employees: batch,
                           startDate: startDate.toISOString().split('T')[0],
-                          endDate: endDate.toISOString().split('T')[0],
-                          saveToDb
+                          endDate: endDate.toISOString().split('T')[0]
                         })
                       })
-                      
-                      const analysisData = await analysisRes.json()
-                      
-                      if (analysisData.results) {
-                        allResults.push(...analysisData.results)
+
+                      const extractData = await extractRes.json()
+
+                      if (!extractData.employeeDates || extractData.employeeDates.length === 0) {
+                        alert('분석할 데이터가 없습니다.')
+                        setIsAnalyzing(false)
+                        setProgress(0)
+                        return
                       }
-                      
-                      processedCount += batch.length
-                      setAnalysisInfo(prev => ({ 
-                        ...prev, 
-                        completedRecords: processedCount * dayCount 
-                      }))
-                    }
-                    
-                    setAnalysisResults(allResults)
-                    setProgress(100)
-                    
-                    // Calculate elapsed time
-                    const elapsedTime = Date.now() - analysisStartTime
-                    setAnalysisInfo(prev => ({ ...prev, elapsedTime }))
-                    
-                    setTimeout(() => {
-                      setIsAnalyzing(false)
-                    }, 500)
-                    
-                  } catch (error) {
-                    console.error('Analysis error:', error)
-                    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
-                    alert(`분석 중 오류가 발생했습니다: ${errorMessage}`)
-                    setIsAnalyzing(false)
-                    setProgress(0)
-                    setAnalysisInfo({})
-                  }
-                }}
-                disabled={isAnalyzing || !organizationPath.center}
-                className={`px-12 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors ${
-                  isAnalyzing || !organizationPath.center
-                    ? 'bg-gray-600 cursor-not-allowed' 
-                    : 'bg-gray-900 hover:bg-gray-800'
-                }`}
-              >
-                {isAnalyzing ? '분석 중...' : '분석 시작'}
-              </button>
-              
-              <button
-                onClick={async () => {
-                  const analysisStartTime = Date.now()
-                  setIsAnalyzing(true)
-                  setProgress(0)
-                  setAnalysisResults([])
-                  setAnalysisInfo({ startTime: analysisStartTime })
-                  
-                  try {
-                    // Step 1: Check existing analysis results from DB
-                    setProgress(2)
-                    const checkRes = await fetch('/api/organization/check-existing-analysis', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ 
-                        startDate: startDate.toISOString().split('T')[0],
-                        endDate: endDate.toISOString().split('T')[0]
-                      })
-                    })
-                    
-                    const checkData = await checkRes.json()
-                    const analyzedKeysSet = new Set(checkData.analyzedKeys || [])
-                    
-                    // Step 2: Extract employees with non-zero claim hours
-                    setProgress(5)
-                    const extractRes = await fetch('/api/organization/extract-employees-all', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ 
-                        startDate: startDate.toISOString().split('T')[0],
-                        endDate: endDate.toISOString().split('T')[0]
-                      })
-                    })
-                    
-                    const extractData = await extractRes.json()
-                    
-                    if (!extractData.employeeDates || extractData.employeeDates.length === 0) {
-                      alert('분석할 데이터가 없습니다.')
-                      setIsAnalyzing(false)
-                      setProgress(0)
-                      return
-                    }
-                    
-                    // Use actual records count
-                    const totalRecords = extractData.count || extractData.employeeDates.length
-                    setAnalysisInfo(prev => ({ ...prev, totalRecords }))
-                    
-                    console.log(`Starting analysis of ${totalRecords} records`)
-                    
-                    // Filter out already processed records using DB results
-                    const remainingRecords = extractData.employeeDates.filter((record: any) => {
-                      const key = `${record.employeeId}_${record.workDate.split(' ')[0]}`
-                      return !analyzedKeysSet.has(key)
-                    })
-                    
-                    const existingCount = totalRecords - remainingRecords.length
-                    
-                    console.log(`Found ${existingCount} existing results in DB, ${remainingRecords.length} remaining to process`)
-                    
-                    if (remainingRecords.length === 0) {
-                      alert('모든 분석이 이미 완료되었습니다.')
-                      setIsAnalyzing(false)
-                      return
-                    }
-                    
-                    // 재시작 알림
-                    if (existingCount > 0) {
-                      alert(`DB에서 이전 분석 결과 ${existingCount.toLocaleString()}건을 발견했습니다.\n남은 ${remainingRecords.length.toLocaleString()}건을 계속 분석합니다.`)
-                    }
-                    
-                    // Group remaining records by employee for batch processing
-                    const employeeGroups = new Map<number, any[]>()
-                    remainingRecords.forEach((record: any) => {
-                      if (!employeeGroups.has(record.employeeId)) {
-                        employeeGroups.set(record.employeeId, [])
-                      }
-                      employeeGroups.get(record.employeeId)!.push(record)
-                    })
-                    
-                    // Convert to array of employees with their dates
-                    const employeesWithDates = Array.from(employeeGroups.entries()).map(([employeeId, records]) => ({
-                      employeeId,
-                      employeeName: records[0].employeeName,
-                      dates: records.map(r => r.workDate)
-                    }))
-                    
-                    // Step 3: Perform batch analysis in smaller chunks
-                    const allResults: AnalysisResult[] = []  // New results only
-                    // Smaller batch size - process 200 records at a time for better performance
-                    const batchSize = 200
-                    let processedRecords = existingCount  // Start count from DB existing results
-                    
-                    // Set initial progress based on existing results
-                    if (existingCount > 0) {
-                      const initialProgress = Math.floor((existingCount / totalRecords) * 100)
-                      setProgress(initialProgress)
-                      setAnalysisInfo(prev => ({ 
-                        ...prev, 
-                        completedRecords: existingCount 
-                      }))
-                    }
-                    
-                    // Process remaining records in batches
-                    for (let i = 0; i < remainingRecords.length; i += batchSize) {
-                      const batchRecords = remainingRecords.slice(i, i + batchSize)
-                      
-                      // Group batch records by employee for analysis
-                      const batchEmployeeGroups = new Map<number, any[]>()
-                      batchRecords.forEach((record: any) => {
-                        if (!batchEmployeeGroups.has(record.employeeId)) {
-                          batchEmployeeGroups.set(record.employeeId, [])
-                        }
-                        batchEmployeeGroups.get(record.employeeId)!.push(record)
-                      })
-                      
-                      // Convert to batch format
-                      const batchEmployees = Array.from(batchEmployeeGroups.entries()).map(([employeeId, records]) => ({
-                        employeeId,
-                        employeeName: records[0].employeeName,
-                        dates: records.map(r => r.workDate)
-                      }))
-                      
-                      try {
+
+                      const totalRecords = extractData.count || extractData.employeeDates.length
+                      setAnalysisInfo(prev => ({ ...prev, totalRecords }))
+
+                      // 기본 분석 실행
+                      const allResults: AnalysisResult[] = []
+                      const batchSize = 200
+
+                      for (let i = 0; i < extractData.employeeDates.length; i += batchSize) {
+                        const batch = extractData.employeeDates.slice(i, i + batchSize)
+                        const progressPercent = 5 + Math.floor((i / extractData.employeeDates.length) * 90)
+                        setProgress(progressPercent)
+
                         const analysisRes = await fetch('/api/organization/batch-analysis', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
-                            employees: batchEmployees,
+                            employees: batch,
                             startDate: startDate.toISOString().split('T')[0],
                             endDate: endDate.toISOString().split('T')[0],
                             saveToDb
                           })
                         })
-                        
-                        if (!analysisRes.ok) {
-                          throw new Error(`HTTP error! status: ${analysisRes.status}`)
-                        }
-                      
+
                         const analysisData = await analysisRes.json()
-                        
                         if (analysisData.results) {
                           allResults.push(...analysisData.results)
                         }
-                        
-                        // Update progress after successful processing
-                        processedRecords += batchRecords.length
-                        const progressPercent = Math.floor((processedRecords / totalRecords) * 100)
-                        setProgress(progressPercent)
-                        
-                        setAnalysisInfo(prev => ({ 
-                          ...prev, 
-                          completedRecords: processedRecords 
-                        }))
-                      } catch (batchError) {
-                        console.error(`Batch processing error:`, batchError)
-                        
-                        // 에러 발생 시 - 계속 진행할지 물어봄
-                        const continueAnalysis = confirm(`배치 처리 중 오류가 발생했습니다.\n현재까지 ${allResults.length}건이 완료되었습니다.\n계속 진행하시겠습니까?`)
-                        if (!continueAnalysis) {
-                          break
-                        }
+                      }
+
+                      setAnalysisResults(allResults)
+                      setProgress(100)
+
+                      const elapsedTime = Date.now() - analysisStartTime
+                      setAnalysisInfo(prev => ({ ...prev, elapsedTime }))
+
+                      alert(`일반 분석 완료!\n분석된 항목: ${allResults.length.toLocaleString()}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초`)
+
+                    } else {
+                      // Ground Rules 분석 로직
+                      setProgress(10)
+                      const extractRes = await fetch('/api/organization/extract-employees-with-work-hours', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          startDate: startDate.toISOString().split('T')[0],
+                          endDate: endDate.toISOString().split('T')[0]
+                        })
+                      })
+
+                      const extractData = await extractRes.json()
+
+                      if (!extractData.employees || extractData.employees.length === 0) {
+                        alert('분석할 데이터가 없습니다.')
+                        setIsAnalyzing(false)
+                        setProgress(0)
+                        return
+                      }
+
+                      const startTime = startDate.getTime()
+                      const endTime = endDate.getTime()
+                      const dayCount = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24)) + 1)
+                      const totalRecords = extractData.employees.length * dayCount
+                      setAnalysisInfo(prev => ({ ...prev, totalRecords }))
+
+                      setProgress(20)
+                      const response = await fetch('/api/organization/ground-rules-worker-analysis', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          employees: extractData.employees.map((emp: any) => ({
+                            employeeId: emp.employeeId,
+                            employeeName: emp.employeeName
+                          })),
+                          startDate: startDate.toISOString().split('T')[0],
+                          endDate: endDate.toISOString().split('T')[0],
+                          saveToDb: true
+                        })
+                      })
+
+                      if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`)
+                      }
+
+                      const data = await response.json()
+
+                      if (data.results) {
+                        setAnalysisResults(data.results)
+                        setProgress(100)
+
+                        const elapsedTime = Date.now() - analysisStartTime
+                        setAnalysisInfo(prev => ({ ...prev, elapsedTime }))
+
+                        const workerCount = data.summary?.workerCount || 'Unknown'
+                        alert(`Ground Rules 분석 완료!\n분석된 항목: ${data.results.length.toLocaleString()}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초\n처리 모드: ${workerCount}개 워커`)
                       }
                     }
-                    
-                    setAnalysisResults(allResults)
-                    setProgress(100)
-                    
-                    // Calculate elapsed time
-                    const elapsedTime = Date.now() - analysisStartTime
-                    setAnalysisInfo(prev => ({ ...prev, elapsedTime }))
-                    
-                    alert(`분석 완료!\n이번 세션: ${allResults.length.toLocaleString()}건\n전체 완료: ${processedRecords.toLocaleString()}건 / ${totalRecords.toLocaleString()}건`)
-                    
+
                     setTimeout(() => {
                       setIsAnalyzing(false)
                     }, 500)
-                    
+
                   } catch (error) {
                     console.error('Analysis error:', error)
                     const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
@@ -403,15 +353,15 @@ export default function OrganizationAnalysisPage() {
                   }
                 }}
                 disabled={isAnalyzing}
-                className={`px-12 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors ${
+                className={`px-16 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors ${
                   isAnalyzing
-                    ? 'bg-gray-600 cursor-not-allowed' 
+                    ? 'bg-gray-600 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
-                {isAnalyzing ? '분석 중...' : '전체 분석'}
+                {isAnalyzing ? '분석 중...' : '분석 시작'}
               </button>
-              
+
               {/* Progress Bar */}
               <div className="flex-1">
                 <div className="flex items-center gap-3">
@@ -435,496 +385,6 @@ export default function OrganizationAnalysisPage() {
                     </span>
                   )}
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Ground Rules Analysis Section */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-50 rounded-md">
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Ground Rules 분석</h2>
-                  <p className="text-sm text-gray-500">T1 조직 집단지성 기반 정밀 분석</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mb-4 p-4 bg-gray-50 rounded-md border">
-              <p className="text-sm text-gray-700 leading-relaxed">
-                팀별 이동 패턴의 조직 집단지성을 활용하여 T1 태그의 업무 관련성을 보다 정확하게 판단합니다. 
-                일반 분석 대비 평균 15-25% 향상된 정확도를 제공합니다.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Ground Rules Analysis Button */}
-              <button
-                onClick={async () => {
-                  if (!organizationPath.center) {
-                    alert('조직을 선택해주세요.')
-                    return
-                  }
-
-                  try {
-                    setIsAnalyzing(true)
-                    setProgress(0)
-                    setAnalysisInfo({})
-
-                    const analysisStartTime = Date.now()
-                    
-                    // Step 1: Extract employees from selected organization
-                    setProgress(10)
-                    const extractRes = await fetch('/api/organization/extract-employees', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ organizationPath })
-                    })
-                    
-                    const extractData = await extractRes.json()
-                    
-                    if (!extractData.employees || extractData.employees.length === 0) {
-                      alert('선택한 조직에 직원이 없습니다.')
-                      setIsAnalyzing(false)
-                      setProgress(0)
-                      return
-                    }
-                    
-                    // Calculate total records to analyze
-                    const startTime = startDate.getTime()
-                    const endTime = endDate.getTime()
-                    const dayCount = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24)) + 1)
-                    const totalRecords = extractData.employees.length * dayCount
-                    setAnalysisInfo(prev => ({ ...prev, totalRecords }))
-                    
-                    // Step 2: Perform Ground Rules analysis in chunks (10% at a time)
-                    const allResults: any[] = []
-                    const batchSize = Math.ceil(extractData.employees.length / 10) // 10% chunks
-                    let processedCount = 0
-                    
-                    for (let i = 0; i < extractData.employees.length; i += batchSize) {
-                      const batch = extractData.employees.slice(i, i + batchSize)
-                      
-                      // Update progress (20% to 90%)
-                      const progressPercent = 20 + Math.floor((i / extractData.employees.length) * 70)
-                      setProgress(progressPercent)
-                      
-                      const analysisRes = await fetch('/api/organization/batch-analysis-enhanced', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          employees: batch.map((emp: any) => ({
-                            employeeId: emp.employeeId,
-                            employeeName: emp.employeeName
-                          })),
-                          startDate: startDate.toISOString().split('T')[0],
-                          endDate: endDate.toISOString().split('T')[0],
-                          useGroundRules: true
-                        })
-                      })
-                      
-                      const analysisData = await analysisRes.json()
-                      
-                      if (analysisData.results) {
-                        allResults.push(...analysisData.results)
-                      }
-                      
-                      processedCount += batch.length
-                      setAnalysisInfo(prev => ({ 
-                        ...prev, 
-                        completedRecords: processedCount * dayCount 
-                      }))
-                    }
-                    
-                    setAnalysisResults(allResults)
-                    setProgress(100)
-                    
-                    // Calculate elapsed time
-                    const elapsedTime = Date.now() - analysisStartTime
-                    setAnalysisInfo(prev => ({ ...prev, elapsedTime }))
-                    
-                    alert(`Ground Rules 분석 완료!\n분석된 항목: ${allResults.length}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초\n처리 모드: 싱글 스레드`)
-
-                    setTimeout(() => {
-                      setIsAnalyzing(false)
-                    }, 500)
-
-                  } catch (error) {
-                    console.error('Ground Rules analysis error:', error)
-                    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
-                    alert(`Ground Rules 분석 중 오류가 발생했습니다: ${errorMessage}`)
-                    setIsAnalyzing(false)
-                    setProgress(0)
-                    setAnalysisInfo({})
-                  }
-                }}
-                disabled={isAnalyzing || !organizationPath.center}
-                className={`px-8 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors ${
-                  isAnalyzing || !organizationPath.center
-                    ? 'bg-gray-600 cursor-not-allowed' 
-                    : 'bg-gray-900 hover:bg-gray-800'
-                }`}
-              >
-                {isAnalyzing ? '분석 중...' : '전체 분석'}
-              </button>
-
-              {/* Multi-Thread Worker Ground Rules Analysis */}
-              <button
-                onClick={async () => {
-                  if (!organizationPath.center) {
-                    alert('조직을 선택해주세요.')
-                    return
-                  }
-
-                  try {
-                    setIsAnalyzing(true)
-                    setProgress(0)
-                    setAnalysisInfo({})
-
-                    const analysisStartTime = Date.now()
-                    
-                    // Step 1: Extract employees from selected organization
-                    setProgress(10)
-                    const extractRes = await fetch('/api/organization/extract-employees', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ organizationPath })
-                    })
-                    
-                    const extractData = await extractRes.json()
-                    
-                    if (!extractData.employees || extractData.employees.length === 0) {
-                      alert('선택한 조직에 직원이 없습니다.')
-                      setIsAnalyzing(false)
-                      setProgress(0)
-                      return
-                    }
-                    
-                    // Calculate total records to analyze
-                    const startTime = startDate.getTime()
-                    const endTime = endDate.getTime()
-                    const dayCount = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24)) + 1)
-                    const totalRecords = extractData.employees.length * dayCount
-                    setAnalysisInfo(prev => ({ ...prev, totalRecords }))
-                    
-                    // Step 2: Perform Ground Rules analysis using Workers
-                    setProgress(20)
-                    const response = await fetch('/api/organization/ground-rules-worker-analysis', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        employees: extractData.employees.map((emp: any) => ({
-                          employeeId: emp.employeeId,
-                          employeeName: emp.employeeName
-                        })),
-                        startDate: startDate.toISOString().split('T')[0],
-                        endDate: endDate.toISOString().split('T')[0],
-                        saveToDb: true
-                      })
-                    })
-
-                    if (!response.ok) {
-                      throw new Error(`HTTP ${response.status}`)
-                    }
-
-                    const data = await response.json()
-                    
-                    if (data.results) {
-                      setAnalysisResults(data.results)
-                      setProgress(100)
-                      
-                      const elapsedTime = Date.now() - analysisStartTime
-                      setAnalysisInfo(prev => ({ ...prev, elapsedTime }))
-                      
-                      const workerCount = data.summary?.workerCount || 'Unknown'
-                      alert(`Ground Rules 워커 분석 완료!\n분석된 항목: ${data.results.length}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초\n처리 모드: ${workerCount}개 워커 멀티스레드`)
-                    }
-
-                    setTimeout(() => {
-                      setIsAnalyzing(false)
-                    }, 500)
-
-                  } catch (error) {
-                    console.error('Ground Rules worker analysis error:', error)
-                    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
-                    alert(`Ground Rules 워커 분석 중 오류가 발생했습니다: ${errorMessage}`)
-                    setIsAnalyzing(false)
-                    setProgress(0)
-                    setAnalysisInfo({})
-                  }
-                }}
-                disabled={isAnalyzing || !organizationPath.center}
-                className={`px-8 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors ${
-                  isAnalyzing || !organizationPath.center
-                    ? 'bg-gray-600 cursor-not-allowed' 
-                    : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-              >
-                {isAnalyzing ? '워커 분석 중...' : 'Ground Rules 분석 (워커)'}
-              </button>
-              
-              {/* 전체 분석 버튼 추가 */}
-              <button
-                onClick={async () => {
-                  try {
-                    setIsAnalyzing(true)
-                    setProgress(0)
-                    setAnalysisInfo({})
-
-                    const analysisStartTime = Date.now()
-                    
-                    // Step 1: Extract ALL employees from Claim data (전체 데이터)
-                    setProgress(10)
-                    const extractRes = await fetch('/api/organization/extract-all-employees', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ allData: true })  // 전체 데이터 플래그
-                    })
-                    
-                    const extractData = await extractRes.json()
-                    
-                    if (!extractData.employees || extractData.employees.length === 0) {
-                      alert('Claim 데이터에서 직원 정보를 찾을 수 없습니다.')
-                      setIsAnalyzing(false)
-                      setProgress(0)
-                      return
-                    }
-                    
-                    console.log(`📊 전체 분석: ${extractData.employees.length}명의 직원 데이터 추출`)
-                    
-                    // Calculate total records to analyze
-                    const startTime = startDate.getTime()
-                    const endTime = endDate.getTime()
-                    const dayCount = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24)) + 1)
-                    const totalRecords = extractData.employees.length * dayCount
-                    setAnalysisInfo(prev => ({ ...prev, totalRecords }))
-                    
-                    // Step 2: Perform Ground Rules analysis using Workers (전체 조직)
-                    setProgress(20)
-                    const response = await fetch('/api/organization/ground-rules-worker-analysis', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        employees: extractData.employees.map((emp: any) => ({
-                          employeeId: emp.employeeId,
-                          employeeName: emp.employeeName
-                        })),
-                        startDate: startDate.toISOString().split('T')[0],
-                        endDate: endDate.toISOString().split('T')[0],
-                        saveToDb: true
-                      })
-                    })
-
-                    if (!response.ok) {
-                      throw new Error(`HTTP ${response.status}`)
-                    }
-
-                    const data = await response.json()
-                    
-                    if (data.results) {
-                      setAnalysisResults(data.results)
-                      setProgress(100)
-                      
-                      const elapsedTime = Date.now() - analysisStartTime
-                      setAnalysisInfo(prev => ({ ...prev, elapsedTime }))
-                      
-                      const workerCount = data.summary?.workerCount || 'Unknown'
-                      alert(`🎯 전체 분석 완료!\n📊 분석된 항목: ${data.results.length}건\n👥 분석 대상: 전체 Claim 데이터 (${extractData.employees.length}명)\n⏱️ 소요시간: ${(elapsedTime / 1000).toFixed(1)}초\n🔧 처리 모드: ${workerCount}개 워커 멀티스레드`)
-                    }
-
-                    setTimeout(() => {
-                      setIsAnalyzing(false)
-                    }, 500)
-
-                  } catch (error) {
-                    console.error('전체 분석 오류:', error)
-                    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
-                    alert(`전체 분석 중 오류가 발생했습니다: ${errorMessage}`)
-                    setIsAnalyzing(false)
-                    setProgress(0)
-                    setAnalysisInfo({})
-                  }
-                }}
-                disabled={isAnalyzing}
-                className={`px-8 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors ${
-                  isAnalyzing
-                    ? 'bg-gray-600 cursor-not-allowed' 
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-              >
-                {isAnalyzing ? '분석 중...' : '전체 분석'}
-              </button>
-
-              {/* 1-6월 전체분석 버튼 */}
-              <button
-                onClick={async () => {
-                  console.log('🚀 전체 1-6월 분석 시작');
-                  
-                  try {
-                    setIsAnalyzing(true);
-                    setProgress(0);
-                    setAnalysisInfo({});
-                    const analysisStartTime = Date.now();
-                    
-                    const months = ['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06'];
-                    let totalResults: AnalysisResult[] = [];
-                    
-                    for (let i = 0; i < months.length; i++) {
-                      const month = months[i];
-                      const [year, monthNum] = month.split('-').map(Number);
-                      const monthStart = new Date(year, monthNum - 1, 1);
-                      const monthEnd = new Date(year, monthNum, 0);
-                      
-                      console.log(`${month} 분석 시작 (${monthStart.toISOString().split('T')[0]} ~ ${monthEnd.toISOString().split('T')[0]})`);
-                      
-                      // 월별 진행 상태 업데이트
-                      const baseProgress = (i / months.length) * 100;
-                      setProgress(baseProgress);
-                      setAnalysisInfo(prev => ({ 
-                        ...prev, 
-                        currentMonth: month,
-                        completedMonths: i,
-                        totalMonths: months.length
-                      }));
-                      
-                      try {
-                        // 전체 claim 데이터에서 근무시간이 0이 아닌 사람들 추출
-                        const extractRes = await fetch('/api/organization/extract-employees-with-work-hours', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ 
-                            startDate: monthStart.toISOString().split('T')[0],
-                            endDate: monthEnd.toISOString().split('T')[0]
-                          })
-                        });
-                        
-                        if (!extractRes.ok) {
-                          console.error(`${month} 직원 추출 실패:`, extractRes.status, extractRes.statusText);
-                          continue; // 다음 월로 넘어감
-                        }
-                        
-                        const extractData = await extractRes.json();
-                        console.log(`📊 ${month} 추출된 근무자 수: ${extractData.employees?.length || 0}명 (근무시간 > 0)`);
-                        
-                        if (extractData.employees && extractData.employees.length > 0) {
-                          const response = await fetch('/api/organization/ground-rules-worker-analysis', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              employees: extractData.employees.map((emp: any) => ({
-                                employeeId: emp.employeeId,
-                                employeeName: emp.employeeName
-                              })),
-                              startDate: monthStart.toISOString().split('T')[0],
-                              endDate: monthEnd.toISOString().split('T')[0],
-                              saveToDb: true,
-                              useWorkers: true
-                            })
-                          });
-                          
-                          if (!response.ok) {
-                            console.error(`${month} Ground Rules 분석 실패:`, response.status, response.statusText);
-                            continue; // 다음 월로 넘어감
-                          }
-                          
-                          const data = await response.json();
-                          if (data.results) {
-                            totalResults.push(...data.results);
-                            
-                            // 분석 결과 상세 로그
-                            console.log(`✅ ${month} 분석 완료:`);
-                            console.log(`   📈 분석 결과: ${data.results.length.toLocaleString()}건`);
-                            console.log(`   ⚡ 처리 속도: ${data.summary?.performance?.resultsPerSecond?.toFixed(1) || 'N/A'} 건/초`);
-                            console.log(`   🕐 소요 시간: ${data.summary?.performance?.totalDuration || 'N/A'}ms`);
-                            console.log(`   👥 분석 대상: ${data.summary?.employeeCount || 0}명`);
-                          }
-                        } else {
-                          console.log(`⚠️ ${month} 근무시간이 0보다 큰 직원이 없습니다.`);
-                        }
-                      } catch (monthError) {
-                        console.error(`❌ ${month} 처리 중 오류:`, monthError);
-                        // 다음 월로 계속 진행
-                      }
-                      
-                      // 월별 완료 진행률 업데이트
-                      const completedProgress = ((i + 1) / months.length) * 100;
-                      setProgress(completedProgress);
-                      setAnalysisInfo(prev => ({ 
-                        ...prev, 
-                        completedMonths: i + 1
-                      }));
-                    }
-                    
-                    setAnalysisResults(totalResults);
-                    const elapsedTime = Date.now() - analysisStartTime;
-                    setAnalysisInfo(prev => ({ ...prev, elapsedTime }));
-                    
-                    console.log(`🎉 전체 1-5월 분석 완료:`);
-                    console.log(`   📊 총 분석 결과: ${totalResults.length.toLocaleString()}건`);
-                    console.log(`   ⏱️ 총 소요 시간: ${(elapsedTime / 1000).toFixed(1)}초`);
-                    console.log(`   📈 전체 처리 속도: ${(totalResults.length / (elapsedTime / 1000)).toFixed(1)} 건/초`);
-                    
-                    alert(`1-5월 전체 추가분석 완료!\n분석된 항목: ${totalResults.length.toLocaleString()}건\n소요시간: ${(elapsedTime / 1000).toFixed(1)}초\n평균 처리속도: ${(totalResults.length / (elapsedTime / 1000)).toFixed(1)} 건/초`);
-                    
-                    setTimeout(() => {
-                      setIsAnalyzing(false);
-                    }, 500);
-                    
-                  } catch (error) {
-                    console.error('❌ 1-5월 전체 분석 오류:', error);
-                    alert(`1-5월 분석 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
-                    setIsAnalyzing(false);
-                    setProgress(0);
-                    setAnalysisInfo({});
-                  }
-                }}
-                disabled={isAnalyzing}
-                className={`px-8 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors ${
-                  isAnalyzing
-                    ? 'bg-gray-600 cursor-not-allowed' 
-                    : 'bg-orange-600 hover:bg-orange-700'
-                }`}
-              >
-                {isAnalyzing ? '1-6월 분석 중...' : '1-6월 전체분석'}
-              </button>
-              
-              {/* Progress Bar for Ground Rules Analysis */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <Progress value={progress} className="flex-1" />
-                  <span className="text-sm font-medium text-gray-700 min-w-[45px]">
-                    {progress}%
-                  </span>
-                </div>
-                <div className="mt-2 text-sm text-gray-600">
-                  {isAnalyzing && analysisInfo.currentMonth && analysisInfo.totalMonths && (
-                    <span className="text-orange-600 font-medium">
-                      {analysisInfo.currentMonth} 분석 중 ({analysisInfo.completedMonths || 0}/{analysisInfo.totalMonths}월 완료)
-                    </span>
-                  )}
-                  {isAnalyzing && analysisInfo.totalRecords && !analysisInfo.currentMonth && (
-                    <span>
-                      총 {analysisInfo.totalRecords.toLocaleString()}건 분석 중
-                      {analysisInfo.completedRecords && (
-                        <> ({analysisInfo.completedRecords.toLocaleString()}건 완료)</>
-                      )}
-                    </span>
-                  )}
-                  {!isAnalyzing && analysisInfo.elapsedTime && analysisResults.length > 0 && (
-                    <span>
-                      완료 {analysisResults.length.toLocaleString()}건 : 소요시간 {(analysisInfo.elapsedTime / 1000).toFixed(1)}초
-                    </span>
-                  )}
-                </div>
-              </div>
-              
-              <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-md border border-gray-200">
-                팀별 집단지성 활용
               </div>
             </div>
           </div>
