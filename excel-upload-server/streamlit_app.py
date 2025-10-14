@@ -421,6 +421,58 @@ def load_data(selected_type, uploaded_files):
                 progress_bar.progress(0.7)
                 combined_df = transformer(combined_df)
 
+            # 날짜 범위 기반 중복 방지: 업로드할 데이터의 날짜 범위에 해당하는 기존 데이터 삭제
+            date_column_map = {
+                "tag_data": ("ENTE_DT", "number"),
+                "claim_data": ("근무일", "datetime"),
+                "meal_data": ("취식일시", "datetime"),
+                "knox_approval": ("Timestamp", "datetime"),
+                "knox_mail": ("발신일시_GMT9", "datetime"),
+                "knox_pims": ("start_time", "datetime"),
+                "eam_data": ("ATTEMPTDATE", "datetime"),
+                "equis_data": ("Timestamp", "datetime"),
+                "lams_data": ("DATE", "datetime"),
+                "mes_data": ("login_time", "datetime"),
+                "mdm_data": ("Timestap", "datetime"),
+            }
+
+            # 해당 데이터 타입의 날짜 컬럼 확인
+            if selected_type in date_column_map and not combined_df.empty:
+                date_column, date_format = date_column_map[selected_type]
+
+                if date_column in combined_df.columns:
+                    try:
+                        status_text.text("🗑️ 기존 데이터 중복 제거 중...")
+                        progress_bar.progress(0.75)
+
+                        # 업로드할 데이터의 날짜 범위 추출
+                        if date_format == "number":
+                            # 숫자 형식 (20250101)
+                            min_date = str(int(combined_df[date_column].min()))
+                            max_date = str(int(combined_df[date_column].max()))
+                            # YYYYMMDD -> YYYY-MM-DD 형식으로 변환
+                            min_date_formatted = f"{min_date[:4]}-{min_date[4:6]}-{min_date[6:8]}"
+                            max_date_formatted = f"{max_date[:4]}-{max_date[4:6]}-{max_date[6:8]}"
+                        else:
+                            # datetime 형식
+                            min_date_formatted = pd.to_datetime(combined_df[date_column]).min().strftime('%Y-%m-%d')
+                            max_date_formatted = pd.to_datetime(combined_df[date_column]).max().strftime('%Y-%m-%d')
+
+                        # 해당 날짜 범위의 기존 데이터 삭제
+                        deleted_rows = db_manager.delete_by_date_range(
+                            table_name=data_type_info.table_name,
+                            date_column=date_column,
+                            min_date=min_date_formatted,
+                            max_date=max_date_formatted,
+                            date_format=date_format
+                        )
+
+                        if deleted_rows > 0:
+                            logger.info(f"중복 방지: {deleted_rows:,}행 삭제 완료 ({min_date_formatted} ~ {max_date_formatted})")
+
+                    except Exception as e:
+                        logger.warning(f"날짜 범위 삭제 실패 (계속 진행): {e}")
+
             status_text.text("💾 데이터베이스 저장 중...")
             progress_bar.progress(0.8)
 

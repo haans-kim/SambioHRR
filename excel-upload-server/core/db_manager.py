@@ -193,3 +193,79 @@ class DatabaseManager:
     def insert_dataframe(self, table_name: str, df: pd.DataFrame, if_exists: str = "append") -> int:
         """Insert DataFrame into table (alias for dataframe_to_table)"""
         return self.dataframe_to_table(df, table_name, if_exists)
+
+    def delete_by_date_range(
+        self,
+        table_name: str,
+        date_column: str,
+        min_date: str,
+        max_date: str,
+        date_format: str = "number"
+    ) -> int:
+        """
+        Delete rows within a date range
+
+        Args:
+            table_name: Target table name
+            date_column: Date column name
+            min_date: Minimum date (YYYYMMDD or YYYY-MM-DD format)
+            max_date: Maximum date (YYYYMMDD or YYYY-MM-DD format)
+            date_format: "number" (20250101) or "datetime" (2025-01-01)
+
+        Returns:
+            Number of rows deleted
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Convert dates to appropriate format for comparison
+            if date_format == "number":
+                # Remove dashes for number format (2025-01-01 -> 20250101)
+                min_date_val = int(min_date.replace('-', '')[:8])
+                max_date_val = int(max_date.replace('-', '')[:8])
+            else:
+                # Keep datetime format as string
+                min_date_val = min_date[:10] if len(min_date) > 10 else min_date
+                max_date_val = max_date[:10] if len(max_date) > 10 else max_date
+
+            # Count rows to delete
+            if date_format == "number":
+                cursor.execute(
+                    f"SELECT COUNT(*) FROM {table_name} WHERE {date_column} >= ? AND {date_column} <= ?",
+                    (min_date_val, max_date_val)
+                )
+            else:
+                cursor.execute(
+                    f"SELECT COUNT(*) FROM {table_name} WHERE date({date_column}) >= ? AND date({date_column}) <= ?",
+                    (min_date_val, max_date_val)
+                )
+
+            rows_to_delete = cursor.fetchone()[0]
+
+            if rows_to_delete == 0:
+                logger.info(f"No rows to delete from {table_name} for date range {min_date} ~ {max_date}")
+                return 0
+
+            logger.info(f"Deleting {rows_to_delete:,} rows from {table_name} for date range {min_date} ~ {max_date}")
+
+            # Delete rows
+            if date_format == "number":
+                cursor.execute(
+                    f"DELETE FROM {table_name} WHERE {date_column} >= ? AND {date_column} <= ?",
+                    (min_date_val, max_date_val)
+                )
+            else:
+                cursor.execute(
+                    f"DELETE FROM {table_name} WHERE date({date_column}) >= ? AND date({date_column}) <= ?",
+                    (min_date_val, max_date_val)
+                )
+
+            conn.commit()
+            logger.info(f"Deleted {rows_to_delete:,} rows from {table_name}")
+            return rows_to_delete
+
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error deleting data from {table_name}: {e}")
+            raise
