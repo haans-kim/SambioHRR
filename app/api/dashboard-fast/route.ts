@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       centerNames.forEach(center => {
         const data = stats.grades.find(
           (g: any) => g.grade_level === grade && g.center_name === center
-        );
+        ) as any;
         gradeMatrix.matrix[grade][center] = data?.efficiency || 0;
         weeklyClaimedHoursMatrix.matrix[grade][center] = data?.weekly_claimed_hours || 0;
         adjustedWeeklyWorkHoursMatrix.matrix[grade][center] = data?.weekly_adjusted_hours || 0;

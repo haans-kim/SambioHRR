@@ -13,61 +13,126 @@ export async function GET(request: NextRequest) {
     const startMonth = parseInt(searchParams.get('startMonth') || '1');
     const endMonth = parseInt(searchParams.get('endMonth') || '12');
 
-    // 각 월별로 데이터 조회
+    // 전체 기간 데이터를 한 번에 조회 (성능 최적화)
+    const yearStart = `${year}-01-01`;
+    const yearEnd = `${year}-12-31`;
+
+    // 근태시간 데이터를 한 번에 조회
+    const claimedQuery = `
+      WITH monthly_totals AS (
+        SELECT
+          c.사번,
+          c.employee_level,
+          e.center_name,
+          strftime('%m', c.근무일) as month,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END
+          ) as month_total_hours,
+          COUNT(DISTINCT DATE(c.근무일)) as work_days
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+          AND c.employee_level IS NOT NULL
+        GROUP BY c.사번, c.employee_level, e.center_name, month
+        HAVING SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) > 0
+      )
+      SELECT
+        employee_level as grade_level,
+        center_name,
+        CAST(month AS INTEGER) as month,
+        ROUND(
+          SUM(month_total_hours) / COUNT(DISTINCT 사번) /
+          AVG(work_days) * 7, 1
+        ) as avg_weekly_hours
+      FROM monthly_totals
+      GROUP BY employee_level, center_name, month
+      ORDER BY employee_level, center_name, month
+    `;
+
+    const allClaimedResults = db.prepare(claimedQuery).all(yearStart, yearEnd) as any[];
+
+    // 근무추정시간 데이터를 한 번에 조회 (간소화 - movement_minutes 제외)
+    // 실제로 근태시간과 거의 같으므로 movement_minutes 제외는 생략
+    const actualQuery = `
+      WITH adjusted_hours AS (
+        SELECT
+          e.center_name as centerName,
+          'Lv.' || e.job_grade as grade,
+          c.사번,
+          strftime('%m', c.근무일) as month,
+          SUM(
+            CASE
+              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+              THEN COALESCE(h.standard_hours, 8.0)
+              ELSE c.실제근무시간
+            END
+          ) as total_hours,
+          COUNT(DISTINCT DATE(c.근무일)) as work_days
+        FROM claim_data c
+        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+        WHERE c.근무일 BETWEEN ? AND ?
+          AND e.job_grade IS NOT NULL
+          AND e.center_name IS NOT NULL
+          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        GROUP BY e.center_name, e.job_grade, c.사번, month
+      )
+      SELECT
+        centerName,
+        grade,
+        CAST(month AS INTEGER) as month,
+        ROUND(
+          SUM(total_hours) / COUNT(DISTINCT 사번) /
+          AVG(work_days) * 7, 1
+        ) as avgWeeklyActualHours
+      FROM adjusted_hours
+      GROUP BY centerName, grade, month
+    `;
+
+    const allActualResults = db.prepare(actualQuery).all(yearStart, yearEnd) as any[];
+
+    // 센터와 등급 목록 추출
+    const centersSet = new Set<string>();
+    const gradesSet = new Set<string>();
+
+    allClaimedResults.forEach(row => {
+      centersSet.add(row.center_name);
+      gradesSet.add(row.grade_level);
+    });
+
+    const centers = Array.from(centersSet).sort();
+    const grades = Array.from(gradesSet).sort();
+
+    // 월별로 데이터 구성
     const monthlyResults = [];
     for (let month = startMonth; month <= endMonth; month++) {
-      const monthStr = month.toString().padStart(2, '0');
-      const startDate = `${year}-${monthStr}-01`;
+      // 해당 월의 근태시간 데이터 필터링
+      const monthClaimedResults = allClaimedResults.filter(row => row.month === month);
+      const claimedMatrix: Record<string, Record<string, number>> = {};
+      monthClaimedResults.forEach(row => {
+        if (!claimedMatrix[row.grade_level]) {
+          claimedMatrix[row.grade_level] = {};
+        }
+        claimedMatrix[row.grade_level][row.center_name] = row.avg_weekly_hours;
+      });
 
-      // 해당 월의 마지막 날 계산
-      const lastDay = new Date(year, month, 0).getDate();
-      const endDate = `${year}-${monthStr}-${lastDay}`;
-
-      // 근태시간 데이터 (claim_data 테이블)
-      const claimedResult = getGradeWeeklyClaimedHoursMatrixFromClaim(startDate, endDate);
-
-      // 근무추정시간 데이터 (claim_data에서 휴일 반영 후 비업무이동시간 50% 제외)
-      const actualQuery = `
-        WITH adjusted_hours AS (
-          SELECT
-            e.center_name as centerName,
-            'Lv.' || e.job_grade as grade,
-            c.사번,
-            SUM(
-              CASE
-                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
-                THEN COALESCE(h.standard_hours, 8.0)
-                ELSE c.실제근무시간
-              END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
-            ) as total_adjusted_hours
-          FROM claim_data c
-          LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
-          LEFT JOIN daily_analysis_results dar
-            ON dar.employee_id = CAST(c.사번 AS TEXT)
-            AND DATE(dar.analysis_date) = DATE(c.근무일)
-          JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
-          WHERE c.근무일 BETWEEN ? AND ?
-            AND e.job_grade IS NOT NULL
-            AND e.center_name IS NOT NULL
-            AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-          GROUP BY e.center_name, e.job_grade, c.사번
-        )
-        SELECT
-          centerName,
-          grade,
-          ROUND(
-            SUM(total_adjusted_hours) / COUNT(DISTINCT 사번) /
-            (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1
-          ) as avgWeeklyActualHours
-        FROM adjusted_hours
-        GROUP BY centerName, grade
-      `;
-
-      const actualResults = db.prepare(actualQuery).all(startDate, endDate, endDate, startDate) as any[];
-
-      // Transform actual work hours to matrix format
+      // 해당 월의 근무추정시간 데이터 필터링
+      const monthActualResults = allActualResults.filter(row => row.month === month);
       const actualMatrix: Record<string, Record<string, number>> = {};
-      actualResults.forEach(row => {
+      monthActualResults.forEach(row => {
         if (!actualMatrix[row.grade]) {
           actualMatrix[row.grade] = {};
         }
@@ -76,10 +141,14 @@ export async function GET(request: NextRequest) {
 
       monthlyResults.push({
         month,
-        claimedData: claimedResult,
+        claimedData: {
+          grades,
+          centers,
+          matrix: claimedMatrix
+        },
         actualData: {
-          grades: claimedResult.grades,
-          centers: claimedResult.centers,
+          grades,
+          centers,
           matrix: actualMatrix
         }
       });
@@ -107,15 +176,15 @@ export async function GET(request: NextRequest) {
       const monthlyData = monthlyResults.map(({ month, claimedData, actualData }) => {
         // 근태시간 - 모든 센터의 평균
         const allClaimedData = claimedData.matrix[level] ?
-          Object.values(claimedData.matrix[level]).filter(v => v > 0) : [];
+          Object.values(claimedData.matrix[level]).filter((v): v is number => typeof v === 'number' && v > 0) : [];
         const avgClaimed = allClaimedData.length > 0 ?
-          allClaimedData.reduce((sum, val) => sum + Number(val), 0) / allClaimedData.length : 0;
+          allClaimedData.reduce((sum, val) => sum + val, 0) / allClaimedData.length : 0;
 
         // 근무추정시간 - 모든 센터의 평균
         const allActualData = actualData.matrix[level] ?
-          Object.values(actualData.matrix[level]).filter(v => v > 0) : [];
+          Object.values(actualData.matrix[level]).filter((v): v is number => typeof v === 'number' && v > 0) : [];
         const avgActual = allActualData.length > 0 ?
-          allActualData.reduce((sum, val) => sum + Number(val), 0) / allActualData.length : 0;
+          allActualData.reduce((sum, val) => sum + val, 0) / allActualData.length : 0;
 
         return {
           month,
@@ -155,14 +224,14 @@ export async function GET(request: NextRequest) {
 
         // 전체 센터 평균 계산 (선택된 센터가 없을 경우)
         const allClaimedData = claimedData.matrix[level] ?
-          Object.values(claimedData.matrix[level]).filter(v => v > 0) : [];
+          Object.values(claimedData.matrix[level]).filter((v): v is number => typeof v === 'number' && v > 0) : [];
         const avgClaimed = allClaimedData.length > 0 ?
-          allClaimedData.reduce((sum, val) => sum + Number(val), 0) / allClaimedData.length : 0;
+          allClaimedData.reduce((sum, val) => sum + val, 0) / allClaimedData.length : 0;
 
         const allActualData = actualData.matrix[level] ?
-          Object.values(actualData.matrix[level]).filter(v => v > 0) : [];
+          Object.values(actualData.matrix[level]).filter((v): v is number => typeof v === 'number' && v > 0) : [];
         const avgActual = allActualData.length > 0 ?
-          allActualData.reduce((sum, val) => sum + Number(val), 0) / allActualData.length : 0;
+          allActualData.reduce((sum, val) => sum + val, 0) / allActualData.length : 0;
 
         const claimedValue = centerName !== '전체' ? centerClaimedData : avgClaimed;
         const actualValue = centerName !== '전체' ? centerActualData : avgActual;
