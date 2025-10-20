@@ -15,7 +15,9 @@ export async function POST(request: Request) {
       )
     }
     
-    // 해당 기간에 실제근무시간이 0보다 큰 모든 직원들 추출
+    // 해당 기간에 근무시간이 0보다 큰 모든 직원들 추출
+    // 근무일 컬럼은 정수(YYYYMMDD) 또는 텍스트('YYYY-MM-DD') 형식
+    // 근무시간은 Excel에서 "HH:MM" 형식으로 업로드되어 decimal hours로 변환됨
     const query = `
       SELECT DISTINCT
         c.사번 as employeeId,
@@ -26,9 +28,18 @@ export async function POST(request: Request) {
         o.직급명 as position
       FROM claim_data c
       LEFT JOIN organization_data o ON c.사번 = o.사번
-      WHERE date(c.근무일) >= date(?) 
-        AND date(c.근무일) <= date(?)
-        AND c.실제근무시간 > 0
+      WHERE CAST(
+              CASE
+                WHEN typeof(c.근무일) = 'integer' THEN c.근무일
+                WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
+              END AS INTEGER
+            ) >= CAST(replace(?, '-', '') AS INTEGER)
+        AND CAST(
+              CASE
+                WHEN typeof(c.근무일) = 'integer' THEN c.근무일
+                WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
+              END AS INTEGER
+            ) <= CAST(replace(?, '-', '') AS INTEGER)
         AND c.사번 IS NOT NULL
       ORDER BY c.사번
     `

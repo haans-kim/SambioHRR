@@ -457,7 +457,7 @@ def load_data(selected_type, uploaded_files):
             # 날짜 범위 기반 중복 방지: 업로드할 데이터의 날짜 범위에 해당하는 기존 데이터 삭제
             date_column_map = {
                 "tag_data": ("ENTE_DT", "number"),
-                "claim_data": ("근무일", "datetime"),
+                "claim_data": ("근무일", "number"),  # ✅ 수정: datetime -> number (20250701 형식)
                 "meal_data": ("취식일시", "datetime"),
                 "knox_approval": ("Timestamp", "datetime"),
                 "knox_mail": ("발신일시_GMT9", "datetime"),

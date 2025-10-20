@@ -16,8 +16,9 @@ export async function POST(request: Request) {
     }
     
     // Query to get all employee-date combinations with non-zero claim hours
+    // 근무일 컬럼은 정수(YYYYMMDD) 또는 텍스트('YYYY-MM-DD') 형식
     const query = `
-      SELECT 
+      SELECT
         c.사번 as employeeId,
         c.성명 as employeeName,
         c.근무일 as workDate,
@@ -27,7 +28,18 @@ export async function POST(request: Request) {
         o.직급명 as position
       FROM claim_data c
       LEFT JOIN organization_data o ON c.사번 = o.사번
-      WHERE c.근무일 BETWEEN ? AND ?
+      WHERE CAST(
+              CASE
+                WHEN typeof(c.근무일) = 'integer' THEN c.근무일
+                WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
+              END AS INTEGER
+            ) >= CAST(replace(?, '-', '') AS INTEGER)
+        AND CAST(
+              CASE
+                WHEN typeof(c.근무일) = 'integer' THEN c.근무일
+                WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
+              END AS INTEGER
+            ) <= CAST(replace(?, '-', '') AS INTEGER)
         AND CAST(c.근무시간 AS REAL) > 0
       ORDER BY c.사번, c.근무일
     `
@@ -46,12 +58,23 @@ export async function POST(request: Request) {
     
     // Get additional stats
     const statsQuery = `
-      SELECT 
+      SELECT
         COUNT(DISTINCT 사번) as uniqueEmployees,
         COUNT(*) as totalRecords,
         SUM(CAST(근무시간 AS REAL)) as totalHours
       FROM claim_data
-      WHERE 근무일 BETWEEN ? AND ?
+      WHERE CAST(
+              CASE
+                WHEN typeof(근무일) = 'integer' THEN 근무일
+                WHEN typeof(근무일) = 'text' THEN CAST(substr(replace(근무일, '-', ''), 1, 8) AS INTEGER)
+              END AS INTEGER
+            ) >= CAST(replace(?, '-', '') AS INTEGER)
+        AND CAST(
+              CASE
+                WHEN typeof(근무일) = 'integer' THEN 근무일
+                WHEN typeof(근무일) = 'text' THEN CAST(substr(replace(근무일, '-', ''), 1, 8) AS INTEGER)
+              END AS INTEGER
+            ) <= CAST(replace(?, '-', '') AS INTEGER)
         AND CAST(근무시간 AS REAL) > 0
     `
     

@@ -18,13 +18,19 @@ export async function GET(request: NextRequest) {
     const yearEnd = `${year}-12-31`;
 
     // 근태시간 데이터를 한 번에 조회
+    // 근무일 컬럼은 정수(YYYYMMDD) 또는 텍스트('YYYY-MM-DD') 형식
     const claimedQuery = `
       WITH monthly_totals AS (
         SELECT
           c.사번,
           c.employee_level,
           e.center_name,
-          strftime('%m', c.근무일) as month,
+          substr(
+            CASE
+              WHEN typeof(c.근무일) = 'integer' THEN CAST(c.근무일 AS TEXT)
+              WHEN typeof(c.근무일) = 'text' THEN replace(c.근무일, '-', '')
+            END, 5, 2
+          ) as month,
           SUM(
             CASE
               WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
@@ -32,11 +38,26 @@ export async function GET(request: NextRequest) {
               ELSE c.실제근무시간
             END
           ) as month_total_hours,
-          COUNT(DISTINCT DATE(c.근무일)) as work_days
+          COUNT(DISTINCT c.근무일) as work_days
         FROM claim_data c
-        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN holidays h ON
+          CASE
+            WHEN typeof(c.근무일) = 'integer' THEN date(substr(CAST(c.근무일 AS TEXT), 1, 4) || '-' || substr(CAST(c.근무일 AS TEXT), 5, 2) || '-' || substr(CAST(c.근무일 AS TEXT), 7, 2))
+            WHEN typeof(c.근무일) = 'text' THEN date(c.근무일)
+          END = h.holiday_date
         JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
-        WHERE c.근무일 BETWEEN ? AND ?
+        WHERE CAST(
+                CASE
+                  WHEN typeof(c.근무일) = 'integer' THEN c.근무일
+                  WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
+                END AS INTEGER
+              ) >= CAST(replace(?, '-', '') AS INTEGER)
+          AND CAST(
+                CASE
+                  WHEN typeof(c.근무일) = 'integer' THEN c.근무일
+                  WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
+                END AS INTEGER
+              ) <= CAST(replace(?, '-', '') AS INTEGER)
           AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
           AND c.사번 NOT IN ('20190287', '20200207', '20120150')
           AND c.employee_level IS NOT NULL
@@ -72,7 +93,12 @@ export async function GET(request: NextRequest) {
           e.center_name as centerName,
           'Lv.' || e.job_grade as grade,
           c.사번,
-          strftime('%m', c.근무일) as month,
+          substr(
+            CASE
+              WHEN typeof(c.근무일) = 'integer' THEN CAST(c.근무일 AS TEXT)
+              WHEN typeof(c.근무일) = 'text' THEN replace(c.근무일, '-', '')
+            END, 5, 2
+          ) as month,
           SUM(
             CASE
               WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
@@ -80,11 +106,26 @@ export async function GET(request: NextRequest) {
               ELSE c.실제근무시간
             END
           ) as total_hours,
-          COUNT(DISTINCT DATE(c.근무일)) as work_days
+          COUNT(DISTINCT c.근무일) as work_days
         FROM claim_data c
-        LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+        LEFT JOIN holidays h ON
+          CASE
+            WHEN typeof(c.근무일) = 'integer' THEN date(substr(CAST(c.근무일 AS TEXT), 1, 4) || '-' || substr(CAST(c.근무일 AS TEXT), 5, 2) || '-' || substr(CAST(c.근무일 AS TEXT), 7, 2))
+            WHEN typeof(c.근무일) = 'text' THEN date(c.근무일)
+          END = h.holiday_date
         JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
-        WHERE c.근무일 BETWEEN ? AND ?
+        WHERE CAST(
+                CASE
+                  WHEN typeof(c.근무일) = 'integer' THEN c.근무일
+                  WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
+                END AS INTEGER
+              ) >= CAST(replace(?, '-', '') AS INTEGER)
+          AND CAST(
+                CASE
+                  WHEN typeof(c.근무일) = 'integer' THEN c.근무일
+                  WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
+                END AS INTEGER
+              ) <= CAST(replace(?, '-', '') AS INTEGER)
           AND e.job_grade IS NOT NULL
           AND e.center_name IS NOT NULL
           AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')

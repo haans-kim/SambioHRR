@@ -219,14 +219,15 @@ export class MemoryDataLoader {
 
       const placeholders = employeeIds.map(() => '?').join(',')
       const stmt = humanDb.prepare(`
-        SELECT 
+        SELECT
           사번 as employee_id,
           DATE(근무일) as date,
-          실제근무시간 as claimed_hours
+          근무시간 as claimed_hours
         FROM claim_data
         WHERE 사번 IN (${placeholders})
           AND DATE(근무일) BETWEEN ? AND ?
-          AND 실제근무시간 >= 1.0
+          AND 근무시간 IS NOT NULL
+          AND 근무시간 > 0
       `)
       
       const rows = stmt.all(...employeeIds, startDate, endDate) as any[]

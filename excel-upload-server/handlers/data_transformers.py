@@ -63,33 +63,54 @@ class DataTransformers:
 
     @staticmethod
     def transform_claim_data(df: pd.DataFrame) -> pd.DataFrame:
-        """Transform claim_data Excel to DB format"""
+        """
+        Transform claim_data Excel to DB format
+        Excel columns: 근무일, 급여요일, 성명, 사번, 부서, 직급, WORKSCHDTYPNM,
+                      근무시간, 시작, 종료, 제외시간, 근태명, 근태코드
+        """
         logger.info("Transforming claim_data...")
 
-        column_map = {
-            '일자': '일자',
-            '사번': '사번',
-            '이름': '이름',
-            '센터': '센터',
-            '담당': '담당',
-            '팀': '팀',
-            '그룹': '그룹',
-            '근무시간': '근무시간',
-            '근무구분': '근무구분'
-        }
+        # No column mapping needed - DB schema matches Excel structure
+        # Just ensure data types are correct
 
-        df = df.rename(columns=column_map)
+        # Convert 근무일 to integer format (YYYYMMDD)
+        if '근무일' in df.columns:
+            df['근무일'] = df['근무일'].astype(str).str.replace('-', '')
+            df['근무일'] = pd.to_numeric(df['근무일'], errors='coerce')
 
-        # Convert date format
-        if '일자' in df.columns:
-            df['일자'] = df['일자'].astype(str).str.replace('-', '')
-            df['일자'] = pd.to_numeric(df['일자'], errors='coerce')
-
+        # Convert 사번 to integer
         if '사번' in df.columns:
             df['사번'] = pd.to_numeric(df['사번'], errors='coerce')
 
+        # Convert 근무시간 from "HH:MM" format to decimal hours
         if '근무시간' in df.columns:
-            df['근무시간'] = pd.to_numeric(df['근무시간'], errors='coerce')
+            def time_to_hours(time_str):
+                """Convert 'HH:MM' or 'HH:MM:SS' to decimal hours"""
+                if pd.isna(time_str):
+                    return None
+
+                time_str = str(time_str).strip()
+                if time_str == '' or time_str == '00:00':
+                    return 0.0
+
+                try:
+                    parts = time_str.split(':')
+                    if len(parts) >= 2:
+                        hours = int(parts[0])
+                        minutes = int(parts[1])
+                        return hours + (minutes / 60.0)
+                    return 0.0
+                except:
+                    return None
+
+            df['근무시간'] = df['근무시간'].apply(time_to_hours)
+
+        # Convert 시작, 종료 times if present
+        for col in ['시작', '종료']:
+            if col in df.columns:
+                df[col] = df[col].apply(
+                    lambda x: str(x).replace(':', '') if pd.notna(x) and str(x) != '' else None
+                )
 
         logger.info(f"claim_data transformation complete: {len(df):,} rows")
         return df
