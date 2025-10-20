@@ -122,7 +122,7 @@ export class MemoryDataLoader {
   private loadEvents(db: Database.Database, employeeIds: number[], startDate: string, endDate: string): Map<number, Map<string, EventData[]>> {
     const placeholders = employeeIds.map(() => '?').join(',')
     const stmt = db.prepare(`
-      SELECT 
+      SELECT
         employee_id,
         timestamp,
         date,
@@ -132,8 +132,8 @@ export class MemoryDataLoader {
         tag_location,
         prev_tag_code,
         next_tag_code,
-        team_tag_ratio,
-        team_work_intensity
+        0 as team_tag_ratio,
+        0 as team_work_intensity
       FROM master_events_table
       WHERE employee_id IN (${placeholders})
         AND date BETWEEN ? AND ?
@@ -177,12 +177,12 @@ export class MemoryDataLoader {
     const stmt = db.prepare(`
       SELECT DISTINCT
         team_name,
-        team_tag_ratio,
-        team_work_intensity,
+        0 as team_tag_ratio,
+        0 as team_work_intensity,
         COUNT(*) as team_total_count
       FROM master_events_table
       WHERE team_name IS NOT NULL
-      GROUP BY team_name, team_tag_ratio, team_work_intensity
+      GROUP BY team_name
     `)
     
     const rows = stmt.all() as any[]
@@ -218,20 +218,33 @@ export class MemoryDataLoader {
       }
 
       const placeholders = employeeIds.map(() => '?').join(',')
+
+      // 근무일 필드는 정수형 YYYYMMDD (예: 20250701)
+      // startDate/endDate는 'YYYY-MM-DD' 형식이므로 변환 필요
+      const startDateInt = parseInt(startDate.replace(/-/g, ''))
+      const endDateInt = parseInt(endDate.replace(/-/g, ''))
+
       const stmt = humanDb.prepare(`
         SELECT
           사번 as employee_id,
-          DATE(근무일) as date,
+          printf('%04d-%02d-%02d',
+            근무일 / 10000,
+            (근무일 / 100) % 100,
+            근무일 % 100
+          ) as date,
           근무시간 as claimed_hours
         FROM claim_data
         WHERE 사번 IN (${placeholders})
-          AND DATE(근무일) BETWEEN ? AND ?
+          AND 근무일 >= ?
+          AND 근무일 <= ?
           AND 근무시간 IS NOT NULL
           AND 근무시간 > 0
       `)
       
-      const rows = stmt.all(...employeeIds, startDate, endDate) as any[]
+      const rows = stmt.all(...employeeIds, startDateInt, endDateInt) as any[]
       const claimData = new Map<number, Map<string, ClaimData>>()
+
+      console.log(`📊 Claim data loaded: ${rows.length} records for ${employeeIds.length} employees`)
       
       for (const row of rows) {
         const employeeId = row.employee_id
