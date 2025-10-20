@@ -238,76 +238,105 @@ class MasterTableBuilder {
   private async processTagData(): Promise<void> {
     console.log('🏷️ 태그 데이터 처리...')
     console.log(`📅 날짜 범위: ${this.config.startDate} ~ ${this.config.endDate}`)
-    
-    const query = `
-      INSERT INTO master_events_table (
-        timestamp, date, year, month, week, day_of_week, hour, minute,
-        employee_id, employee_name, tag_code, tag_name, tag_type, tag_location,
-        state, judgment, base_confidence, final_confidence,
-        data_source, original_id, processing_batch
-      )
-      SELECT 
-        datetime(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2) || ' ' || printf('%02d:%02d:%02d', 
-          CAST(t.출입시각 / 10000 AS INTEGER), 
-          CAST((t.출입시각 % 10000) / 100 AS INTEGER),
-          CAST(t.출입시각 % 100 AS INTEGER)
-        )) as timestamp,
-        date(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2)) as date,
-        cast(substr(t.ENTE_DT, 1, 4) as integer) as year,
-        cast(substr(t.ENTE_DT, 5, 2) as integer) as month,
-        cast(strftime('%W', date(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2))) as integer) as week,
-        cast(strftime('%w', date(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2))) as integer) as day_of_week,
-        CAST(t.출입시각 / 10000 AS INTEGER) as hour,
-        CAST((t.출입시각 % 10000) / 100 AS INTEGER) as minute,
-        
-        t.사번 as employee_id,
-        t.NAME as employee_name,
-        COALESCE(tlm.Tag_Code, 'UNKNOWN') as tag_code,
-        t.DR_NM as tag_name,
-        'TagLog' as tag_type,
-        t.DR_NM as tag_location,
-        
-        -- 기본 상태 분류
-        CASE 
-          WHEN t.DR_NM LIKE '%T2%' OR t.DR_NM LIKE '%GATE%' THEN '출입'
-          WHEN t.DR_NM LIKE '%복도%' OR t.DR_NM LIKE '%계단%' THEN '이동'
-          WHEN t.DR_NM LIKE '%휴게%' THEN '휴게'
-          WHEN t.DR_NM LIKE '%회의%' THEN '회의'
-          ELSE '업무'
-        END as state,
-        '태그기반' as judgment,
-        
-        -- 기본 신뢰도
-        CASE 
-          WHEN t.DR_NM LIKE '%T2%' OR t.DR_NM LIKE '%GATE%' THEN 1.0
-          WHEN t.DR_NM LIKE '%회의%' OR t.DR_NM LIKE '%교육%' THEN 0.95
-          WHEN t.DR_NM LIKE '%휴게%' THEN 0.90
-          ELSE 0.85
-        END as base_confidence,
-        0.85 as final_confidence,  -- 임시값, 나중에 재계산
-        
-        'tag_data' as data_source,
-        t.rowid as original_id,
-        '${new Date().toISOString()}' as processing_batch
-        
+
+    const startDateInt = parseInt(this.config.startDate.replace(/-/g, ''))
+    const endDateInt = parseInt(this.config.endDate.replace(/-/g, ''))
+
+    // 1. 총 행 수 확인
+    const countQuery = `
+      SELECT COUNT(*) as total
       FROM operational.tag_data t
-      LEFT JOIN operational.tag_location_master tlm ON t.DR_NM = tlm.게이트명
       WHERE t.ENTE_DT >= ? AND t.ENTE_DT <= ?
         AND t.사번 IS NOT NULL
         AND t.출입시각 IS NOT NULL
         AND t.출입시각 >= 0
-      ORDER BY t.사번, t.ENTE_DT, t.출입시각
     `
-    
-    const stmt = this.analyticsDb.prepare(query)
-    // tag_data의 ENTE_DT는 integer 형식 (YYYYMMDD)이므로 변환
-    const startDateInt = parseInt(this.config.startDate.replace(/-/g, ''))
-    const endDateInt = parseInt(this.config.endDate.replace(/-/g, ''))
-    console.log(`🔢 변환된 날짜: ${startDateInt} ~ ${endDateInt}`)
-    const result = stmt.run(startDateInt, endDateInt)
-    console.log(`📊 처리된 레코드: ${result.changes}건`)
-    
-    this.updateStats('tag', result.changes, 0)
+    const totalRows = (this.operationalDb.prepare(countQuery).get(startDateInt, endDateInt) as any).total
+    console.log(`📊 총 ${totalRows.toLocaleString()}행 처리 예정`)
+
+    // 2. Batch 단위로 처리
+    const BATCH_SIZE = 50000
+    const batch = new Date().toISOString()
+    let processed = 0
+    const startTime = Date.now()
+
+    for (let offset = 0; offset < totalRows; offset += BATCH_SIZE) {
+      const query = `
+        INSERT INTO master_events_table (
+          timestamp, date, year, month, week, day_of_week, hour, minute,
+          employee_id, employee_name, tag_code, tag_name, tag_type, tag_location,
+          state, judgment, base_confidence, final_confidence,
+          data_source, original_id, processing_batch
+        )
+        SELECT
+          datetime(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2) || ' ' || printf('%02d:%02d:%02d',
+            CAST(t.출입시각 / 10000 AS INTEGER),
+            CAST((t.출입시각 % 10000) / 100 AS INTEGER),
+            CAST(t.출입시각 % 100 AS INTEGER)
+          )) as timestamp,
+          date(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2)) as date,
+          cast(substr(t.ENTE_DT, 1, 4) as integer) as year,
+          cast(substr(t.ENTE_DT, 5, 2) as integer) as month,
+          cast(strftime('%W', date(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2))) as integer) as week,
+          cast(strftime('%w', date(substr(t.ENTE_DT, 1, 4) || '-' || substr(t.ENTE_DT, 5, 2) || '-' || substr(t.ENTE_DT, 7, 2))) as integer) as day_of_week,
+          CAST(t.출입시각 / 10000 AS INTEGER) as hour,
+          CAST((t.출입시각 % 10000) / 100 AS INTEGER) as minute,
+
+          t.사번 as employee_id,
+          t.NAME as employee_name,
+          COALESCE(tlm.Tag_Code, 'UNKNOWN') as tag_code,
+          t.DR_NM as tag_name,
+          'TagLog' as tag_type,
+          t.DR_NM as tag_location,
+
+          -- 기본 상태 분류
+          CASE
+            WHEN t.DR_NM LIKE '%T2%' OR t.DR_NM LIKE '%GATE%' THEN '출입'
+            WHEN t.DR_NM LIKE '%복도%' OR t.DR_NM LIKE '%계단%' THEN '이동'
+            WHEN t.DR_NM LIKE '%휴게%' THEN '휴게'
+            WHEN t.DR_NM LIKE '%회의%' THEN '회의'
+            ELSE '업무'
+          END as state,
+          '태그기반' as judgment,
+
+          -- 기본 신뢰도
+          CASE
+            WHEN t.DR_NM LIKE '%T2%' OR t.DR_NM LIKE '%GATE%' THEN 1.0
+            WHEN t.DR_NM LIKE '%회의%' OR t.DR_NM LIKE '%교육%' THEN 0.95
+            WHEN t.DR_NM LIKE '%휴게%' THEN 0.90
+            ELSE 0.85
+          END as base_confidence,
+          0.85 as final_confidence,
+
+          'tag_data' as data_source,
+          t.rowid as original_id,
+          ? as processing_batch
+
+        FROM operational.tag_data t
+        LEFT JOIN operational.tag_location_master tlm ON t.DR_NM = tlm.게이트명
+        WHERE t.ENTE_DT >= ? AND t.ENTE_DT <= ?
+          AND t.사번 IS NOT NULL
+          AND t.출입시각 IS NOT NULL
+          AND t.출입시각 >= 0
+        ORDER BY t.사번, t.ENTE_DT, t.출입시각
+        LIMIT ? OFFSET ?
+      `
+
+      const stmt = this.analyticsDb.prepare(query)
+      const result = stmt.run(batch, startDateInt, endDateInt, BATCH_SIZE, offset)
+
+      processed += result.changes
+      const progress = ((processed / totalRows) * 100).toFixed(1)
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+      const speed = Math.round(processed / (Date.now() - startTime) * 1000)
+      const remaining = totalRows - processed
+      const eta = remaining > 0 ? Math.round(remaining / speed) : 0
+
+      console.log(`🔄 진행률: ${progress}% | ${processed.toLocaleString()}/${totalRows.toLocaleString()}행 | ${speed.toLocaleString()}행/초 | 경과: ${elapsed}초 | 예상 남은 시간: ${eta}초`)
+    }
+
+    console.log(`✅ 태그 데이터 처리 완료: ${processed.toLocaleString()}건`)
+    this.updateStats('tag', processed, 0)
   }
 
   private async processEquipmentData(): Promise<void> {

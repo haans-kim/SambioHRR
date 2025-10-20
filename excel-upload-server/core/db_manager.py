@@ -192,6 +192,11 @@ class DatabaseManager:
 
     def insert_dataframe(self, table_name: str, df: pd.DataFrame, if_exists: str = "append") -> int:
         """Insert DataFrame into table (alias for dataframe_to_table)"""
+        # Add uploaded_at timestamp if column exists
+        if 'uploaded_at' not in df.columns:
+            df = df.copy()
+            df['uploaded_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         return self.dataframe_to_table(df, table_name, if_exists)
 
     def delete_by_date_range(

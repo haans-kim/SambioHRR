@@ -52,7 +52,7 @@ def get_data_stats():
         # 각 데이터 타입별 날짜 컬럼 매핑 (Next.js API와 동일)
         date_column_map = {
             "tag_data": ("ENTE_DT", "number"),  # 20250101 형식
-            "claim_data": ("근무일", "datetime"),
+            "claim_data": ("근무일", "number"),  # 20250701 형식
             "meal_data": ("취식일시", "datetime"),
             "knox_approval": ("Timestamp", "datetime"),
             "knox_mail": ("발신일시_GMT9", "datetime"),
@@ -99,7 +99,22 @@ def get_data_stats():
                 try:
                     date_col, date_format = date_column_map[data_type_id]
 
-                    query = f"SELECT MIN({date_col}) as min_date, MAX({date_col}) as max_date FROM {table_name} WHERE {date_col} IS NOT NULL"
+                    # claim_data는 혼합 형식이므로 별도 처리
+                    if table_name == "claim_data":
+                        # Integer와 Text 형식 모두 고려
+                        query = f"""
+                        SELECT
+                            MIN(CASE WHEN typeof({date_col}) = 'integer' THEN {date_col}
+                                     WHEN typeof({date_col}) = 'text' THEN substr(replace({date_col}, '-', ''), 1, 8)
+                                END) as min_date,
+                            MAX(CASE WHEN typeof({date_col}) = 'integer' THEN {date_col}
+                                     WHEN typeof({date_col}) = 'text' THEN substr(replace({date_col}, '-', ''), 1, 8)
+                                END) as max_date
+                        FROM {table_name} WHERE {date_col} IS NOT NULL
+                        """
+                    else:
+                        query = f"SELECT MIN({date_col}) as min_date, MAX({date_col}) as max_date FROM {table_name} WHERE {date_col} IS NOT NULL"
+
                     result = db_manager.conn.execute(query).fetchone()
 
                     if result and result[0]:
@@ -108,18 +123,36 @@ def get_data_stats():
 
                         # 숫자 형식 (20250101) -> 날짜 문자열 (2025-01-01)
                         if date_format == "number":
-                            min_date = f"{min_date[:4]}-{min_date[4:6]}-{min_date[6:8]}"
-                            max_date = f"{max_date[:4]}-{max_date[4:6]}-{max_date[6:8]}"
+                            # 혼합 형식 처리 (숫자 또는 datetime 문자열)
+                            if len(min_date) == 8 and min_date.isdigit():
+                                min_date = f"{min_date[:4]}-{min_date[4:6]}-{min_date[6:8]}"
+                            elif ' ' in min_date:
+                                min_date = min_date.split(' ')[0]
+
+                            if len(max_date) == 8 and max_date.isdigit():
+                                max_date = f"{max_date[:4]}-{max_date[4:6]}-{max_date[6:8]}"
+                            elif ' ' in max_date:
+                                max_date = max_date.split(' ')[0]
                         # datetime 형식에서 날짜만 추출
                         elif date_format == "datetime":
                             min_date = min_date.split(' ')[0]
                             max_date = max_date.split(' ')[0]
 
                         date_range = f"{min_date} ~ {max_date}"
-                        last_upload = max_date
 
                 except Exception as e:
                     logger.debug(f"날짜 조회 실패 ({table_name}): {e}")
+
+            # 실제 업로드 날짜 조회 (uploaded_at 컬럼)
+            if row_count > 0:
+                try:
+                    upload_query = f"SELECT MAX(uploaded_at) FROM {table_name} WHERE uploaded_at IS NOT NULL"
+                    upload_result = db_manager.conn.execute(upload_query).fetchone()
+                    if upload_result and upload_result[0]:
+                        # YYYY-MM-DD HH:MM:SS -> YYYY-MM-DD만 추출
+                        last_upload = str(upload_result[0]).split(' ')[0]
+                except Exception as e:
+                    logger.debug(f"업로드 날짜 조회 실패 ({table_name}): {e}")
 
             stats.append({
                 "데이터 유형": data_type_info.label,
@@ -477,6 +510,12 @@ def load_data(selected_type, uploaded_files):
             progress_bar.progress(0.8)
 
             db_manager.insert_dataframe(data_type_info.table_name, combined_df)
+
+            # tag_data 업로드 시 Master 테이블 자동 마이그레이션 (비활성화)
+            # 이유: 시간이 오래 걸리고 진행률 피드백이 없어서 사용자 경험이 나쁨
+            # 필요시 터미널에서 수동 실행: npx tsx scripts/migrate-complete-master.ts YYYYMMDD YYYYMMDD
+            # if selected_type == "tag_data" and not combined_df.empty:
+            #     ... (마이그레이션 코드 비활성화)
 
             progress_bar.progress(1.0)
             status_text.text("✅ 로드 완료!")

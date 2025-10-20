@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/Sambio_excel_raw
 
 # next.js
 /.next/
