@@ -57,8 +57,14 @@ export class CompleteMasterMigrator {
     const ANALYTICS_DB_PATH = path.join(process.cwd(), 'sambio_analytics.db')
     const OPERATIONAL_DB_PATH = path.join(process.cwd(), 'sambio_human.db')
 
-    this.analyticsDb = new Database(ANALYTICS_DB_PATH, { readonly: false })
-    this.operationalDb = new Database(OPERATIONAL_DB_PATH, { readonly: true })
+    this.analyticsDb = new Database(ANALYTICS_DB_PATH, {
+      readonly: false,
+      timeout: 30000  // 30초 대기
+    })
+    this.operationalDb = new Database(OPERATIONAL_DB_PATH, {
+      readonly: true,
+      timeout: 30000  // 30초 대기
+    })
   }
 
   /**
@@ -566,6 +572,9 @@ export class CompleteMasterMigrator {
 
         const employees = this.getEmployeesForDate(date)
 
+        // 터미널 진행상황 출력
+        console.log(`📅 ${formattedDate} 처리 중... (${dateIndex + 1}/${dates.length}일, ${employees.length}명)`)
+
         // 날짜 시작 시 진행상황 전송
         if (this.progressCallback) {
           this.progressCallback({
@@ -590,6 +599,16 @@ export class CompleteMasterMigrator {
           processedEmployees++
           uniqueEmployees.add(employeeId)
 
+          // 100명마다 진행 표시
+          if (processedEmployees % 100 === 0) {
+            process.stdout.write('.')
+          }
+
+          // 1000명마다 상세 진행상황 출력
+          if (processedEmployees % 1000 === 0) {
+            console.log(` ${processedEmployees.toLocaleString()}명 (${totalEvents.toLocaleString()}개 이벤트)`)
+          }
+
           // 10명마다 진행상황 전송 (UI 업데이트)
           if (processedEmployees % 10 === 0 && this.progressCallback) {
             this.progressCallback({
@@ -600,6 +619,9 @@ export class CompleteMasterMigrator {
             })
           }
         }
+
+        // 날짜 완료 후 줄바꿈
+        console.log(` ✅ ${formattedDate} 완료: ${totalEvents.toLocaleString()}개 이벤트`)
       }
 
       const duration = Date.now() - startTime
@@ -617,6 +639,11 @@ export class CompleteMasterMigrator {
 
     } catch (error) {
       console.error('❌ 마이그레이션 오류:', error)
+      console.error('오류 상세:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined
+      })
       return {
         success: false,
         totalEvents: 0,
