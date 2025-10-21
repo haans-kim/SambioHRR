@@ -65,7 +65,10 @@
       "Bash(taskkill //F //PID 18904)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(taskkill //F //PID 27588)"
+      "Bash(taskkill //F //PID 27588)",
+      "Bash(venvScriptspip install -r requirements.txt)",
+      "Bash(venv/Scripts/pip install:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

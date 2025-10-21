@@ -27,6 +27,7 @@ export default function DataUploadPage() {
   const [dataStats, setDataStats] = useState<DataStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [serverStarting, setServerStarting] = useState(false);
 
   // Load available data types from JSON
   useEffect(() => {
@@ -60,9 +61,35 @@ export default function DataUploadPage() {
     loadDataStats();
   }, []);
 
-  const handleOpenUploadApp = () => {
-    // Open Python Streamlit app in new window
-    window.open('http://localhost:8501', '_blank');
+  const handleOpenUploadApp = async () => {
+    try {
+      setServerStarting(true);
+      setError(null);
+
+      // Start the Streamlit server
+      const response = await fetch('/api/streamlit-server', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'start' })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Wait a moment for server to be ready, then open in new window
+        setTimeout(() => {
+          window.open('http://localhost:8501', '_blank');
+          setServerStarting(false);
+        }, 2500);
+      } else {
+        setError(result.message || '서버 시작에 실패했습니다');
+        setServerStarting(false);
+      }
+    } catch (err) {
+      console.error('Failed to start server:', err);
+      setError('서버 시작 중 오류가 발생했습니다');
+      setServerStarting(false);
+    }
   };
 
   return (
@@ -79,9 +106,10 @@ export default function DataUploadPage() {
           onClick={handleOpenUploadApp}
           size="lg"
           className="bg-black hover:bg-gray-800 text-white"
+          disabled={serverStarting}
         >
           <Upload className="h-4 w-4 mr-2" />
-          Excel 데이터 업로드
+          {serverStarting ? '서버 시작 중...' : 'Excel 데이터 업로드'}
           <ExternalLink className="h-4 w-4 ml-2" />
         </Button>
       </div>

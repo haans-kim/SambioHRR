@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """
-SAMBIO HRR Data Uploader  
+SAMBIO HRR Data Uploader
 Excel 데이터 업로드 및 관리 애플리케이션
 SambioHR5 스타일 적용
 
 실행 방법:
 cd excel-upload-server
+
+# macOS/Linux:
 ./venv/bin/streamlit run streamlit_app.py --server.port 8501
+
+# Windows:
+venv\Scripts\streamlit run streamlit_app.py --server.port 8501
+
+# 또는 자동 시작: Next.js /data-upload 페이지에서 버튼 클릭
 """
 
 import streamlit as st
@@ -35,8 +42,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Database path
-DB_PATH = Path("/Users/hanskim/Projects/SambioHRR/sambio_human.db")
+# Database path - 상위 디렉토리의 sambio_human.db 참조
+DB_PATH = Path(__file__).parent.parent / "sambio_human.db"
 
 def init_session_state():
     """세션 상태 초기화"""

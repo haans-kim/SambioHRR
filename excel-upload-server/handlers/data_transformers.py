@@ -145,7 +145,8 @@ class DataTransformers:
                 import sqlite3
                 from pathlib import Path
 
-                db_path = Path("/Users/hanskim/Projects/SambioHRR/sambio_human.db")
+                # 크로스 플랫폼 경로: 현재 파일 기준 2단계 상위의 sambio_human.db
+                db_path = Path(__file__).parent.parent.parent / "sambio_human.db"
                 if db_path.exists():
                     conn = sqlite3.connect(str(db_path))
 

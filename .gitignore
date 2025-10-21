@@ -50,3 +50,15 @@ sambio_human_backup.db
 sambio_analytics.db
 DB Backup.2025.09.08/sambio_analytics_clean.db-shm
 *.db.backup.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+excel-upload-server/venv/
+excel-upload-server/.streamlit/
+*.egg-info/
+dist/
+build/
