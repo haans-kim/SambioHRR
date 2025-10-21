@@ -21,8 +21,10 @@ export function precomputeMonthlyStats(month: string) {
         COUNT(DISTINCT c.사번) as total_employees,
         SUM(
           CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
+            -- 그 외: 실제근무시간 사용 (이미 data_transformers.py에서 휴가 반영됨)
             ELSE c.실제근무시간
           END
         ) as total_claimed
@@ -39,10 +41,12 @@ export function precomputeMonthlyStats(month: string) {
         e.center_name,
         SUM(
           CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
-            ELSE c.실제근무시간
-          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+            -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
+            ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          END
         ) as total_adjusted
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
@@ -89,8 +93,10 @@ export function precomputeMonthlyStats(month: string) {
         COUNT(DISTINCT c.사번) as total_employees,
         SUM(
           CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
+            -- 그 외: 실제근무시간 사용 (이미 data_transformers.py에서 휴가 반영됨)
             ELSE c.실제근무시간
           END
         ) as total_claimed
@@ -109,10 +115,12 @@ export function precomputeMonthlyStats(month: string) {
         c.employee_level as grade_level,
         SUM(
           CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
-            ELSE c.실제근무시간
-          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+            -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
+            ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          END
         ) as total_adjusted
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
@@ -146,8 +154,10 @@ export function precomputeMonthlyStats(month: string) {
         COUNT(DISTINCT c.사번) as total_employees,
         SUM(
           CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
+            -- 그 외: 실제근무시간 사용 (이미 data_transformers.py에서 휴가 반영됨)
             ELSE c.실제근무시간
           END
         ) as total_claimed
@@ -162,10 +172,12 @@ export function precomputeMonthlyStats(month: string) {
       SELECT
         SUM(
           CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
-            ELSE c.실제근무시간
-          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+            -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
+            ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          END
         ) as total_adjusted
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
@@ -259,7 +271,7 @@ export function precomputeGroupStats(month: string) {
       movement_minutes REAL,
       rest_minutes REAL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (month, group_name)
+      PRIMARY KEY (month, group_name, center_name, team_name)
     )
   `).run();
 
@@ -286,17 +298,21 @@ export function precomputeGroupStats(month: string) {
         COUNT(*) as total_records,
         SUM(
           CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
+            -- 그 외: 실제근무시간 사용 (이미 data_transformers.py에서 휴가 반영됨)
             ELSE c.실제근무시간
           END
         ) as total_claimed_hours,
         SUM(
           CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
             WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
             THEN COALESCE(h.standard_hours, 8.0)
-            ELSE c.실제근무시간
-          END - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+            -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
+            ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          END
         ) as total_adjusted_hours
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date

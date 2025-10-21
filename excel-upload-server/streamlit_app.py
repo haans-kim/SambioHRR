@@ -317,6 +317,8 @@ def render_data_status_table():
                 for dt_id, dt_info in DATA_TYPES.items():
                     if dt_info.label == selected_label:
                         st.session_state['selected_data_type'] = dt_id
+                        # 새로운 데이터 유형 선택 시 업로드 완료 플래그 초기화
+                        st.session_state['upload_complete'] = False
                         break
     else:
         st.warning("데이터 상태를 불러올 수 없습니다.")
@@ -406,9 +408,14 @@ def render_action_buttons():
         </style>
         """, unsafe_allow_html=True)
 
-        if st.button("📤 데이터 업로드", use_container_width=True):
-            load_data(selected_type, uploaded_files)
-            st.rerun()
+        # 업로드 완료 플래그 확인
+        upload_complete = st.session_state.get('upload_complete', False)
+
+        if upload_complete:
+            st.success("✅ 업로드 완료! 다른 데이터를 업로드하려면 위 테이블에서 데이터 유형을 다시 선택하세요.")
+        else:
+            if st.button("📤 데이터 업로드", use_container_width=True):
+                load_data(selected_type, uploaded_files)
 
 def load_data(selected_type, uploaded_files):
     """데이터 로드 처리"""
@@ -547,7 +554,7 @@ def load_data(selected_type, uploaded_files):
             st.success(f"🎉 {data_type_info.label} 업로드 완료! ({len(combined_df):,}행)")
 
             # claim_data 업로드 후 자동으로 통계 재계산
-            if data_type_id == "claim_data":
+            if selected_type == "claim_data":
                 import requests
                 from datetime import datetime
 
@@ -588,6 +595,12 @@ def load_data(selected_type, uploaded_files):
                 except Exception as e:
                     st.warning(f"⚠️ 통계 재계산 중 오류 발생: {e}")
                     logger.error(f"통계 재계산 오류: {e}")
+
+            # 업로드 완료 플래그 설정 (모든 작업 완료 후)
+            st.session_state['upload_complete'] = True
+
+            # 페이지 새로고침하여 업로드 버튼 숨기기
+            st.rerun()
 
         else:
             st.warning("로드된 데이터가 없습니다.")

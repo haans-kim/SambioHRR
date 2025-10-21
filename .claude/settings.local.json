@@ -68,7 +68,8 @@
       "Bash(taskkill //F //PID 27588)",
       "Bash(venvScriptspip install -r requirements.txt)",
       "Bash(venv/Scripts/pip install:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }
