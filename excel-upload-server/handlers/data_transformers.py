@@ -51,12 +51,11 @@ class DataTransformers:
         if '사번' in df.columns:
             df['사번'] = pd.to_numeric(df['사번'], errors='coerce')
 
+        # ✅ FIX: 출입시각은 이미 HHMMSS 정수 형식이므로 변환하지 않음
+        # 출입시각 = 70553 → 07:05:53 (시:분:초)
+        # pandas가 자동으로 datetime으로 변환하지 않도록 명시적으로 정수로 유지
         if '출입시각' in df.columns:
-            # Convert timestamp to integer format (YYYYMMDDHHmmss)
-            df['출입시각'] = pd.to_datetime(df['출입시각'], errors='coerce')
-            df['출입시각'] = df['출입시각'].apply(
-                lambda x: int(x.strftime('%Y%m%d%H%M%S')) if pd.notna(x) else None
-            )
+            df['출입시각'] = pd.to_numeric(df['출입시각'], errors='coerce')
 
         logger.info(f"tag_data transformation complete: {len(df):,} rows")
         return df
@@ -73,10 +72,25 @@ class DataTransformers:
         # No column mapping needed - DB schema matches Excel structure
         # Just ensure data types are correct
 
-        # Convert 근무일 to integer format (YYYYMMDD)
+        # Convert 근무일 to datetime format (YYYY-MM-DD HH:MM:SS)
         if '근무일' in df.columns:
-            df['근무일'] = df['근무일'].astype(str).str.replace('-', '')
-            df['근무일'] = pd.to_numeric(df['근무일'], errors='coerce')
+            # Handle various date formats
+            def parse_date(date_val):
+                if pd.isna(date_val):
+                    return None
+                date_str = str(date_val).strip()
+
+                # Already in correct format
+                if '-' in date_str and len(date_str) >= 10:
+                    return date_str if ' ' in date_str else date_str + ' 00:00:00'
+
+                # YYYYMMDD format (8 digits)
+                if len(date_str) == 8 and date_str.isdigit():
+                    return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]} 00:00:00"
+
+                return None
+
+            df['근무일'] = df['근무일'].apply(parse_date)
 
         # Convert 사번 to integer
         if '사번' in df.columns:

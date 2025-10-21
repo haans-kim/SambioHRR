@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     // 사용 가능한 월 목록
     const availableMonths = getAvailableMonths();
-    const currentMonth = selectedMonth || (availableMonths.length > 0 ? availableMonths[0] : '2025-06');
+    const currentMonth = selectedMonth || (availableMonths.length > 0 ? availableMonths[availableMonths.length - 1] : '2025-06');
 
     // 분석 모드 및 메트릭 가용성
     const analysisMode = getAnalysisModeForMonth(currentMonth);

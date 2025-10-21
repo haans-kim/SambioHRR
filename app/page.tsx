@@ -60,7 +60,7 @@ export default function HomePage() {
     }
     return 'efficiency';
   });
-  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06'); // 기본값 2025-06
+  const [selectedMonth, setSelectedMonth] = useState<string>(''); // 빈 문자열로 시작 - API에서 최신 월 가져옴
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -98,8 +98,8 @@ export default function HomePage() {
         setData(dashboardData);
         setLastUpdated(new Date());
 
-        // 첫 로딩 시 서버에서 받은 currentMonth로 상태 업데이트
-        if (dashboardData.currentMonth && selectedMonth !== dashboardData.currentMonth) {
+        // 첫 로딩 시 또는 selectedMonth가 비어있으면 서버에서 받은 currentMonth로 상태 업데이트
+        if (dashboardData.currentMonth && (!selectedMonth || selectedMonth !== dashboardData.currentMonth)) {
           setSelectedMonth(dashboardData.currentMonth);
         }
 

@@ -461,7 +461,7 @@ def load_data(selected_type, uploaded_files):
             # 날짜 범위 기반 중복 방지: 업로드할 데이터의 날짜 범위에 해당하는 기존 데이터 삭제
             date_column_map = {
                 "tag_data": ("ENTE_DT", "number"),
-                "claim_data": ("근무일", "number"),  # ✅ 수정: datetime -> number (20250701 형식)
+                "claim_data": ("근무일", "datetime"),  # ✅ 수정: data_transformers.py에서 'YYYY-MM-DD HH:MM:SS' 형식으로 변환함
                 "meal_data": ("취식일시", "datetime"),
                 "knox_approval": ("Timestamp", "datetime"),
                 "knox_mail": ("발신일시_GMT9", "datetime"),
@@ -538,6 +538,49 @@ def load_data(selected_type, uploaded_files):
                     logger.warning(f"임시 파일 삭제 실패: {tmp_path} - {del_error}")
 
             st.success(f"🎉 {data_type_info.label} 업로드 완료! ({len(combined_df):,}행)")
+
+            # claim_data 업로드 후 자동으로 통계 재계산
+            if data_type_id == "claim_data":
+                import requests
+                from datetime import datetime
+
+                # 업로드된 데이터의 월 추출
+                try:
+                    # 근무일 컬럼에서 월 정보 추출
+                    dates = combined_df['근무일'].dropna().astype(str)
+                    months = set()
+
+                    for date_str in dates:
+                        # YYYY-MM-DD 형식 또는 YYYYMMDD 형식
+                        if '-' in date_str and len(date_str) >= 7:
+                            month = date_str[:7]  # YYYY-MM
+                        elif len(date_str) >= 6:
+                            month = f"{date_str[:4]}-{date_str[4:6]}"  # YYYY-MM
+                        else:
+                            continue
+                        months.add(month)
+
+                    if months:
+                        st.info(f"📊 통계 재계산 중... ({len(months)}개월)")
+
+                        for month in sorted(months):
+                            try:
+                                response = requests.post(
+                                    f"http://localhost:3003/api/admin/recalculate-stats?month={month}",
+                                    timeout=120
+                                )
+
+                                if response.status_code == 200:
+                                    result = response.json()
+                                    st.success(f"✅ {month} 통계 재계산 완료 ({result.get('timeElapsed', 'N/A')})")
+                                else:
+                                    st.warning(f"⚠️ {month} 통계 재계산 실패: HTTP {response.status_code}")
+                            except Exception as calc_error:
+                                st.warning(f"⚠️ {month} 통계 재계산 오류: {calc_error}")
+
+                except Exception as e:
+                    st.warning(f"⚠️ 통계 재계산 중 오류 발생: {e}")
+                    logger.error(f"통계 재계산 오류: {e}")
 
         else:
             st.warning("로드된 데이터가 없습니다.")
