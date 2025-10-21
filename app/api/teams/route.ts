@@ -9,7 +9,7 @@ import {
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
 import { calculateAdjustedWorkHours, FLEXIBLE_WORK_ADJUSTMENT_FACTOR } from '@/lib/utils';
-import { getMetricThresholdsForGrid } from '@/lib/db/queries/analytics';
+import { getMetricThresholdsForGrid, getLatestMonth } from '@/lib/db/queries/analytics';
 
 // Helper function to get 30-day date range
 function get30DayDateRange(): { startDate: string; endDate: string } {
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
-  const selectedMonth = searchParams.get('month') || '2025-06';
+  const selectedMonth = searchParams.get('month') || getLatestMonth();
   const cacheKey = `teams:v10:center=${centerCode || ''}:division=${divisionCode || ''}:month=${selectedMonth}`;
   const cached = getFromCache<any>(cacheKey);
   if (cached) {

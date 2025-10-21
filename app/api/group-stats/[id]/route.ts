@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import DatabaseManager from '@/lib/database/connection'
 import { calculateAdjustedWorkHours } from '@/lib/utils'
+import { getLatestMonth } from '@/lib/db/queries/analytics'
 
 const db = DatabaseManager.getInstance().getDb()
 
@@ -94,7 +95,7 @@ export async function GET(
 
     // Get month parameter from query string
     const url = new URL(request.url)
-    const selectedMonth = url.searchParams.get('month') || '2025-06'
+    const selectedMonth = url.searchParams.get('month') || getLatestMonth()
 
     // Calculate date range based on selected month
     const [year, month] = selectedMonth.split('-')

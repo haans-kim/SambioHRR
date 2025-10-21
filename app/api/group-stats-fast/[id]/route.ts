@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import { getPrecomputedGroupStats } from '@/lib/db/queries/precompute-stats';
 import DatabaseManager from '@/lib/database/connection';
+import { getLatestMonth } from '@/lib/db/queries/analytics';
 
 const db = DatabaseManager.getInstance().getDb();
 
@@ -13,7 +14,7 @@ export async function GET(
     const { id } = await params;
     const groupName = decodeURIComponent(id);
     const searchParams = request.nextUrl.searchParams;
-    const selectedMonth = searchParams.get('month') || '2025-06';
+    const selectedMonth = searchParams.get('month') || getLatestMonth();
 
     const cacheKey = `group-stats-fast:v1:group=${groupName}:month=${selectedMonth}`;
     const cached = getFromCache<any>(cacheKey);

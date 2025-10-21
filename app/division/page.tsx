@@ -5,6 +5,7 @@ import {
   getChildOrganizations,
   getOrganizationsWithStatsForPeriod
 } from "@/lib/db/queries/organization";
+import { getLatestMonth } from "@/lib/db/queries/analytics";
 import { redirect } from "next/navigation";
 
 interface DivisionPageProps {
@@ -14,7 +15,7 @@ interface DivisionPageProps {
 export default async function DivisionPage({ searchParams }: DivisionPageProps) {
   const params = await searchParams;
   const centerCode = params.center;
-  const selectedMonth = params.month || '2025-06';
+  const selectedMonth = params.month || getLatestMonth();
 
   if (!centerCode) {
     redirect('/');

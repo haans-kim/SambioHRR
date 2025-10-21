@@ -158,13 +158,27 @@ export function getMonthDateRange(monthString?: string): { startDate: string, en
 export function getAvailableMonths(): string[] {
   const stmt = db.prepare(`
     SELECT DISTINCT strftime('%Y-%m', analysis_date) as month
-    FROM daily_analysis_results 
+    FROM daily_analysis_results
     WHERE analysis_date IS NOT NULL
     ORDER BY month ASC
   `);
   const result = stmt.all() as { month: string }[];
-  
+
   return result.map(r => r.month);
+}
+
+// Get latest available month
+export function getLatestMonth(): string {
+  const stmt = db.prepare(`
+    SELECT DISTINCT strftime('%Y-%m', analysis_date) as month
+    FROM daily_analysis_results
+    WHERE analysis_date IS NOT NULL
+    ORDER BY month DESC
+    LIMIT 1
+  `);
+  const result = stmt.get() as { month: string } | undefined;
+
+  return result?.month || '2025-06'; // fallback to 2025-06 if no data
 }
 
 // Get center-level summary
