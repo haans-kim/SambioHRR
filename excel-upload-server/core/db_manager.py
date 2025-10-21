@@ -192,8 +192,13 @@ class DatabaseManager:
 
     def insert_dataframe(self, table_name: str, df: pd.DataFrame, if_exists: str = "append") -> int:
         """Insert DataFrame into table (alias for dataframe_to_table)"""
-        # Add uploaded_at timestamp if column exists
-        if 'uploaded_at' not in df.columns:
+        # Add uploaded_at timestamp only if table has that column
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        columns = [row[1] for row in cursor.fetchall()]
+
+        if 'uploaded_at' in columns and 'uploaded_at' not in df.columns:
             df = df.copy()
             df['uploaded_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
