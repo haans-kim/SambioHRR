@@ -234,10 +234,22 @@ class DatabaseManager:
                 min_date_val = min_date[:10] if len(min_date) > 10 else min_date
                 max_date_val = max_date[:10] if len(max_date) > 10 else max_date
 
-            # Count rows to delete
+            # Count rows to delete (handle mixed type formats)
             if date_format == "number":
+                # Handle both integer (20250701) and text ('2025-07-01') formats
                 cursor.execute(
-                    f"SELECT COUNT(*) FROM {table_name} WHERE {date_column} >= ? AND {date_column} <= ?",
+                    f"""SELECT COUNT(*) FROM {table_name}
+                    WHERE CAST(
+                        CASE
+                            WHEN typeof({date_column}) = 'integer' THEN {date_column}
+                            WHEN typeof({date_column}) = 'text' THEN CAST(substr(replace({date_column}, '-', ''), 1, 8) AS INTEGER)
+                        END AS INTEGER
+                    ) >= ? AND CAST(
+                        CASE
+                            WHEN typeof({date_column}) = 'integer' THEN {date_column}
+                            WHEN typeof({date_column}) = 'text' THEN CAST(substr(replace({date_column}, '-', ''), 1, 8) AS INTEGER)
+                        END AS INTEGER
+                    ) <= ?""",
                     (min_date_val, max_date_val)
                 )
             else:
@@ -254,10 +266,22 @@ class DatabaseManager:
 
             logger.info(f"Deleting {rows_to_delete:,} rows from {table_name} for date range {min_date} ~ {max_date}")
 
-            # Delete rows
+            # Delete rows (handle mixed type formats)
             if date_format == "number":
+                # Handle both integer (20250701) and text ('2025-07-01') formats
                 cursor.execute(
-                    f"DELETE FROM {table_name} WHERE {date_column} >= ? AND {date_column} <= ?",
+                    f"""DELETE FROM {table_name}
+                    WHERE CAST(
+                        CASE
+                            WHEN typeof({date_column}) = 'integer' THEN {date_column}
+                            WHEN typeof({date_column}) = 'text' THEN CAST(substr(replace({date_column}, '-', ''), 1, 8) AS INTEGER)
+                        END AS INTEGER
+                    ) >= ? AND CAST(
+                        CASE
+                            WHEN typeof({date_column}) = 'integer' THEN {date_column}
+                            WHEN typeof({date_column}) = 'text' THEN CAST(substr(replace({date_column}, '-', ''), 1, 8) AS INTEGER)
+                        END AS INTEGER
+                    ) <= ?""",
                     (min_date_val, max_date_val)
                 )
             else:

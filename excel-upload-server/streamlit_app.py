@@ -101,15 +101,19 @@ def get_data_stats():
 
                     # claim_data는 혼합 형식이므로 별도 처리
                     if table_name == "claim_data":
-                        # Integer와 Text 형식 모두 고려
+                        # Integer와 Text 형식 모두 고려 (CAST 필수!)
                         query = f"""
                         SELECT
-                            MIN(CASE WHEN typeof({date_col}) = 'integer' THEN {date_col}
-                                     WHEN typeof({date_col}) = 'text' THEN substr(replace({date_col}, '-', ''), 1, 8)
-                                END) as min_date,
-                            MAX(CASE WHEN typeof({date_col}) = 'integer' THEN {date_col}
-                                     WHEN typeof({date_col}) = 'text' THEN substr(replace({date_col}, '-', ''), 1, 8)
-                                END) as max_date
+                            MIN(CAST(
+                                CASE WHEN typeof({date_col}) = 'integer' THEN {date_col}
+                                     WHEN typeof({date_col}) = 'text' THEN CAST(substr(replace({date_col}, '-', ''), 1, 8) AS INTEGER)
+                                END AS INTEGER
+                            )) as min_date,
+                            MAX(CAST(
+                                CASE WHEN typeof({date_col}) = 'integer' THEN {date_col}
+                                     WHEN typeof({date_col}) = 'text' THEN CAST(substr(replace({date_col}, '-', ''), 1, 8) AS INTEGER)
+                                END AS INTEGER
+                            )) as max_date
                         FROM {table_name} WHERE {date_col} IS NOT NULL
                         """
                     else:

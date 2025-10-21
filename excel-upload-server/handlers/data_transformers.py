@@ -105,12 +105,70 @@ class DataTransformers:
 
             df['근무시간'] = df['근무시간'].apply(time_to_hours)
 
+        # ✅ FIX: 실제근무시간이 없으면 근무시간으로 채우기
+        if '근무시간' in df.columns:
+            if '실제근무시간' not in df.columns:
+                # 실제근무시간 컬럼이 아예 없으면 생성
+                df['실제근무시간'] = df['근무시간']
+                logger.info("실제근무시간 컬럼 생성: 근무시간 값으로 채움")
+            else:
+                # 실제근무시간 컬럼은 있지만 값이 NULL인 경우 근무시간으로 채움
+                null_count = df['실제근무시간'].isna().sum()
+                if null_count > 0:
+                    df.loc[df['실제근무시간'].isna(), '실제근무시간'] = df.loc[df['실제근무시간'].isna(), '근무시간']
+                    logger.info(f"실제근무시간 NULL 값 {null_count:,}개를 근무시간으로 채움")
+
         # Convert 시작, 종료 times if present
         for col in ['시작', '종료']:
             if col in df.columns:
                 df[col] = df[col].apply(
                     lambda x: str(x).replace(':', '') if pd.notna(x) and str(x) != '' else None
                 )
+
+        # ✅ FIX: Set employee_level from employees.job_grade
+        if '사번' in df.columns:
+            try:
+                import sqlite3
+                from pathlib import Path
+
+                db_path = Path("/Users/hanskim/Projects/SambioHRR/sambio_human.db")
+                if db_path.exists():
+                    conn = sqlite3.connect(str(db_path))
+
+                    # employees 테이블에서 job_grade 가져오기
+                    employees_df = pd.read_sql_query(
+                        "SELECT employee_id, job_grade FROM employees WHERE job_grade IS NOT NULL",
+                        conn
+                    )
+                    conn.close()
+
+                    # employee_id를 숫자로 변환
+                    employees_df['employee_id'] = pd.to_numeric(employees_df['employee_id'], errors='coerce')
+
+                    # job_grade를 'Lv.X' 형식으로 변환
+                    employees_df['employee_level'] = employees_df['job_grade'].apply(
+                        lambda x: f'Lv.{int(x)}' if pd.notna(x) else None
+                    )
+
+                    # 사번 기준으로 merge
+                    df = df.merge(
+                        employees_df[['employee_id', 'employee_level']],
+                        left_on='사번',
+                        right_on='employee_id',
+                        how='left'
+                    )
+
+                    # employee_id 컬럼 제거
+                    if 'employee_id' in df.columns:
+                        df = df.drop(columns=['employee_id'])
+
+                    level_count = df['employee_level'].notna().sum()
+                    logger.info(f"employee_level 설정 완료: {level_count:,}행")
+                else:
+                    logger.warning("DB 파일 없음 - employee_level 설정 생략")
+
+            except Exception as e:
+                logger.warning(f"employee_level 설정 실패: {e}")
 
         logger.info(f"claim_data transformation complete: {len(df):,} rows")
         return df
