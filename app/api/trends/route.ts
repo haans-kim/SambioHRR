@@ -17,133 +17,35 @@ export async function GET(request: NextRequest) {
     const yearStart = `${year}-01-01`;
     const yearEnd = `${year}-12-31`;
 
-    // 근태시간 데이터를 한 번에 조회
-    // 근무일 컬럼은 정수(YYYYMMDD) 또는 텍스트('YYYY-MM-DD') 형식
+    // 근태시간 데이터를 사전 계산된 통계에서 조회
     const claimedQuery = `
-      WITH monthly_totals AS (
-        SELECT
-          c.사번,
-          c.employee_level,
-          e.center_name,
-          substr(
-            CASE
-              WHEN typeof(c.근무일) = 'integer' THEN CAST(c.근무일 AS TEXT)
-              WHEN typeof(c.근무일) = 'text' THEN replace(c.근무일, '-', '')
-            END, 5, 2
-          ) as month,
-          SUM(
-            CASE
-              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
-              THEN COALESCE(h.standard_hours, 8.0)
-              ELSE c.실제근무시간
-            END
-          ) as month_total_hours,
-          COUNT(DISTINCT c.근무일) as work_days
-        FROM claim_data c
-        LEFT JOIN holidays h ON
-          CASE
-            WHEN typeof(c.근무일) = 'integer' THEN date(substr(CAST(c.근무일 AS TEXT), 1, 4) || '-' || substr(CAST(c.근무일 AS TEXT), 5, 2) || '-' || substr(CAST(c.근무일 AS TEXT), 7, 2))
-            WHEN typeof(c.근무일) = 'text' THEN date(c.근무일)
-          END = h.holiday_date
-        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
-        WHERE CAST(
-                CASE
-                  WHEN typeof(c.근무일) = 'integer' THEN c.근무일
-                  WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
-                END AS INTEGER
-              ) >= CAST(replace(?, '-', '') AS INTEGER)
-          AND CAST(
-                CASE
-                  WHEN typeof(c.근무일) = 'integer' THEN c.근무일
-                  WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
-                END AS INTEGER
-              ) <= CAST(replace(?, '-', '') AS INTEGER)
-          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-          AND c.사번 NOT IN ('20190287', '20200207', '20120150')
-          AND c.employee_level IS NOT NULL
-        GROUP BY c.사번, c.employee_level, e.center_name, month
-        HAVING SUM(
-          CASE
-            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
-            THEN COALESCE(h.standard_hours, 8.0)
-            ELSE c.실제근무시간
-          END
-        ) > 0
-      )
       SELECT
-        employee_level as grade_level,
+        grade_level,
         center_name,
-        CAST(month AS INTEGER) as month,
-        ROUND(
-          SUM(month_total_hours) / COUNT(DISTINCT 사번) /
-          AVG(work_days) * 7, 1
-        ) as avg_weekly_hours
-      FROM monthly_totals
-      GROUP BY employee_level, center_name, month
-      ORDER BY employee_level, center_name, month
+        CAST(substr(month, 6, 2) AS INTEGER) as month,
+        weekly_claimed_hours as avg_weekly_hours
+      FROM monthly_grade_stats
+      WHERE substr(month, 1, 4) = ?
+      ORDER BY grade_level, center_name, month
     `;
 
-    const allClaimedResults = db.prepare(claimedQuery).all(yearStart, yearEnd) as any[];
+    const allClaimedResults = db.prepare(claimedQuery).all(year.toString()) as any[];
 
-    // 근무추정시간 데이터를 한 번에 조회 (간소화 - movement_minutes 제외)
-    // 실제로 근태시간과 거의 같으므로 movement_minutes 제외는 생략
+    // 근무추정시간 데이터를 사전 계산된 통계에서 조회
+    // daily_analysis_results가 있는 월만 데이터가 있음 (NULL이 아닌 경우만)
     const actualQuery = `
-      WITH adjusted_hours AS (
-        SELECT
-          e.center_name as centerName,
-          'Lv.' || e.job_grade as grade,
-          c.사번,
-          substr(
-            CASE
-              WHEN typeof(c.근무일) = 'integer' THEN CAST(c.근무일 AS TEXT)
-              WHEN typeof(c.근무일) = 'text' THEN replace(c.근무일, '-', '')
-            END, 5, 2
-          ) as month,
-          SUM(
-            CASE
-              WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
-              THEN COALESCE(h.standard_hours, 8.0)
-              ELSE c.실제근무시간
-            END
-          ) as total_hours,
-          COUNT(DISTINCT c.근무일) as work_days
-        FROM claim_data c
-        LEFT JOIN holidays h ON
-          CASE
-            WHEN typeof(c.근무일) = 'integer' THEN date(substr(CAST(c.근무일 AS TEXT), 1, 4) || '-' || substr(CAST(c.근무일 AS TEXT), 5, 2) || '-' || substr(CAST(c.근무일 AS TEXT), 7, 2))
-            WHEN typeof(c.근무일) = 'text' THEN date(c.근무일)
-          END = h.holiday_date
-        JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
-        WHERE CAST(
-                CASE
-                  WHEN typeof(c.근무일) = 'integer' THEN c.근무일
-                  WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
-                END AS INTEGER
-              ) >= CAST(replace(?, '-', '') AS INTEGER)
-          AND CAST(
-                CASE
-                  WHEN typeof(c.근무일) = 'integer' THEN c.근무일
-                  WHEN typeof(c.근무일) = 'text' THEN CAST(substr(replace(c.근무일, '-', ''), 1, 8) AS INTEGER)
-                END AS INTEGER
-              ) <= CAST(replace(?, '-', '') AS INTEGER)
-          AND e.job_grade IS NOT NULL
-          AND e.center_name IS NOT NULL
-          AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        GROUP BY e.center_name, e.job_grade, c.사번, month
-      )
       SELECT
-        centerName,
-        grade,
-        CAST(month AS INTEGER) as month,
-        ROUND(
-          SUM(total_hours) / COUNT(DISTINCT 사번) /
-          AVG(work_days) * 7, 1
-        ) as avgWeeklyActualHours
-      FROM adjusted_hours
-      GROUP BY centerName, grade, month
+        center_name as centerName,
+        grade_level as grade,
+        CAST(substr(month, 6, 2) AS INTEGER) as month,
+        weekly_adjusted_hours as avgWeeklyActualHours
+      FROM monthly_grade_stats
+      WHERE substr(month, 1, 4) = ?
+        AND weekly_adjusted_hours IS NOT NULL
+      ORDER BY center_name, grade_level, month
     `;
 
-    const allActualResults = db.prepare(actualQuery).all(yearStart, yearEnd) as any[];
+    const allActualResults = db.prepare(actualQuery).all(year.toString()) as any[];
 
     // 센터와 등급 목록 추출
     const centersSet = new Set<string>();
