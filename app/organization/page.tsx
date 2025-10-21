@@ -111,7 +111,7 @@ export default function OrganizationAnalysisPage() {
                   setStartDate(new Date('2025-01-01'))
                   setEndDate(new Date('2025-09-30'))
                 }}
-                className="ml-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                className="ml-4 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-black focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
               >
                 전체 구간 선택 (1~9월)
               </button>
@@ -175,7 +175,7 @@ export default function OrganizationAnalysisPage() {
                   }
                 }}
                 disabled={isMigrating}
-                className={`px-12 py-3 text-white text-base font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors ${
+                className={`px-8 py-3 text-white text-base font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors ${
                   isMigrating
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-gray-800 hover:bg-black'
@@ -295,7 +295,7 @@ export default function OrganizationAnalysisPage() {
                   }
                 }}
                 disabled={isAnalyzing}
-                className={`px-16 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors ${
+                className={`px-8 py-3 text-white text-base font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors ${
                   isAnalyzing
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-gray-800 hover:bg-black'
