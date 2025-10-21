@@ -34,7 +34,7 @@ export interface TeamCharacteristics {
     totalEvents: number
     t1Events: number
     t1ToORatio: number
-    hourlyPatterns: Record<number, number>
+    hourlyPatterns: Record<string, number> | Record<number, number>
   }
 }
 

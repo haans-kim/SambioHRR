@@ -4,7 +4,7 @@
  * DB 트랜잭션을 최소화하고 병렬 처리를 가능하게 함
  */
 
-import * as Database from 'better-sqlite3'
+import Database from 'better-sqlite3'
 import * as path from 'path'
 
 export interface EmployeeData {
@@ -159,6 +159,7 @@ export class MemoryDataLoader {
       employeeEvents.get(date)!.push({
         timestamp: new Date(row.timestamp),
         date: row.date,
+        employeeId: employeeId,
         tagCode: row.tag_code,
         tagName: row.tag_name || '',
         tagType: row.tag_type || '',

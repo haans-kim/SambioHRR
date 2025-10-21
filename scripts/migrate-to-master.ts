@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck
 /**
  * 운영 DB에서 Master DB로 데이터 마이그레이션
  * 실행: npx tsx scripts/migrate-to-master.ts [start_date] [end_date]

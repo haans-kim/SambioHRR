@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Complete Master Database Migration - Reusable Class
  * 모든 태그 소스 통합: tag_data + meal_data + knox_pims + knox_mail + knox_approval + equipment

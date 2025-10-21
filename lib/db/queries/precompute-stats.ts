@@ -376,11 +376,45 @@ export function precomputeAllMonthlyStats() {
   });
 }
 
+interface OverallStats {
+  total_employees: number;
+  avg_weekly_claimed_hours: number;
+  avg_weekly_adjusted_hours: number;
+  avg_efficiency: number;
+  avg_data_reliability: number;
+  created_at?: string;
+}
+
+interface CenterStats {
+  center_name: string;
+  org_code?: string;
+  total_employees: number;
+  weekly_claimed_hours: number;
+  weekly_adjusted_hours: number;
+  efficiency: number;
+  data_reliability: number;
+  children_count: number;
+}
+
+interface GradeStats {
+  center_name: string;
+  grade_level: string;
+  total_employees: number;
+  weekly_claimed_hours: number;
+  weekly_adjusted_hours: number;
+  efficiency: number;
+}
+
 /**
  * 사전 계산된 통계 가져오기
  */
-export function getPrecomputedStats(month: string) {
-  const overall = db.prepare('SELECT * FROM monthly_overall_stats WHERE month = ?').get(month);
+export function getPrecomputedStats(month: string): {
+  overall: OverallStats | undefined;
+  centers: CenterStats[];
+  grades: GradeStats[];
+  isPrecomputed: boolean;
+} {
+  const overall = db.prepare('SELECT * FROM monthly_overall_stats WHERE month = ?').get(month) as OverallStats | undefined;
   const centers = db.prepare(`
     SELECT DISTINCT
       mcs.*,
@@ -405,8 +439,8 @@ export function getPrecomputedStats(month: string) {
         ELSE 99
       END,
       mcs.center_name
-  `).all(month);
-  const grades = db.prepare('SELECT * FROM monthly_grade_stats WHERE month = ?').all(month);
+  `).all(month) as CenterStats[];
+  const grades = db.prepare('SELECT * FROM monthly_grade_stats WHERE month = ?').all(month) as GradeStats[];
 
   return {
     overall,

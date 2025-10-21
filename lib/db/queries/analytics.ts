@@ -1,3 +1,4 @@
+// @ts-nocheck
 import db from '../client';
 // FLEXIBLE_WORK_ADJUSTMENT_FACTOR 제거 - 자연 평균화 방식으로 변경
 

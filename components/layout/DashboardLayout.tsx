@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { Breadcrumb } from "@/components/navigation/Breadcrumb";

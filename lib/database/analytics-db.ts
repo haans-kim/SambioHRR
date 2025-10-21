@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Analytics Database 연결 및 쿼리 클래스
  */

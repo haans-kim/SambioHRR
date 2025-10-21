@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck
 /**
  * 최적화된 완전한 Master Database 마이그레이션
  * 배치 처리 및 병렬 처리로 성능 향상

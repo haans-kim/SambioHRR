@@ -56,7 +56,16 @@
       "Bash(./venv/bin/streamlit run streamlit_app.py --server.port 8501)",
       "Bash(./venv/bin/pip list)",
       "Bash(for table in tag_data claim_data meal_data knox_approval_data knox_mail_data knox_pims_data eam_data equis_data lams_data mes_data mdm_data)",
-      "Bash(echo \"Adding uploaded_at to $table\")"
+      "Bash(echo \"Adding uploaded_at to $table\")",
+      "Bash(git stash:*)",
+      "Bash(git add:*)",
+      "Bash(npx next build)",
+      "Bash(nvm use:*)",
+      "Bash(npx next dev:*)",
+      "Bash(taskkill //F //PID 18904)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill //F //PID 27588)"
     ],
     "deny": []
   }

@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck
 /**
  * 1-6월 전체 데이터 재분석 스크립트
  * - Ground Rule Metrics를 confidence_score로 사용

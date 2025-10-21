@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import DatabaseManager from '@/lib/database/connection'
 
+interface ClaimRecord {
+  employeeId: string;
+  workDate: string;
+  claimedHours: number;
+}
+
+interface EmployeeNameRecord {
+  employeeId: string;
+  employeeName: string;
+}
+
 /**
  * 전체 Claim 데이터에서 모든 직원 정보 추출
  * Ground Rules 전체 분석용
@@ -8,21 +19,21 @@ import DatabaseManager from '@/lib/database/connection'
 export async function POST(request: NextRequest) {
   try {
     const humanDb = DatabaseManager.getInstance().getDb()
-    
+
     console.log('🔍 Extracting ALL employees from Claim data...')
-    
+
     // Claim 데이터에서 근무시간이 0이 아닌 모든 레코드 추출 (직원+날짜 조합)
     const stmt = humanDb.prepare(`
-      SELECT 
+      SELECT
         사번 as employeeId,
         DATE(근무일) as workDate,
         실제근무시간 as claimedHours
-      FROM claim_data 
+      FROM claim_data
       WHERE 실제근무시간 > 0
       ORDER BY 사번, 근무일
     `)
-    
-    const allRecords = stmt.all()
+
+    const allRecords = stmt.all() as ClaimRecord[]
     console.log(`✅ Found ${allRecords.length} records with actual work hours > 0`)
     
     // 직원별로 그룹화하여 분석용 형태로 변환
@@ -48,14 +59,14 @@ export async function POST(request: NextRequest) {
       const placeholders = employeeIds.map(() => '?').join(',')
       
       const nameStmt = humanDb.prepare(`
-        SELECT 
+        SELECT
           사번 as employeeId,
           성명 as employeeName
-        FROM organization_data 
+        FROM organization_data
         WHERE 사번 IN (${placeholders})
       `)
-      
-      const nameData = nameStmt.all(...employeeIds)
+
+      const nameData = nameStmt.all(...employeeIds) as EmployeeNameRecord[]
       const nameMap = new Map(nameData.map(item => [item.employeeId, item.employeeName]))
       
       // 이름 업데이트

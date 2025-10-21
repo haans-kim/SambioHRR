@@ -92,18 +92,22 @@ export default function TeamsPage() {
   }
 
   // 분석 모드 정보 생성
-  const analysisMode = selectedMonth >= '2025-06' ? 'enhanced' : 'legacy';
-  const availableMetrics = analysisMode === 'enhanced' 
+  const analysisMode: 'enhanced' | 'legacy' = selectedMonth >= '2025-06' ? 'enhanced' : 'legacy';
+  const availableMetrics = analysisMode === 'enhanced'
     ? ['efficiency', 'weeklyWorkHours', 'weeklyClaimedHours', 'adjustedWeeklyWorkHours', 'dataReliability', 'mealTime', 'meetingTime', 'equipmentTime', 'movementTime', 'focusedWorkTime']
     : ['efficiency', 'weeklyWorkHours', 'weeklyClaimedHours', 'adjustedWeeklyWorkHours', 'dataReliability'];
-  
-  const dataQuality = {
+
+  const dataQuality: {
+    mode: 'enhanced' | 'legacy';
+    description: string;
+    limitations: string[];
+  } = {
     mode: analysisMode,
-    description: analysisMode === 'enhanced' 
-      ? '전체 데이터 기반 상세 분석' 
+    description: analysisMode === 'enhanced'
+      ? '전체 데이터 기반 상세 분석'
       : '제한 데이터 기반 기본 분석 (Tag + Claim 데이터만)',
-    limitations: analysisMode === 'legacy' 
-      ? ['장비 사용 시간 미포함', '식사 시간 추정치', '회의실 이용 데이터 제한'] 
+    limitations: analysisMode === 'legacy'
+      ? ['장비 사용 시간 미포함', '식사 시간 추정치', '회의실 이용 데이터 제한']
       : []
   };
 

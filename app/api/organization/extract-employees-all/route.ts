@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/database/connection'
 
+interface EmployeeDateRecord {
+  employeeId: string;
+  employeeName: string;
+  workDate: string;
+  center: string;
+  team: string;
+  groupName: string;
+  position: string;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -45,12 +55,12 @@ export async function POST(request: Request) {
     `
     
     const stmt = db.getDb().prepare(query)
-    const employees = stmt.all(startDate, endDate)
-    
+    const employees = stmt.all(startDate, endDate) as EmployeeDateRecord[]
+
     console.log(`Found ${employees.length} employee-date records with non-zero claim hours`)
-    
+
     // Group by employee-date for processing
-    const employeeDateMap = new Map<string, any>()
+    const employeeDateMap = new Map<string, EmployeeDateRecord>()
     employees.forEach(emp => {
       const key = `${emp.employeeId}_${emp.workDate}`
       employeeDateMap.set(key, emp)

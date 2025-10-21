@@ -224,7 +224,7 @@ export class WorkHourCalculator {
     return focusTime
   }
   
-  private calculateReliability(timeline: TimelineEntry[]): number {
+  protected calculateReliability(timeline: TimelineEntry[]): number {
     let score = 50 // Base score
     
     // Factors that increase reliability

@@ -45,8 +45,8 @@ export default function IndividualAnalysisPage() {
   }, [])
   
   // Generate breadcrumb based on organization path
-  const generateBreadcrumb = () => {
-    const breadcrumb = [{ label: '센터', href: '/' }];
+  const generateBreadcrumb = (): { label: string; href?: string }[] => {
+    const breadcrumb: { label: string; href?: string }[] = [{ label: '센터', href: '/' }];
     
     if (organizationPath?.centerName) {
       breadcrumb.push({ 

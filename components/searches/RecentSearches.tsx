@@ -54,7 +54,7 @@ export default function RecentSearches() {
     if (selectedEmployee) {
       const dateStr = selectedDate.toISOString().split('T')[0]
       const newSearch: SearchRecord = {
-        employeeId: selectedEmployee.employee_id,
+        employeeId: Number(selectedEmployee.employee_id),
         employeeName: selectedEmployee.name || employeeInfo?.EMP_NAME || `사원 ${selectedEmployee.employee_id}`,
         date: dateStr,
         timestamp: Date.now()
@@ -63,7 +63,7 @@ export default function RecentSearches() {
       setRecentSearches(prev => {
         // Remove duplicate if exists
         const filtered = prev.filter(
-          s => !(s.employeeId === selectedEmployee.employee_id && s.date === dateStr)
+          s => !(s.employeeId === Number(selectedEmployee.employee_id) && s.date === dateStr)
         )
         // Add new search at the beginning
         const updated = [newSearch, ...filtered].slice(0, 10)
@@ -122,7 +122,7 @@ export default function RecentSearches() {
             key={`${search.employeeId}-${search.date}-${idx}`}
             onClick={() => handleSelectSearch(search)}
             className={`w-full text-left px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors ${
-              selectedEmployee?.employee_id === search.employeeId && 
+              Number(selectedEmployee?.employee_id) === search.employeeId &&
               selectedDate.toISOString().split('T')[0] === search.date
                 ? 'bg-blue-50 hover:bg-blue-100'
                 : ''
