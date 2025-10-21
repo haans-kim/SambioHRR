@@ -125,7 +125,7 @@ class DataTransformers:
                     lambda x: str(x).replace(':', '') if pd.notna(x) and str(x) != '' else None
                 )
 
-        # ✅ FIX: Set employee_level from employees.job_grade
+        # ✅ FIX: Set employee_level from employees.job_grade + organization_data
         if '사번' in df.columns:
             try:
                 import sqlite3
@@ -135,12 +135,11 @@ class DataTransformers:
                 if db_path.exists():
                     conn = sqlite3.connect(str(db_path))
 
-                    # employees 테이블에서 job_grade 가져오기
+                    # 1단계: employees 테이블에서 job_grade 가져오기
                     employees_df = pd.read_sql_query(
                         "SELECT employee_id, job_grade FROM employees WHERE job_grade IS NOT NULL",
                         conn
                     )
-                    conn.close()
 
                     # employee_id를 숫자로 변환
                     employees_df['employee_id'] = pd.to_numeric(employees_df['employee_id'], errors='coerce')
@@ -162,8 +161,51 @@ class DataTransformers:
                     if 'employee_id' in df.columns:
                         df = df.drop(columns=['employee_id'])
 
-                    level_count = df['employee_level'].notna().sum()
-                    logger.info(f"employee_level 설정 완료: {level_count:,}행")
+                    level_from_employees = df['employee_level'].notna().sum()
+                    logger.info(f"employees 테이블에서 employee_level 설정: {level_from_employees:,}행")
+
+                    # 2단계: 여전히 NULL인 경우 organization_data + grade_level_mapping에서 매칭
+                    null_count = df['employee_level'].isna().sum()
+                    if null_count > 0:
+                        org_grade_df = pd.read_sql_query(
+                            """
+                            SELECT DISTINCT
+                                o.사번,
+                                g.level as employee_level
+                            FROM organization_data o
+                            JOIN grade_level_mapping g ON o.직급명 = g.grade_name
+                            WHERE o.사번 IS NOT NULL
+                                AND g.level LIKE 'Lv.%'
+                            """,
+                            conn
+                        )
+
+                        if not org_grade_df.empty:
+                            # 사번을 정수로 변환
+                            org_grade_df['사번'] = pd.to_numeric(org_grade_df['사번'], errors='coerce')
+
+                            # employee_level이 NULL인 행만 업데이트
+                            null_mask = df['employee_level'].isna()
+                            df_null = df[null_mask].copy()
+
+                            df_null = df_null.drop(columns=['employee_level'], errors='ignore').merge(
+                                org_grade_df,
+                                on='사번',
+                                how='left'
+                            )
+
+                            # 원본 DataFrame 업데이트
+                            df.loc[null_mask, 'employee_level'] = df_null['employee_level'].values
+
+                            level_from_org = df.loc[null_mask, 'employee_level'].notna().sum()
+                            logger.info(f"organization_data에서 추가 설정: {level_from_org:,}행")
+
+                    conn.close()
+
+                    total_level_count = df['employee_level'].notna().sum()
+                    total_rows = len(df)
+                    coverage_pct = (total_level_count / total_rows * 100) if total_rows > 0 else 0
+                    logger.info(f"employee_level 최종 설정 완료: {total_level_count:,}/{total_rows:,}행 ({coverage_pct:.1f}%)")
                 else:
                     logger.warning("DB 파일 없음 - employee_level 설정 생략")
 
