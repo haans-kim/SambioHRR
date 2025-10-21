@@ -43,28 +43,19 @@ export function MonthSelector({
           const isSelected = month === selectedMonth;
           const analysisMode = getAnalysisMode(month);
           const isEnhanced = analysisMode === 'enhanced';
-          
+
           return (
             <button
               key={month}
               onClick={() => handleMonthClick(month)}
               className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 flex items-center gap-1.5",
+                "px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200",
                 isSelected
-                  ? isEnhanced
-                    ? "bg-white text-blue-900 shadow-sm border-l-2 border-blue-500"
-                    : "bg-white text-orange-900 shadow-sm border-l-2 border-orange-500"
-                  : isEnhanced
-                    ? "text-blue-700 hover:text-blue-900 hover:bg-blue-50"
-                    : "text-orange-700 hover:text-orange-900 hover:bg-orange-50"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
               )}
               title={isEnhanced ? '상세 분석 모드 (전체 데이터)' : '기본 분석 모드 (제한 데이터)'}
             >
-              {isEnhanced ? (
-                <Settings className="w-3 h-3" />
-              ) : (
-                <BarChart3 className="w-3 h-3" />
-              )}
               {formatMonth(month)}
             </button>
           );
