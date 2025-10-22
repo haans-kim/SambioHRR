@@ -2,12 +2,19 @@
   "name": "hr-dashboard",
   "version": "0.1.0",
   "private": true,
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "next dev --turbopack --port 3003",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "update-org-stats": "npx tsx scripts/update-organization-stats-with-ground-rules.ts"
+    "update-org-stats": "npx tsx scripts/update-organization-stats-with-ground-rules.ts",
+    "electron:compile": "tsc -p electron/tsconfig.json",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3003 && cross-env NODE_ENV=development electron .\"",
+    "electron:build": "npm run build && npm run electron:compile && electron-builder",
+    "electron:build:win": "npm run build && npm run electron:compile && electron-builder --win --x64",
+    "electron:build:mac": "npm run build && npm run electron:compile && electron-builder --mac",
+    "electron:build:linux": "npm run build && npm run electron:compile && electron-builder --linux"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -33,6 +40,7 @@
     "react-day-picker": "^9.9.0",
     "react-dom": "19.1.0",
     "recharts": "^3.1.2",
+    "sharp": "^0.34.4",
     "tailwind-merge": "^3.3.1",
     "use-immer": "^0.11.0",
     "xlsx": "^0.18.5",
@@ -40,12 +48,75 @@
     "zustand": "^5.0.7"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^38.4.0",
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.sambio.hrr",
+    "productName": "SambioHRR",
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      ".next/**/*",
+      "public/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "sambio_human.db",
+        "to": "sambio_human.db"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "public/icon.icns",
+      "category": "public.app-category.business"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "public/icon.png",
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

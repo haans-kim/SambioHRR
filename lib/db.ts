@@ -1,13 +1,47 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
-// 데이터베이스 파일 경로
-const dbPath = path.join(process.cwd(), 'sambio_human.db');
+// Electron 환경 감지
+const isElectron = typeof process !== 'undefined' && process.versions && process.versions.electron;
+
+// 데이터베이스 파일 경로 결정
+let dbPath: string;
+
+if (isElectron) {
+  // Electron 환경
+  const { app } = require('electron');
+  const isDev = process.env.NODE_ENV === 'development';
+
+  if (isDev) {
+    // 개발 모드: 프로젝트 루트
+    dbPath = path.join(process.cwd(), 'sambio_human.db');
+  } else {
+    // 프로덕션: 사용자 데이터 폴더
+    const userDataPath = app.getPath('userData');
+    dbPath = path.join(userDataPath, 'sambio_human.db');
+
+    // 초기 실행 시 DB가 없으면 앱 내부에서 복사
+    const fs = require('fs');
+    if (!fs.existsSync(dbPath)) {
+      const bundledDbPath = path.join(process.resourcesPath, 'sambio_human.db');
+      if (fs.existsSync(bundledDbPath)) {
+        fs.copyFileSync(bundledDbPath, dbPath);
+        console.log('Database copied to user data folder:', dbPath);
+      }
+    }
+  }
+} else {
+  // 일반 Node.js 환경 (웹 서버)
+  dbPath = path.join(process.cwd(), 'sambio_human.db');
+}
+
+console.log('Database path:', dbPath);
 
 // 데이터베이스 연결
-const db = new Database(dbPath, { 
+// Electron 프로덕션에서는 DB가 자동 복사되므로 fileMustExist: false
+const db = new Database(dbPath, {
   readonly: false,
-  fileMustExist: true 
+  fileMustExist: !isElectron || process.env.NODE_ENV === 'development'
 });
 
 // 성능 최적화
