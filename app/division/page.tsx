@@ -8,6 +8,8 @@ import {
 import { getLatestMonth } from "@/lib/db/queries/analytics";
 import { redirect } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
 interface DivisionPageProps {
   searchParams: Promise<{ center?: string; month?: string }>;
 }

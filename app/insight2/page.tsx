@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   description: "장비 사용과 이동성 지수 기반 근무 패턴 분석",
 };
 
+export const dynamic = 'force-dynamic';
+
 export default function Insight2Page() {
   return (
     <div className="flex">

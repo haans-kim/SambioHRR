@@ -69,7 +69,14 @@
       "Bash(venvScriptspip install -r requirements.txt)",
       "Bash(venv/Scripts/pip install:*)",
       "Bash(mkdir:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(npm run electron:build:win:*)",
+      "Bash(tasklist:*)",
+      "Bash(for file in app/page.tsx app/division/page.tsx app/enterprise/page.tsx app/insight2/page.tsx app/organization/page.tsx app/trends/page.tsx app/groups/page.tsx app/individual/page.tsx app/data-upload/page.tsx)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(taskkill:*)",
+      "Bash(for pid in 17604 12904)",
+      "Bash(do taskkill //F //PID $pid)"
     ],
     "deny": []
   }

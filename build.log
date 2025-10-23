@@ -1,0 +1,20 @@
+
+> hr-dashboard@0.1.0 electron:build:win
+> npm run electron:compile && electron-builder --win --x64
+
+
+> hr-dashboard@0.1.0 electron:compile
+> tsc -p electron/tsconfig.json
+
+  • electron-builder  version=26.0.12 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • description is missed in the package.json  appPackageFile=c:\Projects\SambioHRR\package.json
+  • author is missed in the package.json  appPackageFile=c:\Projects\SambioHRR\package.json
+  • @electron/rebuild already used by electron-builder, please consider to remove excess dependency from devDependencies
+
+To ensure your native dependencies are always matched electron version, simply add script `"postinstall": "electron-builder install-app-deps" to your `package.json`
+  • skipped dependencies rebuild  reason=npmRebuild is set to false
+  • packaging       platform=win32 arch=x64 electron=38.4.0 appOutDir=release\win-unpacked
+  • map async       taskCount=2
+  • map async       taskCount=1
+  • map async       taskCount=75

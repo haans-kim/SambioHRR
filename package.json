@@ -11,10 +11,10 @@
     "update-org-stats": "npx tsx scripts/update-organization-stats-with-ground-rules.ts",
     "electron:compile": "tsc -p electron/tsconfig.json",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3003 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "npm run build && npm run electron:compile && electron-builder",
-    "electron:build:win": "npm run build && npm run electron:compile && electron-builder --win --x64",
-    "electron:build:mac": "npm run build && npm run electron:compile && electron-builder --mac",
-    "electron:build:linux": "npm run build && npm run electron:compile && electron-builder --linux"
+    "electron:build": "npm run electron:compile && electron-builder",
+    "electron:build:win": "npm run electron:compile && electron-builder --win --x64",
+    "electron:build:mac": "npm run electron:compile && electron-builder --mac",
+    "electron:build:linux": "npm run electron:compile && electron-builder --linux"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -68,18 +68,23 @@
     "productName": "SambioHRR",
     "npmRebuild": false,
     "buildDependenciesFromSource": false,
+    "nodeGypRebuild": false,
+    "asarUnpack": ["**/*.node"],
     "directories": {
       "output": "release"
     },
     "files": [
       "dist-electron/**/*",
-      ".next/**/*",
+      "app/**/*",
+      "lib/**/*",
+      "components/**/*",
+      "stores/**/*",
       "public/**/*",
-      "node_modules/**/*",
-      "package.json"
-    ],
-    "asarUnpack": [
-      "node_modules/better-sqlite3/**/*"
+      "package.json",
+      "next.config.ts",
+      "tsconfig.json",
+      "tailwind.config.ts",
+      "postcss.config.mjs"
     ],
     "extraResources": [
       {

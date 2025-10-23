@@ -11,6 +11,17 @@ const nextConfig: NextConfig = {
 
   // 개발 모드에서 Fast Refresh 유지
   reactStrictMode: true,
+
+  // Electron 폴더와 dist-electron 폴더를 빌드에서 제외
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        electron: false,
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

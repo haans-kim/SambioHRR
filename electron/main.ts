@@ -35,13 +35,17 @@ function createWindow() {
 }
 
 function startNextServer() {
-  const serverPath = path.join(process.resourcesPath, 'app', 'server.js');
+  // 프로덕션: Next.js를 개발 모드로 실행 (빌드 문제 회피)
+  const appPath = path.join(process.resourcesPath, 'app');
+  const nextBin = path.join(appPath, 'node_modules', '.bin', 'next');
 
-  nextServerProcess = spawn('node', [serverPath], {
+  nextServerProcess = spawn(nextBin, ['dev', '-p', '3003'], {
+    cwd: appPath,
     env: {
       ...process.env,
-      PORT: '3003',
+      NODE_ENV: 'production',
     },
+    shell: true,
   });
 
   nextServerProcess.stdout?.on('data', (data) => {
