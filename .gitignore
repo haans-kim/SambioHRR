@@ -23,6 +23,10 @@
 /release
 /dist-electron
 
+# build logs
+build.log
+nul
+
 # misc
 .DS_Store
 *.pem
