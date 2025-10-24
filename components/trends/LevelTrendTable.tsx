@@ -110,17 +110,24 @@ export function LevelTrendTable({ levelData, period }: LevelTrendTableProps) {
                   .map(l => l.monthlyData.find(m => m.month === month))
                   .filter(Boolean);
 
-                const monthAvg = monthData.length > 0
-                  ? monthData.reduce((sum, d) =>
-                      sum + (selectedMetric === 'claimed' ? d!.weeklyClaimedHours : d!.weeklyAdjustedHours), 0
-                    ) / monthData.length
-                  : 0;
+                // null과 0을 제외한 유효한 값만 필터링
+                const validValues = monthData
+                  .map(d => selectedMetric === 'claimed' ? d!.weeklyClaimedHours : d!.weeklyAdjustedHours)
+                  .filter(v => v !== null && v !== 0);
+
+                const monthAvg = validValues.length > 0
+                  ? validValues.reduce((sum, v) => sum + v, 0) / validValues.length
+                  : null;
 
                 return (
                   <td key={month} className="px-4 py-3 text-center">
-                    <span className="font-semibold text-blue-900">
-                      {monthAvg.toFixed(1)}
-                    </span>
+                    {monthAvg !== null ? (
+                      <span className="font-semibold text-blue-900">
+                        {monthAvg.toFixed(1)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                 );
               })}
@@ -159,13 +166,20 @@ export function LevelTrendTable({ levelData, period }: LevelTrendTableProps) {
                         ? (selectedMetric === 'claimed'
                             ? monthData.weeklyClaimedHours
                             : monthData.weeklyAdjustedHours)
-                        : 0;
+                        : null;
+
+                      // null 또는 0인 경우 (근무추정시간의 경우)
+                      const shouldDisplay = selectedMetric === 'claimed' || (value !== null && value !== 0);
 
                       return (
                         <td key={month} className="px-4 py-3 text-center">
-                          <span className={cn("font-medium", colors.text)}>
-                            {value.toFixed(1)}
-                          </span>
+                          {shouldDisplay ? (
+                            <span className={cn("font-medium", colors.text)}>
+                              {value!.toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </td>
                       );
                     })}

@@ -39,24 +39,19 @@ export function precomputeMonthlyStats(month: string) {
     adjusted AS (
       SELECT
         e.center_name,
-        CASE
-          -- 해당 월에 daily_analysis_results 데이터가 있는 경우만 계산
-          WHEN EXISTS (
-            SELECT 1 FROM daily_analysis_results dar2
-            WHERE dar2.analysis_date BETWEEN ? AND ?
-            LIMIT 1
-          ) THEN
-            SUM(
-              CASE
-                -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
-                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
-                THEN COALESCE(h.standard_hours, 8.0)
-                -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
-                ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
-              END
-            )
-          ELSE NULL
-        END as total_adjusted
+        SUM(
+          CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
+            ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          END
+        ) as total_adjusted,
+        -- 해당 그룹에서 daily_analysis_results가 있는 레코드 수
+        COUNT(dar.employee_id) as dar_count,
+        -- 전체 레코드 수
+        COUNT(*) as total_count
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
       LEFT JOIN daily_analysis_results dar
@@ -84,8 +79,17 @@ export function precomputeMonthlyStats(month: string) {
       c.center_name,
       c.total_employees,
       ROUND(c.total_claimed / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
-      ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
-      ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1),
+      -- daily_analysis_results 데이터가 충분히 있을 때만 weekly_adjusted_hours 계산 (최소 50% 이상)
+      CASE
+        WHEN a.dar_count >= a.total_count * 0.5
+        THEN ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1)
+        ELSE NULL
+      END,
+      CASE
+        WHEN a.dar_count >= a.total_count * 0.5
+        THEN ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1)
+        ELSE NULL
+      END,
       r.avg_reliability
     FROM claimed c
     LEFT JOIN adjusted a ON c.center_name = a.center_name
@@ -122,23 +126,19 @@ export function precomputeMonthlyStats(month: string) {
       SELECT
         e.center_name,
         c.employee_level as grade_level,
-        CASE
-          WHEN EXISTS (
-            SELECT 1 FROM daily_analysis_results dar2
-            WHERE dar2.analysis_date BETWEEN ? AND ?
-            LIMIT 1
-          ) THEN
-            SUM(
-              CASE
-                -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
-                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
-                THEN COALESCE(h.standard_hours, 8.0)
-                -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
-                ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
-              END
-            )
-          ELSE NULL
-        END as total_adjusted
+        SUM(
+          CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
+            ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          END
+        ) as total_adjusted,
+        -- 해당 그룹에서 daily_analysis_results가 있는 레코드 수
+        COUNT(dar.employee_id) as dar_count,
+        -- 전체 레코드 수
+        COUNT(*) as total_count
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
       LEFT JOIN daily_analysis_results dar
@@ -157,8 +157,17 @@ export function precomputeMonthlyStats(month: string) {
       c.grade_level,
       c.total_employees,
       ROUND(c.total_claimed / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
-      ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
-      ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1)
+      -- daily_analysis_results 데이터가 충분히 있을 때만 weekly_adjusted_hours 계산 (최소 50% 이상)
+      CASE
+        WHEN a.dar_count >= a.total_count * 0.5
+        THEN ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1)
+        ELSE NULL
+      END,
+      CASE
+        WHEN a.dar_count >= a.total_count * 0.5
+        THEN ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1)
+        ELSE NULL
+      END
     FROM claimed c
     LEFT JOIN adjusted a ON c.center_name = a.center_name AND c.grade_level = a.grade_level
   `);
@@ -187,24 +196,19 @@ export function precomputeMonthlyStats(month: string) {
     ),
     adjusted AS (
       SELECT
-        CASE
-          -- 해당 월에 daily_analysis_results 데이터가 있는 경우만 계산
-          WHEN EXISTS (
-            SELECT 1 FROM daily_analysis_results dar2
-            WHERE dar2.analysis_date BETWEEN ? AND ?
-            LIMIT 1
-          ) THEN
-            SUM(
-              CASE
-                -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
-                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
-                THEN COALESCE(h.standard_hours, 8.0)
-                -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
-                ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
-              END
-            )
-          ELSE NULL
-        END as total_adjusted
+        SUM(
+          CASE
+            -- 휴일이면서 근무시간이 0인 경우: 표준 근무시간(8시간) 적용
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            -- 그 외: 실제근무시간 - 이동시간 보정 (실제근무시간에 이미 휴가 반영됨)
+            ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+          END
+        ) as total_adjusted,
+        -- 해당 그룹에서 daily_analysis_results가 있는 레코드 수
+        COUNT(dar.employee_id) as dar_count,
+        -- 전체 레코드 수
+        COUNT(*) as total_count
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
       LEFT JOIN daily_analysis_results dar
@@ -228,8 +232,17 @@ export function precomputeMonthlyStats(month: string) {
       ?,
       c.total_employees,
       ROUND(c.total_claimed / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
-      ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
-      ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1),
+      -- daily_analysis_results 데이터가 충분히 있을 때만 weekly_adjusted_hours 계산 (최소 50% 이상)
+      CASE
+        WHEN a.dar_count >= a.total_count * 0.5
+        THEN ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1)
+        ELSE NULL
+      END,
+      CASE
+        WHEN a.dar_count >= a.total_count * 0.5
+        THEN ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1)
+        ELSE NULL
+      END,
       r.avg_reliability
     FROM claimed c, adjusted a, reliability r
   `);
@@ -243,7 +256,6 @@ export function precomputeMonthlyStats(month: string) {
     // 새 데이터 삽입
     insertCenterStats.run(
       startDate, endDate, // claimed
-      startDate, endDate, // dar_exists
       startDate, endDate, // adjusted
       startDate, endDate, // reliability
       month,
@@ -253,8 +265,7 @@ export function precomputeMonthlyStats(month: string) {
 
     insertGradeStats.run(
       startDate, endDate, // claimed
-      startDate, endDate, // adjusted (EXISTS check)
-      startDate, endDate, // adjusted (WHERE clause)
+      startDate, endDate, // adjusted
       month,
       endDate, startDate, // JULIANDAY for weekly_claimed
       endDate, startDate  // JULIANDAY for weekly_adjusted
@@ -262,8 +273,7 @@ export function precomputeMonthlyStats(month: string) {
 
     insertOverallStats.run(
       startDate, endDate, // claimed
-      startDate, endDate, // adjusted (EXISTS check)
-      startDate, endDate, // adjusted (WHERE clause)
+      startDate, endDate, // adjusted
       startDate, endDate, // reliability
       month,
       endDate, startDate, // JULIANDAY for weekly_claimed

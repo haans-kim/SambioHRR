@@ -45,9 +45,16 @@ export function TrendChart({ levelData, period }: TrendChartProps) {
     levelData.forEach(level => {
       const data = level.monthlyData.find(d => d.month === m);
       if (data) {
-        monthData[level.level] = selectedMetric === 'claimed'
+        const value = selectedMetric === 'claimed'
           ? data.weeklyClaimedHours
           : data.weeklyAdjustedHours;
+
+        // null 또는 0인 값은 차트에 표시하지 않음 (근무추정시간의 경우)
+        if (selectedMetric === 'adjusted' && (value === null || value === 0)) {
+          // 데이터 포인트를 추가하지 않음
+        } else {
+          monthData[level.level] = value;
+        }
       }
     });
 
@@ -55,7 +62,8 @@ export function TrendChart({ levelData, period }: TrendChartProps) {
     const avgValues = levelData
       .map(l => l.monthlyData.find(d => d.month === m))
       .filter(Boolean)
-      .map(d => selectedMetric === 'claimed' ? d!.weeklyClaimedHours : d!.weeklyAdjustedHours);
+      .map(d => selectedMetric === 'claimed' ? d!.weeklyClaimedHours : d!.weeklyAdjustedHours)
+      .filter(v => v !== null && v !== 0); // null과 0 제외
 
     if (avgValues.length > 0) {
       monthData['전사 평균'] = Math.round(

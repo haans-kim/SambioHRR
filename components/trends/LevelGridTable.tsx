@@ -50,18 +50,23 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
 
   // 전사 평균 계산 (모든 센터의 평균)
   const calculateCompanyMonthlyAverage = (month: number) => {
-    if (!companyAverageData || companyAverageData.length === 0) return 0;
+    if (!companyAverageData || companyAverageData.length === 0) return null;
 
     const monthData = companyAverageData
       .map(l => l.monthlyData.find(m => m.month === month))
       .filter(Boolean);
 
-    if (monthData.length === 0) return 0;
+    if (monthData.length === 0) return null;
 
-    const sum = monthData.reduce((acc, d) =>
-      acc + (selectedMetric === 'claimed' ? d!.weeklyClaimedHours : d!.weeklyAdjustedHours), 0
-    );
-    return sum / monthData.length;
+    // null과 0을 제외한 유효한 값만 필터링
+    const validValues = monthData
+      .map(d => selectedMetric === 'claimed' ? d!.weeklyClaimedHours : d!.weeklyAdjustedHours)
+      .filter(v => v !== null && v !== 0);
+
+    if (validValues.length === 0) return null;
+
+    const sum = validValues.reduce((acc, v) => acc + v, 0);
+    return sum / validValues.length;
   };
 
   // 전사 전체 평균
@@ -77,12 +82,17 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
       .map(l => l.monthlyData.find(m => m.month === month))
       .filter(Boolean);
 
-    if (monthData.length === 0) return 0;
+    if (monthData.length === 0) return null;
 
-    const sum = monthData.reduce((acc, d) =>
-      acc + (selectedMetric === 'claimed' ? d!.weeklyClaimedHours : d!.weeklyAdjustedHours), 0
-    );
-    return sum / monthData.length;
+    // null과 0을 제외한 유효한 값만 필터링
+    const validValues = monthData
+      .map(d => selectedMetric === 'claimed' ? d!.weeklyClaimedHours : d!.weeklyAdjustedHours)
+      .filter(v => v !== null && v !== 0);
+
+    if (validValues.length === 0) return null;
+
+    const sum = validValues.reduce((acc, v) => acc + v, 0);
+    return sum / validValues.length;
   };
 
   // 센터 전체 평균
@@ -246,7 +256,11 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                 </div>
                 {months.map(month => {
                   const value = calculateCompanyMonthlyAverage(month);
-                  const style = getValueStyle(value);
+                  const style = value !== null && value > 0 ? getValueStyle(value) : {
+                    borderColor: 'border-gray-200',
+                    bgColor: 'bg-white',
+                    textColor: 'text-gray-400'
+                  };
 
                   return (
                     <div key={month} className="flex-1">
@@ -255,11 +269,13 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                         style.borderColor,
                         style.bgColor
                       )}>
-                          {value > 0 ? (
+                          {value !== null && value > 0 ? (
                             <span className={cn("text-base font-semibold", style.textColor)}>
                               {value.toFixed(1)}
                             </span>
-                          ) : null}
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                       </div>
                     </div>
                   );
@@ -287,7 +303,11 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                 </div>
                 {months.map(month => {
                   const value = calculateCenterMonthlyAverage(month);
-                  const style = getValueStyle(value);
+                  const style = value !== null && value > 0 ? getValueStyle(value) : {
+                    borderColor: 'border-gray-200',
+                    bgColor: 'bg-white',
+                    textColor: 'text-gray-400'
+                  };
 
                   return (
                     <div key={month} className="flex-1">
@@ -296,11 +316,13 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                         style.borderColor,
                         style.bgColor
                       )}>
-                          {value > 0 ? (
+                          {value !== null && value > 0 ? (
                             <span className={cn("text-base font-semibold", style.textColor)}>
                               {value.toFixed(1)}
                             </span>
-                          ) : null}
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                       </div>
                     </div>
                   );
@@ -332,10 +354,15 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                     ? (selectedMetric === 'claimed'
                         ? monthData.weeklyClaimedHours
                         : monthData.weeklyAdjustedHours)
-                    : 0;
+                    : null;
 
-
-                  const style = getValueStyle(value);
+                  // null 또는 0인 경우 (근무추정시간의 경우)
+                  const shouldDisplay = value !== null && value !== 0;
+                  const style = shouldDisplay ? getValueStyle(value) : {
+                    borderColor: 'border-gray-200',
+                    bgColor: 'bg-white',
+                    textColor: 'text-gray-400'
+                  };
 
                   return (
                     <div key={month} className="flex-1">
@@ -344,11 +371,13 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
                         style.borderColor,
                         style.bgColor
                       )}>
-                          {value > 0 ? (
+                          {shouldDisplay ? (
                             <span className={cn("text-base font-semibold", style.textColor)}>
-                              {selectedMetric === 'claimed' ? monthData?.weeklyClaimedHours?.toFixed(1) : monthData?.weeklyAdjustedHours?.toFixed(1)}
+                              {value!.toFixed(1)}
                             </span>
-                          ) : null}
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                       </div>
                     </div>
                   );

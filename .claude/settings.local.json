@@ -92,7 +92,9 @@
       "Bash(mv:*)",
       "Bash(git push:*)",
       "Bash(git reset:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(node scripts/check-monthly-grade-stats.js:*)",
+      "Bash(node scripts/check-claim-data-months.js:*)"
     ],
     "deny": []
   }

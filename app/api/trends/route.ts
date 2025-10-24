@@ -133,12 +133,12 @@ export async function GET(request: NextRequest) {
         const allActualData = actualData.matrix[level] ?
           Object.values(actualData.matrix[level]).filter((v): v is number => typeof v === 'number' && v > 0) : [];
         const avgActual = allActualData.length > 0 ?
-          allActualData.reduce((sum, val) => sum + val, 0) / allActualData.length : 0;
+          allActualData.reduce((sum, val) => sum + val, 0) / allActualData.length : null;
 
         return {
           month,
           weeklyClaimedHours: isNaN(avgClaimed) ? 0 : avgClaimed,
-          weeklyAdjustedHours: isNaN(avgActual) ? 0 : avgActual,
+          weeklyAdjustedHours: avgActual !== null && !isNaN(avgActual) ? avgActual : null,
           employeeCount: 0
         };
       });
@@ -180,7 +180,7 @@ export async function GET(request: NextRequest) {
         const allActualData = actualData.matrix[level] ?
           Object.values(actualData.matrix[level]).filter((v): v is number => typeof v === 'number' && v > 0) : [];
         const avgActual = allActualData.length > 0 ?
-          allActualData.reduce((sum, val) => sum + val, 0) / allActualData.length : 0;
+          allActualData.reduce((sum, val) => sum + val, 0) / allActualData.length : null;
 
         const claimedValue = centerName !== '전체' ? centerClaimedData : avgClaimed;
         const actualValue = centerName !== '전체' ? centerActualData : avgActual;
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
         return {
           month,
           weeklyClaimedHours: isNaN(claimedValue) ? 0 : claimedValue, // 근태시간
-          weeklyAdjustedHours: isNaN(actualValue) ? 0 : actualValue, // 근무추정시간
+          weeklyAdjustedHours: actualValue !== null && !isNaN(actualValue) ? actualValue : null, // 근무추정시간
           employeeCount: 0
         };
       });
