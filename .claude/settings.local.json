@@ -76,7 +76,23 @@
       "Bash(do echo \"=== $file ===\")",
       "Bash(taskkill:*)",
       "Bash(for pid in 17604 12904)",
-      "Bash(do taskkill //F //PID $pid)"
+      "Bash(do taskkill //F //PID $pid)",
+      "Bash(dir:*)",
+      "Bash(npx asar:*)",
+      "Bash(cat:*)",
+      "Bash(timeout:*)",
+      "Bash(rm:*)",
+      "Bash(start SambioHRR.exe)",
+      "Bash(npm run electron:compile:*)",
+      "Bash(electron-builder:*)",
+      "Bash(npx electron-builder:*)",
+      "Read(//c/Users/**)",
+      "Bash(ELECTRON_BUILD=true npm run build:*)",
+      "Read(//c/SambioHRData/**)",
+      "Bash(mv:*)",
+      "Bash(git push:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

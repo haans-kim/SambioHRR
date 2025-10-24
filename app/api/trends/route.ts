@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCenters } from '@/lib/database/queries';
-import { getGradeWeeklyClaimedHoursMatrixFromClaim } from '@/lib/db/queries/claim-analytics';
 import db from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -98,14 +96,22 @@ export async function GET(request: NextRequest) {
     }
 
     // 데이터베이스에서 센터 목록 가져오기 (경영진 관련 제외)
-    const centersFromDB = getCenters();
     const excludedCenters = ['경영진단팀', '대표이사', '이사회', '자문역/고문'];
-    const availableCenters = centersFromDB
-      .filter(c => !excludedCenters.includes(c.name))
-      .map(c => ({
-        id: c.code,
-        name: c.name
-      }));
+    const centersFromDB = db.prepare(`
+      SELECT
+        org_code as code,
+        org_name as name
+      FROM organization_master
+      WHERE org_level = 'center'
+        AND is_active = 1
+        AND org_name NOT IN (${excludedCenters.map(() => '?').join(',')})
+      ORDER BY display_order, org_name
+    `).all(...excludedCenters) as { code: string; name: string }[];
+
+    const availableCenters = centersFromDB.map(c => ({
+      id: c.code,
+      name: c.name
+    }));
 
     // 현재 선택된 센터 이름 찾기
     const selectedCenter = center ? centersFromDB.find(c => c.code === center) : null;

@@ -2,25 +2,67 @@ import Database from 'better-sqlite3'
 import path from 'path'
 
 class DatabaseManager {
-  private static instance: DatabaseManager
+  private static instance: DatabaseManager | null = null
   private db: Database.Database | null = null
-  
+  private currentDbPath: string | null = null
+
   private constructor() {}
-  
+
   static getInstance(): DatabaseManager {
     if (!DatabaseManager.instance) {
       DatabaseManager.instance = new DatabaseManager()
     }
     return DatabaseManager.instance
   }
-  
+
   getDb(): Database.Database {
-    if (!this.db) {
-      const dbPath = path.join(process.cwd(), 'sambio_human.db')
-      this.db = new Database(dbPath, { 
+    // Use DB_PATH environment variable if set (for Electron), otherwise use cwd
+    const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'sambio_human.db')
+
+    // If DB path changed or no DB connection, create new connection
+    if (!this.db || this.currentDbPath !== dbPath) {
+      // Close old connection if exists
+      if (this.db) {
+        console.log('[DatabaseManager] DB path changed from', this.currentDbPath, 'to', dbPath)
+        this.db.close()
+        this.db = null
+      }
+
+      this.currentDbPath = dbPath
+      console.log('[DatabaseManager] ===== DATABASE INITIALIZATION =====')
+      console.log('[DatabaseManager] DB_PATH env:', process.env.DB_PATH)
+      console.log('[DatabaseManager] process.cwd():', process.cwd())
+      console.log('[DatabaseManager] Using DB path:', dbPath)
+
+      // Check if file exists
+      const fs = require('fs')
+      if (!fs.existsSync(dbPath)) {
+        const errorMsg = `Database file not found at: ${dbPath}`
+        console.error('[DatabaseManager]', errorMsg)
+        throw new Error(errorMsg)
+      }
+
+      const stats = fs.statSync(dbPath)
+      console.log('[DatabaseManager] DB file size:', (stats.size / 1024 / 1024 / 1024).toFixed(2), 'GB')
+
+      this.db = new Database(dbPath, {
         readonly: false,
-        fileMustExist: true // DB file must exist - don't create new one
+        fileMustExist: true // Don't create new DB if missing - throw error instead
       })
+
+      // Verify tables exist
+      const tables = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all()
+      console.log('[DatabaseManager] Tables found:', tables.length)
+      console.log('[DatabaseManager] First 10 tables:', tables.slice(0, 10).map((t: any) => t.name).join(', '))
+
+      const dailyAnalysisExists = tables.find((t: any) => t.name === 'daily_analysis_results')
+      if (dailyAnalysisExists) {
+        const count = this.db.prepare("SELECT COUNT(*) as count FROM daily_analysis_results").get() as any
+        console.log('[DatabaseManager] ✓ daily_analysis_results exists with', count.count, 'rows')
+      } else {
+        console.error('[DatabaseManager] ✗ daily_analysis_results table NOT FOUND!')
+      }
+
       this.initialize()
     }
     return this.db

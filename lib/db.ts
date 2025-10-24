@@ -10,7 +10,17 @@ const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
 // 데이터베이스 파일 경로 결정
 let dbPath: string;
 
-if (isElectron) {
+console.log('[DB] Environment check:');
+console.log('[DB] process.env.DB_PATH:', process.env.DB_PATH);
+console.log('[DB] process.env.NODE_ENV:', process.env.NODE_ENV);
+console.log('[DB] isElectron:', isElectron);
+console.log('[DB] isBuildTime:', isBuildTime);
+
+// 환경 변수에서 DB 경로를 먼저 확인 (Electron에서 설정)
+if (process.env.DB_PATH) {
+  dbPath = process.env.DB_PATH;
+  console.log('[DB] Using DB path from environment variable:', dbPath);
+} else if (isElectron) {
   // Electron 환경
   try {
     const { app } = require('electron');
@@ -20,19 +30,12 @@ if (isElectron) {
       // 개발 모드: 프로젝트 루트
       dbPath = path.join(process.cwd(), 'sambio_human.db');
     } else {
-      // 프로덕션: 사용자 데이터 폴더
-      const userDataPath = app.getPath('userData');
-      dbPath = path.join(userDataPath, 'sambio_human.db');
-
-      // 초기 실행 시 DB가 없으면 앱 내부에서 복사
-      const fs = require('fs');
-      if (!fs.existsSync(dbPath)) {
-        const bundledDbPath = path.join((process as any).resourcesPath, 'sambio_human.db');
-        if (fs.existsSync(bundledDbPath)) {
-          fs.copyFileSync(bundledDbPath, dbPath);
-          console.log('Database copied to user data folder:', dbPath);
-        }
-      }
+      // 프로덕션: 실행 파일과 같은 폴더에 DB 배치
+      // 포터블 앱의 경우 .exe가 있는 폴더
+      const exePath = process.execPath;
+      const exeDir = path.dirname(exePath);
+      dbPath = path.join(exeDir, 'sambio_human.db');
+      console.log('Using database from exe directory:', dbPath);
     }
   } catch (error) {
     // Electron 모듈을 찾을 수 없는 경우 (Next.js 빌드 시)

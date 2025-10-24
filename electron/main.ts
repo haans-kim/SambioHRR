@@ -1,12 +1,59 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { spawn, ChildProcess } from 'child_process';
+import fs from 'fs';
 
 let mainWindow: BrowserWindow | null = null;
 let nextServerProcess: ChildProcess | null = null;
 const isDev = process.env.NODE_ENV === 'development';
 
+// Electron 메인 프로세스 로그 파일 설정
+let electronLogStream: fs.WriteStream | null = null;
+
+// 로그 헬퍼 함수
+function log(message: string, ...args: any[]) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message} ${args.map(a => JSON.stringify(a)).join(' ')}\n`;
+  console.log(message, ...args);
+
+  // 로그 스트림 초기화 (app이 준비된 후)
+  if (!electronLogStream) {
+    try {
+      const exeDir = path.dirname(process.execPath);
+      const electronLogPath = path.join(exeDir, 'electron-main.log');
+      electronLogStream = fs.createWriteStream(electronLogPath, { flags: 'a' });
+      electronLogStream.write(`Log file created at: ${electronLogPath}\n`);
+    } catch (err) {
+      console.error('Failed to create log file:', err);
+    }
+  }
+
+  if (electronLogStream) {
+    electronLogStream.write(logMessage);
+  }
+}
+
+log('=== Electron Main Process Started ===');
+log('isDev:', isDev);
+log('process.execPath:', process.execPath);
+
+// 전역 에러 핸들러
+process.on('uncaughtException', (error) => {
+  log('Uncaught Exception:', error);
+  dialog.showErrorBox('Application Error', `Uncaught Exception: ${error.message}\n\nStack: ${error.stack}`);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  log('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 function createWindow() {
+  log('Creating window...');
+  log('isDev:', isDev);
+  log('app.isPackaged:', app.isPackaged);
+  log('__dirname:', __dirname);
+  log('process.resourcesPath:', process.resourcesPath);
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -14,8 +61,27 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
+      webSecurity: false, // Disable web security for localhost (development/testing only)
     },
     title: 'SambioHRR',
+    show: true, // 바로 표시
+  });
+
+  // 창이 준비되면 표시
+  mainWindow.once('ready-to-show', () => {
+    log('Window ready to show');
+    mainWindow?.show();
+  });
+
+  // 웹 콘텐츠 에러 핸들링
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    log('Failed to load:', errorCode, errorDescription, validatedURL);
+    dialog.showErrorBox('Page Load Error', `Failed to load page:\nError: ${errorCode}\n${errorDescription}\nURL: ${validatedURL}`);
+  });
+
+  // 페이지 로드 성공 이벤트
+  mainWindow.webContents.on('did-finish-load', () => {
+    log('Page loaded successfully');
   });
 
   // 개발 모드에서는 localhost:3003 사용
@@ -26,7 +92,67 @@ function createWindow() {
   } else {
     // 프로덕션: Next.js standalone 서버 시작
     startNextServer();
-    mainWindow.loadURL('http://localhost:3003');
+
+    // 서버가 실제로 응답할 준비가 될 때까지 대기
+    waitForServer();
+  }
+
+  async function waitForServer() {
+    log('Waiting for server to be ready...');
+
+    const maxAttempts = 60; // 60 attempts = 2 minutes (2 seconds per attempt)
+    const delayBetweenAttempts = 2000; // 2 seconds
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        log(`Checking server readiness... attempt ${attempt}/${maxAttempts}`);
+
+        // Try to fetch from the server
+        const response = await fetch('http://localhost:3003', {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(5000) // 5 second timeout per request
+        });
+
+        if (response.ok) {
+          log('✓ Server is ready and responding!');
+
+          // Server is ready, now load the page
+          try {
+            if (!mainWindow) {
+              throw new Error('Main window is null');
+            }
+
+            log('Loading URL: http://localhost:3003');
+            await mainWindow.loadURL('http://localhost:3003');
+
+            log('✓ URL loaded successfully');
+            log('Current URL:', mainWindow.webContents.getURL());
+
+            // 페이지 로드 후 DevTools 열기 (디버깅용)
+            mainWindow.webContents.openDevTools();
+            return; // Success!
+
+          } catch (error: any) {
+            log('✗ Failed to load URL:', error);
+            dialog.showErrorBox('Application Load Error', `Failed to load page: ${error.message}`);
+            return;
+          }
+        }
+      } catch (error: any) {
+        log(`Server not ready yet (attempt ${attempt}): ${error.message}`);
+      }
+
+      // Wait before next attempt
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, delayBetweenAttempts));
+      }
+    }
+
+    // If we get here, server never became ready
+    log('✗ Server failed to become ready after 2 minutes');
+    dialog.showErrorBox('Server Timeout',
+      'Next.js server failed to start within 2 minutes.\n\n' +
+      'Please check C:\\SambioHRData\\nextjs-server.log for errors.');
   }
 
   mainWindow.on('closed', () => {
@@ -35,35 +161,161 @@ function createWindow() {
 }
 
 function startNextServer() {
-  // 프로덕션: Next.js를 개발 모드로 실행 (빌드 문제 회피)
-  const appPath = path.join(process.resourcesPath, 'app');
-  const nextBin = path.join(appPath, 'node_modules', '.bin', 'next');
+  try {
+    log('=== Next.js Standalone Server Configuration ===');
+    log('process.resourcesPath:', process.resourcesPath);
+    log('__dirname:', __dirname);
+    log('app.isPackaged:', app.isPackaged);
 
-  nextServerProcess = spawn(nextBin, ['dev', '-p', '3003'], {
-    cwd: appPath,
-    env: {
-      ...process.env,
-      NODE_ENV: 'production',
-    },
-    shell: true,
-  });
+    // Standalone 서버 경로 찾기
+    let standalonePath: string;
 
-  nextServerProcess.stdout?.on('data', (data) => {
-    console.log(`Next.js: ${data}`);
-  });
+    if (app.isPackaged) {
+      // 패키징된 앱: asar 사용 안함, 직접 app 폴더에 접근
+      standalonePath = path.join(process.resourcesPath, 'app', '.next', 'standalone');
+    } else {
+      // 개발 모드
+      standalonePath = path.join(__dirname, '..', '.next', 'standalone');
+    }
 
-  nextServerProcess.stderr?.on('data', (data) => {
-    console.error(`Next.js Error: ${data}`);
-  });
+    log('Standalone path:', standalonePath);
+    log('Standalone exists:', fs.existsSync(standalonePath));
+
+    if (!fs.existsSync(standalonePath)) {
+      const errorMsg = `Next.js standalone build not found at: ${standalonePath}\n\nPlease run 'npm run build:electron' first.`;
+      log(errorMsg);
+      dialog.showErrorBox('Server Error', errorMsg);
+      return;
+    }
+
+    // server.js 경로
+    const serverJs = path.join(standalonePath, 'server.js');
+    log('Server.js path:', serverJs);
+    log('Server.js exists:', fs.existsSync(serverJs));
+
+    if (!fs.existsSync(serverJs)) {
+      const errorMsg = `Server.js not found at: ${serverJs}`;
+      log(errorMsg);
+      dialog.showErrorBox('Server Error', errorMsg);
+      return;
+    }
+
+    // .next/static 폴더를 standalone의 .next/static으로 복사 (심볼릭 링크 대신)
+    const staticSource = app.isPackaged
+      ? path.join(process.resourcesPath, 'app', '.next', 'static')
+      : path.join(__dirname, '..', '.next', 'static');
+
+    const staticDest = path.join(standalonePath, '.next', 'static');
+
+    console.log('Static source:', staticSource);
+    console.log('Static dest:', staticDest);
+
+    // public 폴더도 복사
+    const publicSource = app.isPackaged
+      ? path.join(process.resourcesPath, 'app', 'public')
+      : path.join(__dirname, '..', 'public');
+
+    const publicDest = path.join(standalonePath, 'public');
+
+    log('Public source:', publicSource);
+    log('Public dest:', publicDest);
+
+    log('Spawning Next.js standalone server...');
+
+    // Node.js로 server.js 실행
+    // DB 경로 설정 - 시스템 전역 위치 사용
+    const dbPath = 'C:\\SambioHRData\\sambio_human.db';
+
+    log('Setting DB path:', dbPath);
+    log('DB exists:', fs.existsSync(dbPath));
+
+    if (!fs.existsSync(dbPath)) {
+      const errorMsg = `Database file not found at: ${dbPath}\n\nPlease ensure sambio_human.db is located in C:\\SambioHRData\\`;
+      log(errorMsg);
+      dialog.showErrorBox('Database Error', errorMsg);
+      return;
+    }
+
+    nextServerProcess = spawn('node', ['server.js'], {
+      cwd: standalonePath,
+      env: {
+        ...process.env,
+        NODE_ENV: 'production',
+        PORT: '3003',
+        HOSTNAME: '0.0.0.0', // Bind to all interfaces
+        DB_PATH: dbPath, // DB 경로를 환경 변수로 전달
+      },
+      shell: false,
+      windowsHide: false, // 디버깅을 위해 콘솔 표시
+    });
+
+    nextServerProcess.on('error', (error) => {
+      log('Failed to start Next.js server:', error);
+      dialog.showErrorBox('Server Error', `Failed to start Next.js server.\n\nError: ${error.message}\n\nPlease check if port 3003 is already in use.`);
+    });
+
+    nextServerProcess.on('spawn', () => {
+      log('Next.js server process spawned successfully');
+    });
+
+    nextServerProcess.on('exit', (code, signal) => {
+      log(`Next.js server exited with code ${code} and signal ${signal}`);
+
+      if (code !== 0 && code !== null) {
+        dialog.showErrorBox('Server Crashed',
+          `Next.js server stopped unexpectedly.\n\nExit code: ${code}\nSignal: ${signal}\n\n` +
+          `Common causes:\n` +
+          `- Port 3003 is already in use\n` +
+          `- Database connection failed\n\n` +
+          `Check log file: C:\\SambioHRData\\nextjs-server.log`);
+      }
+    });
+
+    // 로그 파일 경로 - DB와 같은 위치에 저장
+    const logPath = 'C:\\SambioHRData\\nextjs-server.log';
+    const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+
+    log('Next.js server log file:', logPath);
+
+    nextServerProcess.stdout?.on('data', (data) => {
+      const msg = data.toString();
+      log(`Next.js: ${msg}`);
+      logStream.write(`[STDOUT] ${msg}`);
+    });
+
+    nextServerProcess.stderr?.on('data', (data) => {
+      const msg = data.toString();
+      log(`Next.js Error: ${msg}`);
+      logStream.write(`[STDERR] ${msg}`);
+
+      // 포트 충돌 감지
+      if (msg.includes('EADDRINUSE') || msg.includes('address already in use') || msg.includes('port') && msg.includes('already')) {
+        dialog.showErrorBox('Port Conflict',
+          `Port 3003 is already in use!\n\n` +
+          `Please close any other applications using port 3003.\n\n` +
+          `You can find which program is using it by running:\n` +
+          `netstat -ano | findstr ":3003"`);
+      }
+
+      // 데이터베이스 에러 감지
+      if (msg.includes('SQLITE') || msg.includes('database') || msg.includes('DB')) {
+        dialog.showErrorBox('Database Error', msg);
+      }
+    });
+
+    log('Next.js standalone server started');
+  } catch (error) {
+    log('Error in startNextServer:', error);
+    dialog.showErrorBox('Server Error', `Error starting server: ${error}`);
+  }
 }
 
 app.on('ready', () => {
-  // 개발 모드가 아니면 서버가 준비될 때까지 대기
-  if (!isDev) {
-    setTimeout(createWindow, 3000);
-  } else {
-    createWindow();
-  }
+  log('App ready event fired');
+  log('isDev:', isDev);
+
+  // 바로 창 생성 (startNextServer 내부에서 대기)
+  createWindow();
 });
 
 app.on('window-all-closed', () => {

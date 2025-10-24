@@ -22,6 +22,7 @@
 /build
 /release
 /dist-electron
+/team-asar
 
 # build logs
 build.log
@@ -68,3 +69,5 @@ excel-upload-server/.streamlit/
 *.egg-info/
 dist/
 build/
+*.exe
+release/

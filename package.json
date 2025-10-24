@@ -4,17 +4,18 @@
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "next dev --turbopack --port 3003",
+    "dev": "next dev --port 3003",
     "build": "next build",
+    "build:electron": "cross-env ELECTRON_BUILD=true next build && node scripts/post-build-electron.js",
     "start": "next start",
     "lint": "next lint",
     "update-org-stats": "npx tsx scripts/update-organization-stats-with-ground-rules.ts",
     "electron:compile": "tsc -p electron/tsconfig.json",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3003 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "npm run electron:compile && electron-builder",
-    "electron:build:win": "npm run electron:compile && electron-builder --win --x64",
-    "electron:build:mac": "npm run electron:compile && electron-builder --mac",
-    "electron:build:linux": "npm run electron:compile && electron-builder --linux"
+    "electron:build": "npm run build:electron && npm run electron:compile && electron-builder",
+    "electron:build:win": "npm run build:electron && npm run electron:compile && electron-builder --win --x64",
+    "electron:build:mac": "npm run build:electron && npm run electron:compile && electron-builder --mac",
+    "electron:build:linux": "npm run build:electron && npm run electron:compile && electron-builder --linux"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -69,39 +70,31 @@
     "npmRebuild": false,
     "buildDependenciesFromSource": false,
     "nodeGypRebuild": false,
-    "asarUnpack": ["**/*.node"],
+    "asar": false,
     "directories": {
       "output": "release"
     },
     "files": [
       "dist-electron/**/*",
-      "app/**/*",
-      "lib/**/*",
-      "components/**/*",
-      "stores/**/*",
+      ".next/standalone/**/*",
+      ".next/static/**/*",
       "public/**/*",
-      "package.json",
-      "next.config.ts",
-      "tsconfig.json",
-      "tailwind.config.ts",
-      "postcss.config.mjs"
+      "!node_modules",
+      "!**/*.db",
+      "!.next/standalone/*.db"
     ],
-    "extraResources": [
-      {
-        "from": "sambio_human.db",
-        "to": "sambio_human.db"
-      }
-    ],
+    "extraResources": [],
     "win": {
       "target": [
         {
-          "target": "nsis",
+          "target": "portable",
           "arch": [
             "x64"
           ]
         }
       ],
-      "icon": "public/icon.ico"
+      "icon": "public/icon.ico",
+      "signAndEditExecutable": false
     },
     "mac": {
       "target": [
