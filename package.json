@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev --port 3003",
     "build": "next build",
-    "build:electron": "cross-env ELECTRON_BUILD=true next build && node scripts/post-build-electron.js",
+    "build:electron": "cross-env ELECTRON_BUILD=true next build",
     "start": "next start",
     "lint": "next lint",
     "update-org-stats": "npx tsx scripts/update-organization-stats-with-ground-rules.ts",
@@ -76,12 +76,11 @@
     },
     "files": [
       "dist-electron/**/*",
-      ".next/standalone/**/*",
-      ".next/static/**/*",
+      ".next/**/*",
       "public/**/*",
-      "!node_modules",
-      "!**/*.db",
-      "!.next/standalone/*.db"
+      "node_modules/**/*",
+      "package.json",
+      "!**/*.db"
     ],
     "extraResources": [],
     "win": {

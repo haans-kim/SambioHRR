@@ -100,8 +100,8 @@ function createWindow() {
   async function waitForServer() {
     log('Waiting for server to be ready...');
 
-    const maxAttempts = 60; // 60 attempts = 2 minutes (2 seconds per attempt)
-    const delayBetweenAttempts = 2000; // 2 seconds
+    const maxAttempts = 10; // 10 attempts = 10 seconds (1 second per attempt)
+    const delayBetweenAttempts = 1000; // 1 second
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -110,7 +110,7 @@ function createWindow() {
         // Try to fetch from the server
         const response = await fetch('http://localhost:3003', {
           method: 'HEAD',
-          signal: AbortSignal.timeout(5000) // 5 second timeout per request
+          signal: AbortSignal.timeout(1000) // 1 second timeout per request
         });
 
         if (response.ok) {
@@ -162,92 +162,42 @@ function createWindow() {
 
 function startNextServer() {
   try {
-    log('=== Next.js Standalone Server Configuration ===');
-    log('process.resourcesPath:', process.resourcesPath);
-    log('__dirname:', __dirname);
-    log('app.isPackaged:', app.isPackaged);
+    log('=== Starting Next.js Dev Server ===');
 
-    // Standalone 서버 경로 찾기
-    let standalonePath: string;
-
-    if (app.isPackaged) {
-      // 패키징된 앱: asar 사용 안함, 직접 app 폴더에 접근
-      standalonePath = path.join(process.resourcesPath, 'app', '.next', 'standalone');
-    } else {
-      // 개발 모드
-      standalonePath = path.join(__dirname, '..', '.next', 'standalone');
-    }
-
-    log('Standalone path:', standalonePath);
-    log('Standalone exists:', fs.existsSync(standalonePath));
-
-    if (!fs.existsSync(standalonePath)) {
-      const errorMsg = `Next.js standalone build not found at: ${standalonePath}\n\nPlease run 'npm run build:electron' first.`;
-      log(errorMsg);
-      dialog.showErrorBox('Server Error', errorMsg);
-      return;
-    }
-
-    // server.js 경로
-    const serverJs = path.join(standalonePath, 'server.js');
-    log('Server.js path:', serverJs);
-    log('Server.js exists:', fs.existsSync(serverJs));
-
-    if (!fs.existsSync(serverJs)) {
-      const errorMsg = `Server.js not found at: ${serverJs}`;
-      log(errorMsg);
-      dialog.showErrorBox('Server Error', errorMsg);
-      return;
-    }
-
-    // .next/static 폴더를 standalone의 .next/static으로 복사 (심볼릭 링크 대신)
-    const staticSource = app.isPackaged
-      ? path.join(process.resourcesPath, 'app', '.next', 'static')
-      : path.join(__dirname, '..', '.next', 'static');
-
-    const staticDest = path.join(standalonePath, '.next', 'static');
-
-    console.log('Static source:', staticSource);
-    console.log('Static dest:', staticDest);
-
-    // public 폴더도 복사
-    const publicSource = app.isPackaged
-      ? path.join(process.resourcesPath, 'app', 'public')
-      : path.join(__dirname, '..', 'public');
-
-    const publicDest = path.join(standalonePath, 'public');
-
-    log('Public source:', publicSource);
-    log('Public dest:', publicDest);
-
-    log('Spawning Next.js standalone server...');
-
-    // Node.js로 server.js 실행
-    // DB 경로 설정 - 시스템 전역 위치 사용
+    // DB 경로 설정
     const dbPath = 'C:\\SambioHRData\\sambio_human.db';
-
-    log('Setting DB path:', dbPath);
+    log('DB path:', dbPath);
     log('DB exists:', fs.existsSync(dbPath));
 
     if (!fs.existsSync(dbPath)) {
-      const errorMsg = `Database file not found at: ${dbPath}\n\nPlease ensure sambio_human.db is located in C:\\SambioHRData\\`;
+      const errorMsg = `Database not found at: ${dbPath}`;
       log(errorMsg);
       dialog.showErrorBox('Database Error', errorMsg);
       return;
     }
 
-    nextServerProcess = spawn('node', ['server.js'], {
-      cwd: standalonePath,
+    const appPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'app')
+      : path.join(__dirname, '..');
+
+    log('App path:', appPath);
+    log('Starting dev server...');
+
+    // npm run dev 실행
+    nextServerProcess = spawn('npm', ['run', 'dev'], {
+      cwd: appPath,
       env: {
         ...process.env,
-        NODE_ENV: 'production',
-        PORT: '3003',
-        HOSTNAME: '0.0.0.0', // Bind to all interfaces
-        DB_PATH: dbPath, // DB 경로를 환경 변수로 전달
+        DB_PATH: dbPath,
       },
-      shell: false,
-      windowsHide: false, // 디버깅을 위해 콘솔 표시
+      shell: true,
+      windowsHide: false,
     });
+
+    if (!nextServerProcess) {
+      log('Failed to spawn server process');
+      return;
+    }
 
     nextServerProcess.on('error', (error) => {
       log('Failed to start Next.js server:', error);
