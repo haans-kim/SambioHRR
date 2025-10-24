@@ -98,7 +98,9 @@
       "Bash(xargs:*)",
       "Bash(node:*)",
       "Bash(npx electron:*)",
-      "Bash(electron:*)"
+      "Bash(electron:*)",
+      "Bash(powershell -Command \"Get-Item ''C:\\SambioHRData\\sambio_human.db'' | Select-Object Name, Length, LastWriteTime\")",
+      "Bash(powershell -Command \"Get-Item ''C:\\Project\\SambioHRR\\sambio_human.db'' | Select-Object Name, Length, LastWriteTime, LinkType, Target\")"
     ],
     "deny": []
   }
