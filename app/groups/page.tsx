@@ -103,7 +103,7 @@ export default function GroupsPage() {
   };
 
   return (
-    <DashboardLayout 
+    <DashboardLayout
       totalEmployees={data.totalEmployees}
       avgEfficiency={data.avgEfficiency}
       avgWeeklyClaimedHours={data.avgWeeklyClaimedHours}
@@ -115,6 +115,7 @@ export default function GroupsPage() {
       breadcrumb={data.breadcrumb}
       selectedMonth={selectedMonth}
       onMonthChange={handleMonthChange}
+      availableMonths={['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', '2025-07']}
       analysisMode={analysisMode}
       availableMetrics={availableMetrics}
       dataQuality={dataQuality}

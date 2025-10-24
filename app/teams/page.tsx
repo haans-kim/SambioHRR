@@ -112,7 +112,7 @@ export default function TeamsPage() {
   };
 
   return (
-    <DashboardLayout 
+    <DashboardLayout
       totalEmployees={data.summary?.totalEmployees || 0}
       avgEfficiency={data.summary?.avgEfficiency || 0}
       avgWeeklyClaimedHours={data.summary?.avgWeeklyClaimedHours || 0}
@@ -124,6 +124,7 @@ export default function TeamsPage() {
       breadcrumb={data.breadcrumb}
       selectedMonth={selectedMonth}
       onMonthChange={handleMonthChange}
+      availableMonths={['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', '2025-07']}
       analysisMode={analysisMode}
       availableMetrics={availableMetrics}
       dataQuality={dataQuality}
