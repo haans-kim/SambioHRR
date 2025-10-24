@@ -7,6 +7,8 @@ import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { MetricType } from "@/components/dashboard/MetricSelector";
 import { useSearchParams, useRouter } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
 interface GroupData {
   groups: any[];
   parentOrg: any;

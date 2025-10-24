@@ -40,7 +40,11 @@ log('process.execPath:', process.execPath);
 // 전역 에러 핸들러
 process.on('uncaughtException', (error) => {
   log('Uncaught Exception:', error);
-  dialog.showErrorBox('Application Error', `Uncaught Exception: ${error.message}\n\nStack: ${error.stack}`);
+  try {
+    dialog.showErrorBox('Application Error', `Uncaught Exception: ${error.message}\n\nStack: ${error.stack}`);
+  } catch (e) {
+    console.error('Failed to show error dialog:', e);
+  }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
@@ -84,24 +88,15 @@ function createWindow() {
     log('Page loaded successfully');
   });
 
-  // 개발 모드에서는 localhost:3003 사용
-  // 프로덕션에서는 Next.js 서버를 내부에서 실행
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:3003');
-    mainWindow.webContents.openDevTools();
-  } else {
-    // 프로덕션: Next.js standalone 서버 시작
-    startNextServer();
-
-    // 서버가 실제로 응답할 준비가 될 때까지 대기
-    waitForServer();
-  }
+  // 항상 dev 서버 사용 (빠른 로딩을 위해)
+  startNextServer();
+  waitForServer();
 
   async function waitForServer() {
     log('Waiting for server to be ready...');
 
-    const maxAttempts = 10; // 10 attempts = 10 seconds (1 second per attempt)
-    const delayBetweenAttempts = 1000; // 1 second
+    const maxAttempts = 150; // 150 attempts = 5 minutes (2 seconds per attempt)
+    const delayBetweenAttempts = 2000; // 2 seconds
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -110,7 +105,7 @@ function createWindow() {
         // Try to fetch from the server
         const response = await fetch('http://localhost:3003', {
           method: 'HEAD',
-          signal: AbortSignal.timeout(1000) // 1 second timeout per request
+          signal: AbortSignal.timeout(5000) // 5 second timeout per request
         });
 
         if (response.ok) {
@@ -181,16 +176,25 @@ function startNextServer() {
       : path.join(__dirname, '..');
 
     log('App path:', appPath);
-    log('Starting dev server...');
+    log('Starting Next.js production server...');
 
-    // npm run dev 실행
-    nextServerProcess = spawn('npm', ['run', 'dev'], {
+    // Next.js CLI 직접 실행
+    const nextBin = app.isPackaged
+      ? path.join(appPath, 'node_modules', 'next', 'dist', 'bin', 'next')
+      : path.join(appPath, 'node_modules', '.bin', 'next');
+
+    log('Next bin path:', nextBin);
+    log('Next bin exists:', fs.existsSync(nextBin));
+
+    // node로 next start (프로덕션 서버) 실행
+    nextServerProcess = spawn('node', [nextBin, 'start', '--port', '3003'], {
       cwd: appPath,
       env: {
         ...process.env,
+        NODE_ENV: 'production',
         DB_PATH: dbPath,
       },
-      shell: true,
+      shell: false,
       windowsHide: false,
     });
 
