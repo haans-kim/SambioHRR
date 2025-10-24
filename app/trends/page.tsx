@@ -42,6 +42,7 @@ export default function TrendsPage() {
   const [data, setData] = useState<TrendData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [selectedMetric, setSelectedMetric] = useState<'claimed' | 'adjusted'>('claimed');
   const abortControllerRef = useRef<AbortController | null>(null);
   const initialLoadRef = useRef(true);
 
@@ -166,6 +167,8 @@ export default function TrendsPage() {
         data={data}
         selectedCenter={selectedCenter || ''}
         onCenterChange={handleCenterChange}
+        selectedMetric={selectedMetric}
+        onMetricChange={setSelectedMetric}
       />
     </TrendsLayout>
   );

@@ -8,9 +8,11 @@ interface TrendDashboardProps {
   data: any;
   selectedCenter: string;
   onCenterChange: (center: string) => void;
+  selectedMetric: 'claimed' | 'adjusted';
+  onMetricChange: (metric: 'claimed' | 'adjusted') => void;
 }
 
-export function TrendDashboard({ data, selectedCenter, onCenterChange }: TrendDashboardProps) {
+export function TrendDashboard({ data, selectedCenter, onCenterChange, selectedMetric, onMetricChange }: TrendDashboardProps) {
   return (
     <div className="space-y-6">
       {/* 센터 탭 네비게이션 */}
@@ -27,6 +29,8 @@ export function TrendDashboard({ data, selectedCenter, onCenterChange }: TrendDa
         companyAverageData={data.companyAverageData}
         period={data.period}
         centerName={data.centerName}
+        selectedMetric={selectedMetric}
+        onMetricChange={onMetricChange}
       />
     </div>
   );

@@ -36,10 +36,11 @@ interface LevelGridTableProps {
     endMonth: number;
   };
   centerName?: string;
+  selectedMetric: 'claimed' | 'adjusted';
+  onMetricChange: (metric: 'claimed' | 'adjusted') => void;
 }
 
-export function LevelGridTable({ levelData, companyAverageData, period, centerName }: LevelGridTableProps) {
-  const [selectedMetric, setSelectedMetric] = useState<'claimed' | 'adjusted'>('claimed');
+export function LevelGridTable({ levelData, companyAverageData, period, centerName, selectedMetric, onMetricChange }: LevelGridTableProps) {
 
 
   // 월 배열 생성
@@ -205,7 +206,7 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
           <h3 className="text-lg font-semibold text-gray-900">월별통계</h3>
           <div className="flex gap-2">
             <button
-              onClick={() => setSelectedMetric('claimed')}
+              onClick={() => onMetricChange('claimed')}
               className={cn(
                 "px-3 py-1 rounded-lg text-sm font-medium transition-all",
                 selectedMetric === 'claimed'
@@ -216,7 +217,7 @@ export function LevelGridTable({ levelData, companyAverageData, period, centerNa
               주간 근태시간
             </button>
             <button
-              onClick={() => setSelectedMetric('adjusted')}
+              onClick={() => onMetricChange('adjusted')}
               className={cn(
                 "px-3 py-1 rounded-lg text-sm font-medium transition-all",
                 selectedMetric === 'adjusted'
