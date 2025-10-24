@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTeamsByDivision } from '@/lib/database/queries'
+import db from '@/lib/db'
 
 export async function GET(
   request: Request,
@@ -7,14 +7,21 @@ export async function GET(
 ) {
   try {
     const { divisionCode } = await params
-    const teamsData = getTeamsByDivision(divisionCode)
-    const teams = teamsData.map(team => ({
-      orgCode: team.code,
-      orgName: team.name,
-      orgLevel: 'team',
-      parentOrgCode: divisionCode,
-      childrenCount: 1
-    }))
+
+    const teams = db.prepare(`
+      SELECT
+        org_code as orgCode,
+        org_name as orgName,
+        'team' as orgLevel,
+        parent_org_code as parentOrgCode,
+        1 as childrenCount
+      FROM organization_master
+      WHERE org_level = 'team'
+        AND parent_org_code = ?
+        AND is_active = 1
+      ORDER BY display_order, org_name
+    `).all(divisionCode)
+
     return NextResponse.json({ teams })
   } catch (error) {
     console.error('API Error:', error)
