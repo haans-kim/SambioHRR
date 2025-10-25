@@ -7,46 +7,24 @@ const isElectron = typeof process !== 'undefined' && process.versions && process
 // Next.js 빌드 타임 감지
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
 
-// 데이터베이스 파일 경로 결정
+// 데이터베이스 파일 경로 - C:\SambioHRData 폴더 사용
+const DB_DIRECTORY = 'C:\\SambioHRData';
 let dbPath: string;
 
 console.log('[DB] Environment check:');
-console.log('[DB] process.env.DB_PATH:', process.env.DB_PATH);
 console.log('[DB] process.env.NODE_ENV:', process.env.NODE_ENV);
 console.log('[DB] isElectron:', isElectron);
 console.log('[DB] isBuildTime:', isBuildTime);
 
-// 환경 변수에서 DB 경로를 먼저 확인 (Electron에서 설정)
-if (process.env.DB_PATH) {
-  dbPath = process.env.DB_PATH;
-  console.log('[DB] Using DB path from environment variable:', dbPath);
-} else if (isElectron) {
-  // Electron 환경
-  try {
-    const { app } = require('electron');
-    const isDev = process.env.NODE_ENV === 'development';
-
-    if (isDev) {
-      // 개발 모드: 프로젝트 루트
-      dbPath = path.join(process.cwd(), 'sambio_human.db');
-    } else {
-      // 프로덕션: 실행 파일과 같은 폴더에 DB 배치
-      // 포터블 앱의 경우 .exe가 있는 폴더
-      const exePath = process.execPath;
-      const exeDir = path.dirname(exePath);
-      dbPath = path.join(exeDir, 'sambio_human.db');
-      console.log('Using database from exe directory:', dbPath);
-    }
-  } catch (error) {
-    // Electron 모듈을 찾을 수 없는 경우 (Next.js 빌드 시)
-    dbPath = path.join(process.cwd(), 'sambio_human.db');
-  }
-} else {
-  // 일반 Node.js 환경 (웹 서버)
+if (isBuildTime) {
+  // 빌드 타임: 프로젝트 폴더의 DB 사용
   dbPath = path.join(process.cwd(), 'sambio_human.db');
+  console.log('[DB] Build time - using project folder DB:', dbPath);
+} else {
+  // 런타임: 항상 C:\SambioHRData 사용
+  dbPath = path.join(DB_DIRECTORY, 'sambio_human.db');
+  console.log('[DB] Runtime - using fixed path:', dbPath);
 }
-
-console.log('Database path:', dbPath);
 
 // 빌드 타임에는 더미 DB 사용 (실제 연결 없음)
 let db: Database.Database;

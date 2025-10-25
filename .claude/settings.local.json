@@ -100,7 +100,11 @@
       "Bash(npx electron:*)",
       "Bash(electron:*)",
       "Bash(powershell -Command \"Get-Item ''C:\\SambioHRData\\sambio_human.db'' | Select-Object Name, Length, LastWriteTime\")",
-      "Bash(powershell -Command \"Get-Item ''C:\\Project\\SambioHRR\\sambio_human.db'' | Select-Object Name, Length, LastWriteTime, LinkType, Target\")"
+      "Bash(powershell -Command \"Get-Item ''C:\\Project\\SambioHRR\\sambio_human.db'' | Select-Object Name, Length, LastWriteTime, LinkType, Target\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\SambioHRData\\nextjs-server.log'' | Select-Object -Last 50\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\SambioHRData\\electron-main.log'' | Select-Object -Last 100\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\Project\\SambioHRR\\release\\win-unpacked\\electron-main.log'' | Select-Object -Last 150\")",
+      "Bash(powershell:*)"
     ],
     "deny": []
   }

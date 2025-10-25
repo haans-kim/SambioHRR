@@ -16,8 +16,11 @@ class DatabaseManager {
   }
 
   getDb(): Database.Database {
-    // Use DB_PATH environment variable if set (for Electron), otherwise use cwd
-    const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'sambio_human.db')
+    // 빌드 타임에는 프로젝트 DB, 런타임에는 C:\SambioHRData 사용
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
+    const dbPath = isBuildTime
+      ? path.join(process.cwd(), 'sambio_human.db')
+      : path.join('C:\\SambioHRData', 'sambio_human.db')
 
     // If DB path changed or no DB connection, create new connection
     if (!this.db || this.currentDbPath !== dbPath) {
@@ -30,7 +33,7 @@ class DatabaseManager {
 
       this.currentDbPath = dbPath
       console.log('[DatabaseManager] ===== DATABASE INITIALIZATION =====')
-      console.log('[DatabaseManager] DB_PATH env:', process.env.DB_PATH)
+      console.log('[DatabaseManager] isBuildTime:', isBuildTime)
       console.log('[DatabaseManager] process.cwd():', process.cwd())
       console.log('[DatabaseManager] Using DB path:', dbPath)
 
