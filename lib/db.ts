@@ -82,3 +82,4 @@ process.on('SIGTERM', () => {
 });
 
 export default db;
+export { dbPath as DB_PATH };

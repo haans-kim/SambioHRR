@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Database from 'better-sqlite3';
+import { DB_PATH } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,7 @@ export async function GET() {
   let db: Database.Database | null = null;
   
   try {
-    db = new Database('./sambio_human.db', { readonly: true });
+    db = new Database(DB_PATH, { readonly: true });
     
     // 전체개요와 동일한 쿼리로 센터별/직급별 AI보정 주간근무시간 가져오기
     const query = `

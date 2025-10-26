@@ -81,6 +81,8 @@
       "contexts/**/*",
       "hooks/**/*",
       "lib/**/*",
+      "stores/**/*",
+      "types/**/*",
       ".next/**/*",
       "node_modules/**/*",
       "public/**/*",

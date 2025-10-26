@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import Database from 'better-sqlite3'
+import { DB_PATH } from '@/lib/db'
 
 /**
  * tag_data의 최신 데이터 월 조회
  * 예: 2025-07 데이터가 있으면 '2025-07' 반환
  */
 export async function GET() {
-  const db = new Database('sambio_human.db', { readonly: true })
+  const db = new Database(DB_PATH, { readonly: true })
 
   try {
     // ENTE_DT 컬럼에서 최신 날짜 조회

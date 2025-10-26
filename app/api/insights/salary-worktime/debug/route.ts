@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import Database from 'better-sqlite3';
+import { DB_PATH } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   let db: Database.Database | null = null;
-  
+
   try {
-    db = new Database('./sambio_human.db', { readonly: true });
+    db = new Database(DB_PATH, { readonly: true });
     
     // 센터별 직급별 인원수 확인
     const centerGradeQuery = `

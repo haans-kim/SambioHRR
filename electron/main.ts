@@ -130,8 +130,8 @@ function createWindow() {
             log('✓ URL loaded successfully');
             log('Current URL:', mainWindow.webContents.getURL());
 
-            // 페이지 로드 후 DevTools 열기 (디버깅용)
-            mainWindow.webContents.openDevTools();
+            // DevTools는 필요시 수동으로 열기 (Ctrl+Shift+I)
+            // mainWindow.webContents.openDevTools();
             return; // Success!
 
           } catch (error: any) {
