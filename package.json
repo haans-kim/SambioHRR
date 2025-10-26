@@ -76,10 +76,17 @@
     },
     "files": [
       "dist-electron/**/*",
+      "app/**/*",
+      "components/**/*",
+      "contexts/**/*",
+      "hooks/**/*",
+      "lib/**/*",
       ".next/**/*",
-      "public/**/*",
       "node_modules/**/*",
+      "public/**/*",
       "package.json",
+      "next.config.ts",
+      "tsconfig.json",
       "!**/*.db"
     ],
     "extraResources": [],

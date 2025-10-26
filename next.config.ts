@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Standalone 모드로 빌드 (Electron 배포용 최적화)
-  output: 'standalone',
-
   // 이미지 최적화는 Electron에서 비활성화
   images: {
     unoptimized: process.env.ELECTRON_BUILD === 'true',

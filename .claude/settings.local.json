@@ -104,7 +104,8 @@
       "Bash(powershell -Command \"Get-Content ''C:\\SambioHRData\\nextjs-server.log'' | Select-Object -Last 50\")",
       "Bash(powershell -Command \"Get-Content ''C:\\SambioHRData\\electron-main.log'' | Select-Object -Last 100\")",
       "Bash(powershell -Command \"Get-Content ''C:\\Project\\SambioHRR\\release\\win-unpacked\\electron-main.log'' | Select-Object -Last 150\")",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(./SambioHRR.exe:*)"
     ],
     "deny": []
   }

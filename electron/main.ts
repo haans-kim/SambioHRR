@@ -16,13 +16,20 @@ function log(message: string, ...args: any[]) {
   const logMessage = `[${timestamp}] ${message} ${args.map(a => JSON.stringify(a)).join(' ')}\n`;
   console.log(message, ...args);
 
-  // 로그 스트림 초기화 (app이 준비된 후)
+  // 로그 스트림 초기화
   if (!electronLogStream) {
     try {
-      const exeDir = path.dirname(process.execPath);
-      const electronLogPath = path.join(exeDir, 'electron-main.log');
+      const electronLogPath = 'C:\\SambioHRData\\electron-main.log';
+      // 디렉토리 확인 및 생성
+      const logDir = path.dirname(electronLogPath);
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
       electronLogStream = fs.createWriteStream(electronLogPath, { flags: 'a' });
-      electronLogStream.write(`Log file created at: ${electronLogPath}\n`);
+      electronLogStream.write(`\n========================================\n`);
+      electronLogStream.write(`Electron Main Process Started\n`);
+      electronLogStream.write(`Time: ${timestamp}\n`);
+      electronLogStream.write(`========================================\n`);
     } catch (err) {
       console.error('Failed to create log file:', err);
     }
@@ -176,22 +183,18 @@ function startNextServer() {
       : path.join(__dirname, '..');
 
     log('App path:', appPath);
-    log('Starting Next.js production server...');
+    log('Starting Next.js server...');
 
-    // Next.js CLI 직접 실행
-    const nextBin = app.isPackaged
-      ? path.join(appPath, 'node_modules', 'next', 'dist', 'bin', 'next')
-      : path.join(appPath, 'node_modules', '.bin', 'next');
+    // Next.js CLI 경로 (Windows에서는 .bin 폴더가 패키징에 포함 안됨)
+    const nextCli = path.join(appPath, 'node_modules', 'next', 'dist', 'bin', 'next');
+    log('Next CLI:', nextCli);
+    log('Next CLI exists:', fs.existsSync(nextCli));
 
-    log('Next bin path:', nextBin);
-    log('Next bin exists:', fs.existsSync(nextBin));
-
-    // node로 next start (프로덕션 서버) 실행
-    nextServerProcess = spawn('node', [nextBin, 'start', '--port', '3003'], {
+    nextServerProcess = spawn('node', [nextCli, 'dev', '--port', '3003'], {
       cwd: appPath,
       env: {
         ...process.env,
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
         DB_PATH: dbPath,
       },
       shell: false,
