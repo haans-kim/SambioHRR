@@ -5,7 +5,19 @@ import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
-const DB_PATH = path.join(process.cwd(), 'sambio_human.db');
+// Detect database path based on environment
+function getDbPath(): string {
+  // Check if running in Electron packaged mode
+  const productionDbPath = 'C:\\SambioHRData\\sambio_human.db';
+  if (existsSync(productionDbPath)) {
+    return productionDbPath;
+  }
+
+  // Development mode
+  return path.join(process.cwd(), 'sambio_human.db');
+}
+
+const DB_PATH = getDbPath();
 
 interface DataStats {
   data_type: string;

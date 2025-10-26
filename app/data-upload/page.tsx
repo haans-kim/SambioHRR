@@ -66,24 +66,40 @@ export default function DataUploadPage() {
       setServerStarting(true);
       setError(null);
 
-      // Start the Streamlit server
-      const response = await fetch('/api/streamlit-server', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'start' })
-      });
+      // Check if running in Electron
+      if (typeof window !== 'undefined' && (window as any).electron) {
+        // Use Electron IPC to start Excel Uploader
+        const result = await (window as any).electron.startExcelUploader();
 
-      const result = await response.json();
-
-      if (result.success) {
-        // Wait a moment for server to be ready, then open in new window
-        setTimeout(() => {
-          window.open('http://localhost:8501', '_blank');
+        if (result.success) {
+          // Wait for Streamlit to start, then open in new window
+          setTimeout(() => {
+            window.open('http://localhost:8501', '_blank');
+            setServerStarting(false);
+          }, 3000);
+        } else {
+          setError(result.message || '서버 시작에 실패했습니다');
           setServerStarting(false);
-        }, 2500);
+        }
       } else {
-        setError(result.message || '서버 시작에 실패했습니다');
-        setServerStarting(false);
+        // Fallback for non-Electron environment (development)
+        const response = await fetch('/api/streamlit-server', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'start' })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          setTimeout(() => {
+            window.open('http://localhost:8501', '_blank');
+            setServerStarting(false);
+          }, 2500);
+        } else {
+          setError(result.message || '서버 시작에 실패했습니다');
+          setServerStarting(false);
+        }
       }
     } catch (err) {
       console.error('Failed to start server:', err);

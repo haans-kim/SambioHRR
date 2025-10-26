@@ -279,6 +279,9 @@ app.on('window-all-closed', () => {
   if (nextServerProcess) {
     nextServerProcess.kill();
   }
+  // Stop Excel Uploader when app closes
+  stopExcelUploader();
+
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -290,9 +293,124 @@ app.on('activate', () => {
   }
 });
 
+// Excel Uploader Process Management
+let excelUploaderProcess: ChildProcess | null = null;
+
+function startExcelUploader() {
+  log('=== Starting Excel Uploader ===');
+
+  // 배치 스크립트 경로
+  let excelUploaderPath: string;
+
+  if (app.isPackaged) {
+    // 프로덕션: extraResources에 포함된 배치 스크립트
+    excelUploaderPath = path.join(process.resourcesPath, 'tools', 'excel-uploader', 'start-uploader.bat');
+  } else {
+    // 개발: 로컬 배치 스크립트
+    excelUploaderPath = path.join(__dirname, '..', 'excel-upload-server', 'start-uploader.bat');
+  }
+
+  log('Excel Uploader path:', excelUploaderPath);
+  log('Exists:', fs.existsSync(excelUploaderPath));
+
+  if (!fs.existsSync(excelUploaderPath)) {
+    const errorMsg = `Excel Uploader not found at: ${excelUploaderPath}`;
+    log(errorMsg);
+    return { success: false, message: errorMsg };
+  }
+
+  // Check if already running
+  if (excelUploaderProcess && !excelUploaderProcess.killed) {
+    log('Excel Uploader already running');
+    return { success: true, message: 'Already running', alreadyRunning: true };
+  }
+
+  try {
+    log('Spawning Excel Uploader process...');
+
+    // 배치 스크립트 실행
+    excelUploaderProcess = spawn('cmd.exe', ['/c', excelUploaderPath], {
+      detached: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: path.dirname(excelUploaderPath),
+      windowsHide: false,
+    });
+
+    log('Excel Uploader process spawned with PID:', excelUploaderProcess.pid);
+
+    excelUploaderProcess.stdout?.on('data', (data) => {
+      const msg = data.toString();
+      log(`[ExcelUploader STDOUT] ${msg}`);
+    });
+
+    excelUploaderProcess.stderr?.on('data', (data) => {
+      const msg = data.toString();
+      log(`[ExcelUploader STDERR] ${msg}`);
+    });
+
+    excelUploaderProcess.on('error', (error) => {
+      log('Excel Uploader process error:', error);
+    });
+
+    excelUploaderProcess.on('exit', (code, signal) => {
+      log(`Excel Uploader exited with code ${code}, signal ${signal}`);
+      excelUploaderProcess = null;
+    });
+
+    return { success: true, message: 'Started successfully' };
+  } catch (error: any) {
+    log('Failed to start Excel Uploader:', error);
+    return { success: false, message: error.message || String(error) };
+  }
+}
+
+function stopExcelUploader() {
+  log('=== Stopping Excel Uploader ===');
+
+  if (excelUploaderProcess && !excelUploaderProcess.killed) {
+    try {
+      // Windows에서는 taskkill로 자식 프로세스까지 종료
+      if (process.platform === 'win32' && excelUploaderProcess.pid) {
+        spawn('taskkill', ['/pid', excelUploaderProcess.pid.toString(), '/f', '/t']);
+      } else {
+        excelUploaderProcess.kill();
+      }
+      excelUploaderProcess = null;
+      log('Excel Uploader stopped');
+      return { success: true, message: 'Stopped successfully' };
+    } catch (error: any) {
+      log('Error stopping Excel Uploader:', error);
+      return { success: false, message: error.message || String(error) };
+    }
+  }
+
+  log('Excel Uploader not running');
+  return { success: false, message: 'Not running' };
+}
+
+function getExcelUploaderStatus() {
+  const isRunning = excelUploaderProcess && !excelUploaderProcess.killed;
+  return {
+    running: isRunning,
+    pid: isRunning ? excelUploaderProcess?.pid : null,
+  };
+}
+
 // IPC Handlers
 ipcMain.handle('get-app-path', () => {
   return app.getPath('userData');
+});
+
+ipcMain.handle('start-excel-uploader', () => {
+  return startExcelUploader();
+});
+
+ipcMain.handle('stop-excel-uploader', () => {
+  return stopExcelUploader();
+});
+
+ipcMain.handle('excel-uploader-status', () => {
+  return getExcelUploaderStatus();
 });
 
 ipcMain.handle('process-excel', async (event, filePath: string) => {

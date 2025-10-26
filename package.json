@@ -91,7 +91,13 @@
       "tsconfig.json",
       "!**/*.db"
     ],
-    "extraResources": [],
+    "extraResources": [
+      {
+        "from": "excel-upload-server",
+        "to": "tools/excel-uploader",
+        "filter": ["**/*", "!**/__pycache__", "!**/dist", "!**/build", "!**/*.pyc"]
+      }
+    ],
     "win": {
       "target": [
         {
