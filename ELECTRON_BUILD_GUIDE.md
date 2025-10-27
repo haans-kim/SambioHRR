@@ -1,4 +1,4 @@
-# SambioHRR 빌드 가이드
+# SambioHRR Electron 빌드 가이드
 
 ## 전체 빌드 프로세스
 
@@ -354,11 +354,10 @@ git push origin v1.0.1
 
 ## 추가 문서
 
-- Electron Build Guide: `Electron Build Guide.md`
 - 프로젝트 개요: `CLAUDE.md`
 - Python 서버 README: `excel-upload-server/README.md`
 
 ---
 
-**마지막 업데이트**: 2025-10-26
+**마지막 업데이트**: 2025-10-27
 **빌드 환경**: Windows 10/11, Node.js 18+, Python 3.11+
