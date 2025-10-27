@@ -7,10 +7,9 @@ export const dynamic = 'force-dynamic';
 
 // Detect database path based on environment
 function getDbPath(): string {
-  // Check if running in Electron packaged mode
-  const productionDbPath = 'C:\\SambioHRData\\sambio_human.db';
-  if (existsSync(productionDbPath)) {
-    return productionDbPath;
+  // Check if DB_PATH is set in environment variable (from Electron)
+  if (process.env.DB_PATH && existsSync(process.env.DB_PATH)) {
+    return process.env.DB_PATH;
   }
 
   // Development mode

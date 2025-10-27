@@ -42,24 +42,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Database path - 패키징 모드 및 프로덕션 모드 지원
+# Database path - 환경 변수에서 가져오기
 import sys
 
-# 프로덕션 DB 경로 우선 확인 (Electron 패키징 환경)
-production_db_path = Path('C:/SambioHRData/sambio_human.db')
-dev_db_path = Path(__file__).parent.parent / "sambio_human.db"
+# 환경 변수에서 DB 경로 가져오기 (Electron에서 설정)
+db_path_from_env = os.environ.get('DB_PATH')
 
-if production_db_path.exists():
-    # 프로덕션 환경 - C:\SambioHRData에 DB가 있는 경우
-    DB_PATH = production_db_path
-    logger.info(f"Using production DB path: {DB_PATH}")
-elif getattr(sys, 'frozen', False):
-    # PyInstaller로 패키징된 경우 (프로덕션 DB가 없어도 프로덕션 경로 사용)
-    DB_PATH = production_db_path
-    logger.info(f"Using production DB path (frozen): {DB_PATH}")
+if db_path_from_env and Path(db_path_from_env).exists():
+    # Electron에서 환경 변수로 전달한 DB 경로 사용
+    DB_PATH = Path(db_path_from_env)
+    logger.info(f"Using DB path from environment variable: {DB_PATH}")
 else:
     # 개발 모드 - 상위 디렉토리의 sambio_human.db 참조
-    DB_PATH = dev_db_path
+    DB_PATH = Path(__file__).parent.parent / "sambio_human.db"
     logger.info(f"Using dev DB path: {DB_PATH}")
 
 logger.info(f"DB_PATH configured: {DB_PATH}, exists: {DB_PATH.exists()}")

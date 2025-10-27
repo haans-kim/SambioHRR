@@ -7,23 +7,27 @@ const isElectron = typeof process !== 'undefined' && process.versions && process
 // Next.js 빌드 타임 감지
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
 
-// 데이터베이스 파일 경로 - C:\SambioHRData 폴더 사용
-const DB_DIRECTORY = 'C:\\SambioHRData';
+// 데이터베이스 파일 경로 - 환경 변수 또는 기본 경로 사용
 let dbPath: string;
 
 console.log('[DB] Environment check:');
 console.log('[DB] process.env.NODE_ENV:', process.env.NODE_ENV);
 console.log('[DB] isElectron:', isElectron);
 console.log('[DB] isBuildTime:', isBuildTime);
+console.log('[DB] process.env.DB_PATH:', process.env.DB_PATH);
 
 if (isBuildTime) {
   // 빌드 타임: 프로젝트 폴더의 DB 사용
   dbPath = path.join(process.cwd(), 'sambio_human.db');
   console.log('[DB] Build time - using project folder DB:', dbPath);
+} else if (process.env.DB_PATH) {
+  // 런타임: Electron에서 환경 변수로 전달한 경로 사용
+  dbPath = process.env.DB_PATH;
+  console.log('[DB] Runtime - using DB_PATH from environment:', dbPath);
 } else {
-  // 런타임: 항상 C:\SambioHRData 사용
-  dbPath = path.join(DB_DIRECTORY, 'sambio_human.db');
-  console.log('[DB] Runtime - using fixed path:', dbPath);
+  // 개발 모드: 프로젝트 루트의 DB 사용
+  dbPath = path.join(process.cwd(), 'sambio_human.db');
+  console.log('[DB] Runtime - using project folder DB:', dbPath);
 }
 
 // 빌드 타임에는 더미 DB 사용 (실제 연결 없음)

@@ -10,6 +10,17 @@ const isDev = process.env.NODE_ENV === 'development';
 // Electron 메인 프로세스 로그 파일 설정
 let electronLogStream: fs.WriteStream | null = null;
 
+// 실행 디렉토리 가져오기 (exe 파일이 위치한 디렉토리)
+function getAppDataDir(): string {
+  if (app.isPackaged) {
+    // 패키징된 경우: exe 파일이 있는 디렉토리
+    return path.dirname(process.execPath);
+  } else {
+    // 개발 모드: 프로젝트 루트
+    return process.cwd();
+  }
+}
+
 // 로그 헬퍼 함수
 function log(message: string, ...args: any[]) {
   const timestamp = new Date().toISOString();
@@ -19,16 +30,13 @@ function log(message: string, ...args: any[]) {
   // 로그 스트림 초기화
   if (!electronLogStream) {
     try {
-      const electronLogPath = 'C:\\SambioHRData\\electron-main.log';
-      // 디렉토리 확인 및 생성
-      const logDir = path.dirname(electronLogPath);
-      if (!fs.existsSync(logDir)) {
-        fs.mkdirSync(logDir, { recursive: true });
-      }
+      const appDataDir = getAppDataDir();
+      const electronLogPath = path.join(appDataDir, 'electron-main.log');
       electronLogStream = fs.createWriteStream(electronLogPath, { flags: 'a' });
       electronLogStream.write(`\n========================================\n`);
       electronLogStream.write(`Electron Main Process Started\n`);
       electronLogStream.write(`Time: ${timestamp}\n`);
+      electronLogStream.write(`App Data Dir: ${appDataDir}\n`);
       electronLogStream.write(`========================================\n`);
     } catch (err) {
       console.error('Failed to create log file:', err);
@@ -152,9 +160,10 @@ function createWindow() {
 
     // If we get here, server never became ready
     log('✗ Server failed to become ready after 2 minutes');
+    const appDataDir = getAppDataDir();
     dialog.showErrorBox('Server Timeout',
       'Next.js server failed to start within 2 minutes.\n\n' +
-      'Please check C:\\SambioHRData\\nextjs-server.log for errors.');
+      `Please check ${path.join(appDataDir, 'nextjs-server.log')} for errors.`);
   }
 
   mainWindow.on('closed', () => {
@@ -166,13 +175,14 @@ function startNextServer() {
   try {
     log('=== Starting Next.js Dev Server ===');
 
-    // DB 경로 설정
-    const dbPath = 'C:\\SambioHRData\\sambio_human.db';
+    // DB 경로 설정 - 실행 디렉토리 기준
+    const appDataDir = getAppDataDir();
+    const dbPath = path.join(appDataDir, 'sambio_human.db');
     log('DB path:', dbPath);
     log('DB exists:', fs.existsSync(dbPath));
 
     if (!fs.existsSync(dbPath)) {
-      const errorMsg = `Database not found at: ${dbPath}`;
+      const errorMsg = `Database not found at: ${dbPath}\n\nPlease place sambio_human.db in the same directory as SambioHRR.exe`;
       log(errorMsg);
       dialog.showErrorBox('Database Error', errorMsg);
       return;
@@ -190,11 +200,11 @@ function startNextServer() {
     log('Next CLI:', nextCli);
     log('Next CLI exists:', fs.existsSync(nextCli));
 
-    nextServerProcess = spawn('node', [nextCli, 'dev', '--port', '3003'], {
+    nextServerProcess = spawn('node', [nextCli, 'start', '--port', '3003'], {
       cwd: appPath,
       env: {
         ...process.env,
-        NODE_ENV: 'development',
+        NODE_ENV: 'production',
         DB_PATH: dbPath,
       },
       shell: false,
@@ -219,17 +229,18 @@ function startNextServer() {
       log(`Next.js server exited with code ${code} and signal ${signal}`);
 
       if (code !== 0 && code !== null) {
+        const appDataDir = getAppDataDir();
         dialog.showErrorBox('Server Crashed',
           `Next.js server stopped unexpectedly.\n\nExit code: ${code}\nSignal: ${signal}\n\n` +
           `Common causes:\n` +
           `- Port 3003 is already in use\n` +
           `- Database connection failed\n\n` +
-          `Check log file: C:\\SambioHRData\\nextjs-server.log`);
+          `Check log file: ${path.join(appDataDir, 'nextjs-server.log')}`);
       }
     });
 
-    // 로그 파일 경로 - DB와 같은 위치에 저장
-    const logPath = 'C:\\SambioHRData\\nextjs-server.log';
+    // 로그 파일 경로 - 실행 디렉토리에 저장
+    const logPath = path.join(appDataDir, 'nextjs-server.log');
     const logStream = fs.createWriteStream(logPath, { flags: 'a' });
 
     log('Next.js server log file:', logPath);
@@ -328,11 +339,19 @@ function startExcelUploader() {
   try {
     log('Spawning Excel Uploader process...');
 
+    // DB 경로를 환경 변수로 전달
+    const appDataDir = getAppDataDir();
+    const dbPath = path.join(appDataDir, 'sambio_human.db');
+
     // 배치 스크립트 실행
     excelUploaderProcess = spawn('cmd.exe', ['/c', excelUploaderPath], {
       detached: false,
       stdio: ['ignore', 'pipe', 'pipe'],
       cwd: path.dirname(excelUploaderPath),
+      env: {
+        ...process.env,
+        DB_PATH: dbPath,
+      },
       windowsHide: false,
     });
 
