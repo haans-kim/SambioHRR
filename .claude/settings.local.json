@@ -106,7 +106,10 @@
       "Bash(powershell -Command \"Get-Content ''C:\\Project\\SambioHRR\\release\\win-unpacked\\electron-main.log'' | Select-Object -Last 150\")",
       "Bash(powershell:*)",
       "Bash(./SambioHRR.exe:*)",
-      "Bash(.SambioHRR.exe)"
+      "Bash(.SambioHRR.exe)",
+      "Bash(where:*)",
+      "Read(//d/SambioHRR/resources/app/**)",
+      "Read(//d/SambioHRR/resources/tools/**)"
     ],
     "deny": []
   }

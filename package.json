@@ -7,7 +7,7 @@
     "dev": "next dev --port 3003",
     "build": "next build",
     "build:electron": "cross-env ELECTRON_BUILD=true next build",
-    "start": "next start",
+    "start": "next start --port 4000",
     "lint": "next lint",
     "update-org-stats": "npx tsx scripts/update-organization-stats-with-ground-rules.ts",
     "electron:compile": "tsc -p electron/tsconfig.json",
@@ -95,13 +95,23 @@
       {
         "from": "excel-upload-server",
         "to": "tools/excel-uploader",
-        "filter": ["**/*", "!**/__pycache__", "!**/dist", "!**/build", "!**/*.pyc"]
+        "filter": [
+          "**/*",
+          "!**/__pycache__",
+          "!**/dist",
+          "!**/build",
+          "!**/*.pyc"
+        ]
+      },
+      {
+        "from": "C:/Program Files/nodejs/node.exe",
+        "to": "tools/node.exe"
       }
     ],
     "win": {
       "target": [
         {
-          "target": "portable",
+          "target": "dir",
           "arch": [
             "x64"
           ]
