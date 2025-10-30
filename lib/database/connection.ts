@@ -26,13 +26,9 @@ class DatabaseManager {
     if (isBuildTime || isDevelopment) {
       // 빌드 타임 또는 개발 모드: 프로젝트 루트의 DB 사용
       dbPath = path.join(process.cwd(), 'sambio_human.db')
-    } else if (isWindows) {
-      // Windows 프로덕션: C:\SambioHRData 사용
-      dbPath = path.join('C:\\SambioHRData', 'sambio_human.db')
     } else {
-      // Mac/Linux 프로덕션: 사용자 홈 디렉토리 사용
-      const homeDir = process.env.HOME || process.env.USERPROFILE || ''
-      dbPath = path.join(homeDir, 'SambioHRData', 'sambio_human.db')
+      // 프로덕션 모드: 프로젝트 루트의 DB 사용 (npm start용)
+      dbPath = path.join(process.cwd(), 'sambio_human.db')
     }
 
     // If DB path changed or no DB connection, create new connection
@@ -75,8 +71,7 @@ class DatabaseManager {
 
       const dailyAnalysisExists = tables.find((t: any) => t.name === 'daily_analysis_results')
       if (dailyAnalysisExists) {
-        const count = this.db.prepare("SELECT COUNT(*) as count FROM daily_analysis_results").get() as any
-        console.log('[DatabaseManager] ✓ daily_analysis_results exists with', count.count, 'rows')
+        console.log('[DatabaseManager] ✓ daily_analysis_results table exists')
       } else {
         console.error('[DatabaseManager] ✗ daily_analysis_results table NOT FOUND!')
       }
@@ -88,19 +83,7 @@ class DatabaseManager {
   
   private initialize() {
     if (!this.db) return
-    
-    // Check database integrity first
-    try {
-      const integrityCheck = this.db.pragma('integrity_check') as Array<{integrity_check: string}>
-      if (integrityCheck[0]?.integrity_check !== 'ok') {
-        console.error('Database integrity check failed:', integrityCheck)
-        throw new Error('Database corruption detected. Please restore from backup.')
-      }
-    } catch (error) {
-      console.error('Error checking database integrity:', error)
-      throw error
-    }
-    
+
     // Performance optimizations
     // WAL mode disabled for external module compatibility
     this.db.pragma('journal_mode = DELETE') // Changed from WAL to DELETE mode

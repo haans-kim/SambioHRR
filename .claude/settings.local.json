@@ -112,7 +112,10 @@
       "Read(//d/SambioHRR/resources/tools/**)",
       "Bash(npm rebuild:*)",
       "Bash(npm run build:electron:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(xcopy:*)",
+      "Bash(xcopy /Y package.json \"D:\\SambioHRR\"\" && xcopy /Y next.config.ts \"D:SambioHRR\"\")",
+      "Bash(robocopy:*)"
     ],
     "deny": []
   }
