@@ -16,11 +16,24 @@ class DatabaseManager {
   }
 
   getDb(): Database.Database {
-    // 빌드 타임에는 프로젝트 DB, 런타임에는 C:\SambioHRData 사용
+    // DB 경로 결정 로직
     const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
-    const dbPath = isBuildTime
-      ? path.join(process.cwd(), 'sambio_human.db')
-      : path.join('C:\\SambioHRData', 'sambio_human.db')
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    const isWindows = process.platform === 'win32'
+
+    let dbPath: string
+
+    if (isBuildTime || isDevelopment) {
+      // 빌드 타임 또는 개발 모드: 프로젝트 루트의 DB 사용
+      dbPath = path.join(process.cwd(), 'sambio_human.db')
+    } else if (isWindows) {
+      // Windows 프로덕션: C:\SambioHRData 사용
+      dbPath = path.join('C:\\SambioHRData', 'sambio_human.db')
+    } else {
+      // Mac/Linux 프로덕션: 사용자 홈 디렉토리 사용
+      const homeDir = process.env.HOME || process.env.USERPROFILE || ''
+      dbPath = path.join(homeDir, 'SambioHRData', 'sambio_human.db')
+    }
 
     // If DB path changed or no DB connection, create new connection
     if (!this.db || this.currentDbPath !== dbPath) {
@@ -33,6 +46,8 @@ class DatabaseManager {
 
       this.currentDbPath = dbPath
       console.log('[DatabaseManager] ===== DATABASE INITIALIZATION =====')
+      console.log('[DatabaseManager] Environment:', isDevelopment ? 'development' : 'production')
+      console.log('[DatabaseManager] Platform:', process.platform)
       console.log('[DatabaseManager] isBuildTime:', isBuildTime)
       console.log('[DatabaseManager] process.cwd():', process.cwd())
       console.log('[DatabaseManager] Using DB path:', dbPath)
