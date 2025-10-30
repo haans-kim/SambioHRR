@@ -23,7 +23,10 @@ class DatabaseManager {
 
     let dbPath: string
 
-    if (isBuildTime || isDevelopment) {
+    // 1순위: 환경변수로 전달된 경로 (Electron용)
+    if (process.env.DB_PATH) {
+      dbPath = process.env.DB_PATH
+    } else if (isBuildTime || isDevelopment) {
       // 빌드 타임 또는 개발 모드: 프로젝트 루트의 DB 사용
       dbPath = path.join(process.cwd(), 'sambio_human.db')
     } else {
