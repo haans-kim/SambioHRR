@@ -109,7 +109,10 @@
       "Bash(.SambioHRR.exe)",
       "Bash(where:*)",
       "Read(//d/SambioHRR/resources/app/**)",
-      "Read(//d/SambioHRR/resources/tools/**)"
+      "Read(//d/SambioHRR/resources/tools/**)",
+      "Bash(npm rebuild:*)",
+      "Bash(npm run build:electron:*)",
+      "Bash(tee:*)"
     ],
     "deny": []
   }

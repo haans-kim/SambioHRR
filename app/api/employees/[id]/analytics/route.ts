@@ -7,6 +7,7 @@ import { EnhancedWorkHourCalculator } from '@/lib/analytics/EnhancedWorkHourCalc
 import { JobGroupClassifier } from '@/lib/classifier/JobGroupClassifier'
 import type { TimelineEntry, WorkMetrics } from '@/types/analytics'
 import path from 'path'
+import fs from 'fs'
 
 export async function GET(
   request: Request,
@@ -32,8 +33,14 @@ export async function GET(
     try {
       if (useGroundRules) {
         const analyticsDbPath = path.join(process.cwd(), 'sambio_analytics.db')
-        enhancedCalculator = new EnhancedWorkHourCalculator(analyticsDbPath)
-        console.log('🎯 Ground Rules enabled for individual analysis')
+        // Check if analytics DB exists before initializing
+        if (fs.existsSync(analyticsDbPath)) {
+          enhancedCalculator = new EnhancedWorkHourCalculator(analyticsDbPath)
+          console.log('🎯 Ground Rules enabled for individual analysis')
+        } else {
+          console.warn('⚠️ Analytics DB not found, using traditional calculator')
+          enhancedCalculator = null
+        }
       }
     } catch (error) {
       console.error('Failed to initialize Enhanced Calculator:', error)

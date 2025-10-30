@@ -1,20 +1,212 @@
 
-> hr-dashboard@0.1.0 electron:build:win
-> npm run electron:compile && electron-builder --win --x64
+> hr-dashboard@0.1.0 build:electron
+> cross-env ELECTRON_BUILD=true next build
+
+   ▲ Next.js 15.4.6
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 20.0s
+   Linting and checking validity of types ...
+   Collecting page data ...
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+Using in-memory database for build time
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+Using in-memory database for build time
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+Using in-memory database for build time
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+Using in-memory database for build time
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+Using in-memory database for build time
+[DatabaseManager] ===== DATABASE INITIALIZATION =====
+[DatabaseManager] Environment: production
+[DatabaseManager] Platform: win32
+[DatabaseManager] isBuildTime: true
+[DatabaseManager] process.cwd(): c:\Project\SambioHRR
+[DatabaseManager] Using DB path: c:\Project\SambioHRR\sambio_human.db
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+[DatabaseManager] DB file size: 7.15 GB
+[DatabaseManager] ===== DATABASE INITIALIZATION =====
+[DatabaseManager] Environment: production
+[DatabaseManager] Platform: win32
+[DatabaseManager] isBuildTime: true
+[DatabaseManager] process.cwd(): c:\Project\SambioHRR
+[DatabaseManager] Using DB path: c:\Project\SambioHRR\sambio_human.db
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+[DatabaseManager] DB file size: 7.15 GB
+Using in-memory database for build time
+Using in-memory database for build time
+Using in-memory database for build time
+Using in-memory database for build time
+Using in-memory database for build time
+Using in-memory database for build time
+Using in-memory database for build time
+Using in-memory database for build time
+[DatabaseManager] Tables found: 68
+[DatabaseManager] Tables found: 68
+[DatabaseManager] First 10 tables: abc_activity_data, abc_data, activity_states, attendance_data, batch_error_logs, batch_job_checkpoints, batch_job_details, batch_jobs, claim_data, claim_data_backup
+[DatabaseManager] First 10 tables: abc_activity_data, abc_data, activity_states, attendance_data, batch_error_logs, batch_job_checkpoints, batch_job_details, batch_jobs, claim_data, claim_data_backup
+[DatabaseManager] ✓ daily_analysis_results exists with 613918 rows
+[DatabaseManager] ✓ daily_analysis_results exists with 613918 rows
+   Generating static pages (0/34) ...
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+Using in-memory database for build time
+[DB] Environment check:
+[DB] process.env.NODE_ENV: production
+[DB] isElectron: undefined
+[DB] isBuildTime: true
+[DB] process.env.DB_PATH: undefined
+[DB] Build time - using project folder DB: c:\Project\SambioHRR\sambio_human.db
+Using in-memory database for build time
+   Generating static pages (8/34) 
+   Generating static pages (16/34) 
+   Generating static pages (25/34) 
+ ✓ Generating static pages (34/34)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                  Size  First Load JS
+┌ ƒ /                                                      8.6 kB         163 kB
+├ ƒ /_not-found                                             999 B         101 kB
+├ ƒ /api/admin/recalculate-stats                            252 B         100 kB
+├ ƒ /api/admin/sync-organization                            252 B         100 kB
+├ ƒ /api/analysis/available-dates                           252 B         100 kB
+├ ƒ /api/dashboard                                          252 B         100 kB
+├ ƒ /api/dashboard-fast                                     252 B         100 kB
+├ ƒ /api/dashboard/ground-rules-stats                       252 B         100 kB
+├ ƒ /api/data-stats                                         252 B         100 kB
+├ ƒ /api/employee/[id]                                      252 B         100 kB
+├ ƒ /api/employees/[id]                                     252 B         100 kB
+├ ƒ /api/employees/[id]/analytics                           252 B         100 kB
+├ ƒ /api/employees/[id]/timeline                            252 B         100 kB
+├ ƒ /api/group-detail/[id]                                  252 B         100 kB
+├ ƒ /api/group-stats-fast/[id]                              252 B         100 kB
+├ ƒ /api/group-stats/[id]                                   252 B         100 kB
+├ ƒ /api/groups                                             252 B         100 kB
+├ ƒ /api/insights                                           252 B         100 kB
+├ ƒ /api/insights/ground-rules-recommendations              252 B         100 kB
+├ ƒ /api/insights/pattern-analysis                          252 B         100 kB
+├ ƒ /api/insights/salary-worktime                           252 B         100 kB
+├ ƒ /api/insights/salary-worktime/debug                     252 B         100 kB
+├ ƒ /api/metrics/realtime                                   252 B         100 kB
+├ ƒ /api/organization/[orgCode]/employees                   252 B         100 kB
+├ ƒ /api/organization/batch-analysis                        252 B         100 kB
+├ ƒ /api/organization/batch-analysis-enhanced               252 B         100 kB
+├ ƒ /api/organization/batch-analysis-stream                 252 B         100 kB
+├ ƒ /api/organization/centers                               252 B         100 kB
+├ ƒ /api/organization/centers/[centerCode]/divisions        252 B         100 kB
+├ ƒ /api/organization/centers/[centerCode]/teams            252 B         100 kB
+├ ƒ /api/organization/check-existing-analysis               252 B         100 kB
+├ ƒ /api/organization/departments                           252 B         100 kB
+├ ƒ /api/organization/departments/[department]/employees    252 B         100 kB
+├ ƒ /api/organization/divisions/[divisionCode]/teams        252 B         100 kB
+├ ƒ /api/organization/export-excel                          252 B         100 kB
+├ ƒ /api/organization/extract-all-employees                 252 B         100 kB
+├ ƒ /api/organization/extract-employees                     252 B         100 kB
+├ ƒ /api/organization/extract-employees-all                 252 B         100 kB
+├ ƒ /api/organization/extract-employees-with-work-hours     252 B         100 kB
+├ ƒ /api/organization/ground-rules-stats                    252 B         100 kB
+├ ƒ /api/organization/ground-rules-worker-analysis          252 B         100 kB
+├ ƒ /api/organization/latest-data-month                     252 B         100 kB
+├ ƒ /api/organization/migrate-master                        252 B         100 kB
+├ ƒ /api/organization/teams/[teamCode]/groups               252 B         100 kB
+├ ƒ /api/statistics                                         252 B         100 kB
+├ ƒ /api/streamlit-server                                   252 B         100 kB
+├ ƒ /api/teams                                              252 B         100 kB
+├ ƒ /api/teams/distribution                                 252 B         100 kB
+├ ƒ /api/trends                                             252 B         100 kB
+├ ƒ /api/upload-server/control                              252 B         100 kB
+├ ƒ /api/upload/[...proxy]                                  252 B         100 kB
+├ ƒ /data-upload                                          5.24 kB         113 kB
+├ ƒ /division                                             3.29 kB         154 kB
+├ ƒ /enterprise                                           7.41 kB         119 kB
+├ ƒ /groups                                               4.34 kB         159 kB
+├ ƒ /individual                                           54.4 kB         175 kB
+├ ƒ /insight2                                              108 kB         219 kB
+├ ƒ /organization                                         5.23 kB         113 kB
+├ ƒ /teams                                                4.77 kB         159 kB
+└ ƒ /trends                                               3.63 kB         111 kB
++ First Load JS shared by all                              100 kB
+  ├ chunks/4bd1b696-cc729d47eba2cee4.js                   54.1 kB
+  ├ chunks/5964-6d6a41800488ba64.js                       43.9 kB
+  └ other shared chunks (total)                           2.01 kB
 
 
-> hr-dashboard@0.1.0 electron:compile
-> tsc -p electron/tsconfig.json
+ƒ  (Dynamic)  server-rendered on demand
 
-  • electron-builder  version=26.0.12 os=10.0.26200
-  • loaded configuration  file=package.json ("build" field)
-  • description is missed in the package.json  appPackageFile=c:\Projects\SambioHRR\package.json
-  • author is missed in the package.json  appPackageFile=c:\Projects\SambioHRR\package.json
-  • @electron/rebuild already used by electron-builder, please consider to remove excess dependency from devDependencies
-
-To ensure your native dependencies are always matched electron version, simply add script `"postinstall": "electron-builder install-app-deps" to your `package.json`
-  • skipped dependencies rebuild  reason=npmRebuild is set to false
-  • packaging       platform=win32 arch=x64 electron=38.4.0 appOutDir=release\win-unpacked
-  • map async       taskCount=2
-  • map async       taskCount=1
-  • map async       taskCount=75
