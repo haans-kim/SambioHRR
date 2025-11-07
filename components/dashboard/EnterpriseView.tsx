@@ -222,15 +222,16 @@ export default function EnterpriseView() {
                   const minCV = Math.min(...data.map(t => t.cv_percentage));
                   const maxCV = Math.max(...data.map(t => t.cv_percentage));
 
-                  // 축 범위 설정 - X축은 27-42h로 고정, Y축은 동적
-                  const xMin = 27;
-                  const xMax = 42;
+                  // 축 범위 설정 - X축은 데이터 범위에 맞춰 동적 조정 (API 필터링으로 20-60h 보장)
+                  const xMin = Math.max(20, Math.floor(minHours - 2));
+                  const xMax = Math.min(60, Math.ceil(maxHours + 2));
                   const yMin = Math.floor(Math.min(10, minCV - 2));
                   const yMax = Math.ceil(Math.max(30, maxCV + 2));
                   
-                  // X축 눈금 생성 (3시간 간격으로 고정: 27, 30, 33, 36, 39, 42)
+                  // X축 눈금 생성 (3시간 간격)
                   const xTicks = [];
-                  for (let i = xMin; i <= xMax; i += 3) {
+                  const xStart = Math.ceil(xMin / 3) * 3; // 3의 배수로 시작
+                  for (let i = xStart; i <= xMax; i += 3) {
                     xTicks.push(i);
                   }
 

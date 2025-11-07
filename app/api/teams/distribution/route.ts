@@ -12,10 +12,12 @@ export async function GET(request: NextRequest) {
     const formattedTeams = teams
       .filter((team: any) => {
         // 유효한 데이터만 필터링
-        return team.headcount > 0 && 
-               team.avg_work_hours > 0 && 
+        return team.headcount > 0 &&
+               team.avg_work_hours > 0 &&
                team.efficiency_rate > 0 &&
-               team.efficiency_rate <= 100; // 100% 초과 데이터 제외
+               team.efficiency_rate <= 100 && // 100% 초과 데이터 제외
+               team.avg_weekly_adjusted_hours >= 20 && // 주 20시간 미만 제외 (비정상 데이터)
+               team.avg_weekly_adjusted_hours <= 60; // 주 60시간 초과 제외
       })
       .map((team: any) => ({
         team_id: team.team_id,
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest) {
         center_name: team.center_name,
         headcount: team.headcount,
         avg_work_hours: Math.min(team.avg_work_hours, 12), // 최대 12시간으로 제한
-        avg_weekly_adjusted_hours: Math.min(team.avg_weekly_adjusted_hours, 60), // 최대 60시간으로 제한
+        avg_weekly_adjusted_hours: team.avg_weekly_adjusted_hours, // 필터링으로 범위 보장
         efficiency_rate: Math.min(team.efficiency_rate, 100), // 최대 100%로 제한
         std_dev_hours: team.std_dev_hours,
         cv_percentage: team.cv_percentage,
