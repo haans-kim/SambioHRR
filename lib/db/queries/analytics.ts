@@ -156,11 +156,12 @@ export function getMonthDateRange(monthString?: string): { startDate: string, en
 }
 
 // 사용 가능한 월 목록을 가져오는 함수
+// monthly_grade_stats 테이블 사용 (claim_data 기반이므로 더 최신 데이터 포함)
 export function getAvailableMonths(): string[] {
   const stmt = db.prepare(`
-    SELECT DISTINCT strftime('%Y-%m', analysis_date) as month
-    FROM daily_analysis_results
-    WHERE analysis_date IS NOT NULL
+    SELECT DISTINCT month
+    FROM monthly_grade_stats
+    WHERE month IS NOT NULL
     ORDER BY month ASC
   `);
   const result = stmt.all() as { month: string }[];
@@ -171,15 +172,15 @@ export function getAvailableMonths(): string[] {
 // Get latest available month
 export function getLatestMonth(): string {
   const stmt = db.prepare(`
-    SELECT DISTINCT strftime('%Y-%m', analysis_date) as month
-    FROM daily_analysis_results
-    WHERE analysis_date IS NOT NULL
+    SELECT DISTINCT month
+    FROM monthly_grade_stats
+    WHERE month IS NOT NULL
     ORDER BY month DESC
     LIMIT 1
   `);
   const result = stmt.get() as { month: string } | undefined;
 
-  return result?.month || '2025-06'; // fallback to 2025-06 if no data
+  return result?.month || '2025-10'; // fallback to 2025-10 if no data
 }
 
 // Get center-level summary
