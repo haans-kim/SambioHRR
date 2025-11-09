@@ -456,29 +456,54 @@ class DataTransformers:
 
     @staticmethod
     def transform_meal_data(df: pd.DataFrame) -> pd.DataFrame:
-        """Transform meal_data Excel to DB format"""
+        """Transform meal_data Excel to DB format
+
+        Excel columns (30 total):
+        NO, 취식일시, 정산일, 식당명, 배식구, 식사가격, 카드번호, 수동입력여부,
+        회사코드, 회사, 사원증종류, 카드구분, 기기번호, 사번, Knox ID, 생년월일,
+        Domain ID, 성명, 사원구분, 사업장 코드, 사업장, 부서, 직책, 식단,
+        테이크아웃, 처리일시, 식사대분류, 식사구분명, 취식이벤트, 취식번호
+
+        These columns match the DB schema exactly, so no column mapping is needed.
+        Just ensure correct data types for timestamp and numeric columns.
+        """
         logger.info("Transforming meal_data...")
 
-        column_map = {
-            '취식일시': '취식일시',
-            '사번': '사번',
-            '이름': '이름',
-            '식사구분': '식사구분',
-            '배식구': '배식구',
-            '테이크아웃': '테이크아웃'
-        }
+        # No column renaming needed - Excel columns match DB schema exactly
 
-        df = df.rename(columns=column_map)
+        # Convert timestamp columns to proper format (YYYY-MM-DD HH:MM:SS)
+        for time_col in ['취식일시', '처리일시']:
+            if time_col in df.columns:
+                df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
+                df[time_col] = df[time_col].apply(
+                    lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(x) else None
+                )
 
-        # Convert timestamp
-        if '취식일시' in df.columns:
-            df['취식일시'] = pd.to_datetime(df['취식일시'], errors='coerce')
-            df['취식일시'] = df['취식일시'].apply(
-                lambda x: int(x.strftime('%Y%m%d%H%M%S')) if pd.notna(x) else None
+        # Convert date column (정산일)
+        if '정산일' in df.columns:
+            df['정산일'] = pd.to_datetime(df['정산일'], errors='coerce')
+            df['정산일'] = df['정산일'].apply(
+                lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else None
             )
 
+        # Convert numeric columns
         if '사번' in df.columns:
             df['사번'] = pd.to_numeric(df['사번'], errors='coerce')
+
+        if 'NO' in df.columns:
+            df['NO'] = pd.to_numeric(df['NO'], errors='coerce')
+
+        if '식사가격' in df.columns:
+            df['식사가격'] = pd.to_numeric(df['식사가격'], errors='coerce')
+
+        if '카드번호' in df.columns:
+            df['카드번호'] = pd.to_numeric(df['카드번호'], errors='coerce')
+
+        if 'Domain ID' in df.columns:
+            df['Domain ID'] = pd.to_numeric(df['Domain ID'], errors='coerce')
+
+        if '취식번호' in df.columns:
+            df['취식번호'] = pd.to_numeric(df['취식번호'], errors='coerce')
 
         logger.info(f"meal_data transformation complete: {len(df):,} rows")
         return df
