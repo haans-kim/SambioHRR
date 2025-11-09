@@ -96,28 +96,98 @@ class DataTransformers:
         if '사번' in df.columns:
             df['사번'] = pd.to_numeric(df['사번'], errors='coerce')
 
-        # Convert 근무시간 from "HH:MM" format to decimal hours
+        # Convert 근무시간 from minutes or "HH:MM" format to decimal hours
         if '근무시간' in df.columns:
-            def time_to_hours(time_str):
-                """Convert 'HH:MM' or 'HH:MM:SS' to decimal hours"""
-                if pd.isna(time_str):
+            def time_to_hours(time_val):
+                """
+                Convert various time formats to decimal hours:
+                - 숫자 (int/float): 분(minutes) 단위로 간주 (예: 480 → 8.0 hours)
+                - "HH:MM" 문자열: 시:분 형식 (예: "8:30" → 8.5 hours)
+                """
+                if pd.isna(time_val):
                     return None
 
-                time_str = str(time_str).strip()
-                if time_str == '' or time_str == '00:00':
-                    return 0.0
+                # ✅ 숫자 형식 → 분(minutes) 단위로 간주
+                if isinstance(time_val, (int, float)):
+                    try:
+                        minutes = float(time_val)
+                        if minutes == 0:
+                            return None
+                        return minutes / 60.0  # 분을 시간으로 변환
+                    except:
+                        return None
+
+                # 문자열 형식 (HH:MM)
+                time_str = str(time_val).strip()
+                if time_str == '' or time_str == '00:00' or time_str == 'nan':
+                    return None
 
                 try:
-                    parts = time_str.split(':')
-                    if len(parts) >= 2:
-                        hours = int(parts[0])
-                        minutes = int(parts[1])
-                        return hours + (minutes / 60.0)
-                    return 0.0
+                    # HH:MM 형식
+                    if ':' in time_str:
+                        parts = time_str.split(':')
+                        if len(parts) >= 2:
+                            hours = int(parts[0])
+                            minutes = int(parts[1])
+                            return hours + (minutes / 60.0)
+
+                    # 숫자만 있는 문자열 → 분 단위로 간주
+                    if time_str.replace('.', '', 1).isdigit():
+                        minutes = float(time_str)
+                        return minutes / 60.0
+
+                    return None
                 except:
                     return None
 
             df['근무시간'] = df['근무시간'].apply(time_to_hours)
+
+            # ✅ 근무시간이 비어있으면 시작/종료 시간으로 계산
+            if '시작' in df.columns and '종료' in df.columns:
+                def calculate_work_hours(row):
+                    """시작/종료 시간으로부터 근무시간 계산"""
+                    # 근무시간이 이미 있으면 사용
+                    if pd.notna(row['근무시간']) and row['근무시간'] > 0:
+                        return row['근무시간']
+
+                    # 시작/종료가 없으면 None
+                    if pd.isna(row['시작']) or pd.isna(row['종료']):
+                        return None
+
+                    try:
+                        start = int(row['시작'])
+                        end = int(row['종료'])
+
+                        # 숫자 형식: 808 → 08:08, 1453 → 14:53
+                        start_hour = start // 100
+                        start_min = start % 100
+                        end_hour = end // 100
+                        end_min = end % 100
+
+                        start_total_mins = start_hour * 60 + start_min
+                        end_total_mins = end_hour * 60 + end_min
+
+                        # 자정 넘김 처리
+                        if end_total_mins < start_total_mins:
+                            end_total_mins += 24 * 60
+
+                        work_mins = end_total_mins - start_total_mins
+                        work_hours = work_mins / 60.0
+
+                        # 제외시간 차감 (분 단위 → 시간으로 변환)
+                        if '제외시간' in row and pd.notna(row['제외시간']):
+                            exclude_mins = float(row['제외시간'])
+                            work_hours -= (exclude_mins / 60.0)
+
+                        return max(0, work_hours)
+                    except:
+                        return None
+
+                # 근무시간 계산 적용
+                calculated_count = df['근무시간'].isna().sum()
+                if calculated_count > 0:
+                    df['근무시간'] = df.apply(calculate_work_hours, axis=1)
+                    logger.info(f"시작/종료 시간으로 근무시간 계산: {calculated_count:,}건")
 
         # ✅ FIX: 실제근무시간이 없으면 근무시간으로 채우기
         if '근무시간' in df.columns:
@@ -242,8 +312,9 @@ class DataTransformers:
                     lambda x: str(x).replace(':', '') if pd.notna(x) and str(x) != '' else None
                 )
 
-        # ✅ FIX: Set employee_level from Excel 직급 column using grade_level_mapping
-        if '직급' in df.columns:
+        # ✅ ENHANCEMENT: organization_data에서 조직 정보 자동 채우기
+        # 신규 데이터에 조직 정보가 비어있는 경우, 사번으로 조직 마스터에서 가져오기
+        if '사번' in df.columns:
             try:
                 import sqlite3
                 from pathlib import Path
@@ -253,49 +324,106 @@ class DataTransformers:
                 if db_path.exists():
                     conn = sqlite3.connect(str(db_path))
 
-                    # grade_level_mapping 테이블에서 직급명 → employee_level 매핑 가져오기
-                    # Lv.% 와 Special 모두 포함 (트렌드 분석은 API에서 필터링)
-                    grade_mapping_df = pd.read_sql_query(
+                    # organization_data에서 조직 정보 가져오기
+                    org_df = pd.read_sql_query(
                         """
                         SELECT
-                            grade_name,
-                            level as employee_level
-                        FROM grade_level_mapping
+                            사번,
+                            성명 as 조직_성명,
+                            직급명 as 조직_직급,
+                            센터 as 조직_센터,
+                            BU as 조직_담당,
+                            팀 as 조직_팀,
+                            그룹 as 조직_그룹,
+                            부서명 as 조직_부서
+                        FROM organization_data
+                        WHERE 재직상태 = '재직'
                         """,
                         conn
                     )
+
+                    # 사번을 문자열로 통일 (타입 불일치 방지)
+                    df['사번'] = df['사번'].astype(str)
+                    org_df['사번'] = org_df['사번'].astype(str)
+
+                    # 조직 정보와 JOIN (left join으로 매칭되지 않는 직원도 유지)
+                    df = df.merge(org_df, on='사번', how='left')
+
+                    # 비어있는 필드만 조직 정보로 채우기
+                    if '성명' in df.columns and '조직_성명' in df.columns:
+                        df['성명'] = df['성명'].fillna(df['조직_성명'])
+                        df = df.drop(columns=['조직_성명'])
+
+                    if '직급' in df.columns and '조직_직급' in df.columns:
+                        df['직급'] = df['직급'].fillna(df['조직_직급'])
+                        df = df.drop(columns=['조직_직급'])
+
+                    # 부서 정보 채우기 (claim_data의 '부서' 컬럼)
+                    if '부서' in df.columns and '조직_부서' in df.columns:
+                        empty_count = df['부서'].isna().sum()
+                        if empty_count > 0:
+                            df['부서'] = df['부서'].fillna(df['조직_부서'])
+                            logger.info(f"조직 정보에서 부서 채움: {empty_count:,}건")
+                        df = df.drop(columns=['조직_부서'])
+
+                    # 센터, 담당, 팀, 그룹 정보도 추가 (claim_data에는 원래 없지만 유용할 수 있음)
+                    # 하지만 claim_data 스키마에 없으므로 제거
+                    for col in ['조직_센터', '조직_담당', '조직_팀', '조직_그룹']:
+                        if col in df.columns:
+                            df = df.drop(columns=[col])
+
+                    matched_count = len(df)
+                    logger.info(f"organization_data에서 조직 정보 매칭 완료: {matched_count:,}건")
+
+                    # ✅ FIX: Set employee_level from 직급 column using grade_level_mapping
+                    # 타입 불일치 방지: 양쪽 컬럼을 문자열로 변환
+                    if '직급' in df.columns:
+                        grade_mapping_df = pd.read_sql_query(
+                            """
+                            SELECT
+                                grade_name,
+                                level as employee_level
+                            FROM grade_level_mapping
+                            """,
+                            conn
+                        )
+
+                        # 타입을 문자열로 통일
+                        df['직급'] = df['직급'].astype(str)
+                        grade_mapping_df['grade_name'] = grade_mapping_df['grade_name'].astype(str)
+
+                        # JOIN
+                        df = df.merge(
+                            grade_mapping_df,
+                            left_on='직급',
+                            right_on='grade_name',
+                            how='left'
+                        )
+
+                        # grade_name 컬럼 제거
+                        if 'grade_name' in df.columns:
+                            df = df.drop(columns=['grade_name'])
+
+                        level_count = df['employee_level'].notna().sum()
+                        total_rows = len(df)
+                        coverage_pct = (level_count / total_rows * 100) if total_rows > 0 else 0
+
+                        logger.info(f"직급에서 employee_level 설정 완료: {level_count:,}/{total_rows:,}행 ({coverage_pct:.1f}%)")
+
+                        if level_count < total_rows:
+                            unmapped_grades = df[df['employee_level'].isna()]['직급'].unique()
+                            if len(unmapped_grades) > 0 and len(unmapped_grades) <= 10:
+                                logger.warning(f"매핑되지 않은 직급: {', '.join(map(str, unmapped_grades))}")
+
                     conn.close()
 
-                    # Excel의 직급 컬럼과 매핑 테이블 JOIN
-                    df = df.merge(
-                        grade_mapping_df,
-                        left_on='직급',
-                        right_on='grade_name',
-                        how='left'
-                    )
-
-                    # grade_name 컬럼 제거 (불필요)
-                    if 'grade_name' in df.columns:
-                        df = df.drop(columns=['grade_name'])
-
-                    level_count = df['employee_level'].notna().sum()
-                    total_rows = len(df)
-                    coverage_pct = (level_count / total_rows * 100) if total_rows > 0 else 0
-
-                    logger.info(f"Excel 직급 컬럼에서 employee_level 설정 완료: {level_count:,}/{total_rows:,}행 ({coverage_pct:.1f}%)")
-
-                    # 매칭되지 않은 직급 확인 (로그용)
-                    if level_count < total_rows:
-                        unmapped_grades = df[df['employee_level'].isna()]['직급'].unique()
-                        if len(unmapped_grades) > 0:
-                            logger.warning(f"매핑되지 않은 직급 ({len(unmapped_grades)}개): {', '.join(map(str, unmapped_grades[:10]))}")
                 else:
-                    logger.warning("DB 파일 없음 - employee_level 설정 생략")
+                    logger.warning("DB 파일 없음 - 조직 정보 자동 채우기 생략")
 
             except Exception as e:
-                logger.warning(f"employee_level 설정 실패: {e}")
-        else:
-            logger.warning("Excel에 '직급' 컬럼 없음 - employee_level 설정 생략")
+                logger.warning(f"조직 정보 자동 채우기 실패: {e}")
+                import traceback
+                logger.warning(traceback.format_exc())
 
         logger.info(f"claim_data transformation complete: {len(df):,} rows")
         return df
