@@ -117,7 +117,7 @@ export default function GroupsPage() {
       breadcrumb={data.breadcrumb}
       selectedMonth={selectedMonth}
       onMonthChange={handleMonthChange}
-      availableMonths={['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', '2025-07']}
+      availableMonths={['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', '2025-07', '2025-08', '2025-09', '2025-10']}
       analysisMode={analysisMode}
       availableMetrics={availableMetrics}
       dataQuality={dataQuality}
