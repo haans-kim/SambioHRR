@@ -32,7 +32,7 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
       is_active as isActive,
       (SELECT COUNT(*) FROM organization_master WHERE parent_org_code = o.org_code) as childrenCount
     FROM organization_master o
-    WHERE o.org_level = ? AND o.is_active = 1
+    WHERE o.org_level = ? AND o.is_active = 1 AND o.display_order = 0
       AND o.org_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     ORDER BY
       CASE
@@ -554,7 +554,7 @@ export function getOrganizationsWithStatsForPeriod(level: OrgLevel, startDate: s
       is_active as isActive,
       (SELECT COUNT(*) FROM organization_master WHERE parent_org_code = o.org_code) as childrenCount
     FROM organization_master o
-    WHERE o.org_level = ? AND o.is_active = 1
+    WHERE o.org_level = ? AND o.is_active = 1 AND o.display_order = 0
       AND o.org_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
     ORDER BY
       CASE
