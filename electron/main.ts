@@ -118,7 +118,7 @@ function createWindow() {
         log(`Checking server readiness... attempt ${attempt}/${maxAttempts}`);
 
         // Try to fetch from the server
-        const response = await fetch('http://localhost:4000', {
+        const response = await fetch('http://localhost:3003', {
           method: 'HEAD',
           signal: AbortSignal.timeout(5000) // 5 second timeout per request
         });
@@ -132,8 +132,8 @@ function createWindow() {
               throw new Error('Main window is null');
             }
 
-            log('Loading URL: http://localhost:4000');
-            await mainWindow.loadURL('http://localhost:4000');
+            log('Loading URL: http://localhost:3003');
+            await mainWindow.loadURL('http://localhost:3003');
 
             log('✓ URL loaded successfully');
             log('Current URL:', mainWindow.webContents.getURL());
@@ -200,20 +200,7 @@ function startNextServer() {
     log('Next CLI:', nextCli);
     log('Next CLI exists:', fs.existsSync(nextCli));
 
-    // Node.js 경로 찾기
-    let nodePath: string;
-    if (app.isPackaged) {
-      // 패키징된 경우: 번들된 node.exe 사용
-      nodePath = path.join(process.resourcesPath, 'tools', 'node.exe');
-      log('Using bundled Node.js:', nodePath);
-      log('Bundled Node.js exists:', fs.existsSync(nodePath));
-    } else {
-      // 개발 모드: 시스템 node 사용
-      nodePath = 'node';
-      log('Using system Node.js');
-    }
-
-    nextServerProcess = spawn(nodePath, [nextCli, 'start', '--port', '4000'], {
+    nextServerProcess = spawn('node', [nextCli, 'start', '--port', '3003'], {
       cwd: appPath,
       env: {
         ...process.env,
@@ -272,10 +259,10 @@ function startNextServer() {
       // 포트 충돌 감지
       if (msg.includes('EADDRINUSE') || msg.includes('address already in use') || msg.includes('port') && msg.includes('already')) {
         dialog.showErrorBox('Port Conflict',
-          `Port 4000 is already in use!\n\n` +
-          `Please close any other applications using port 4000.\n\n` +
+          `Port 3003 is already in use!\n\n` +
+          `Please close any other applications using port 3003.\n\n` +
           `You can find which program is using it by running:\n` +
-          `netstat -ano | findstr ":4000"`);
+          `netstat -ano | findstr ":3003"`);
       }
 
       // 데이터베이스 에러 감지
