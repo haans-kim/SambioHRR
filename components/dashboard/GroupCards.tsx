@@ -269,8 +269,8 @@ export function GroupCards({
   };
   
   const handleGroupClick = (groupCode: string, groupName: string) => {
-    // Navigate to group statistics page using group name
-    router.push(`/group/${encodeURIComponent(groupName)}`);
+    // Navigate to group statistics page using group code
+    router.push(`/group/${encodeURIComponent(groupCode)}`);
   };
 
   // parentOrg가 있으면 기존 방식대로, 없으면 센터별로 그룹화

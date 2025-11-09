@@ -91,7 +91,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const groupName = decodeURIComponent(id)
+    const groupCodeOrName = decodeURIComponent(id)
 
     // Get month parameter from query string
     const url = new URL(request.url)
@@ -103,15 +103,22 @@ export async function GET(
     const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
     const endDate = `${selectedMonth}-${lastDay.toString().padStart(2, '0')}`
 
-    // First check if group exists in daily_analysis_results
+    // First resolve org_code to org_name if needed
+    let groupName = groupCodeOrName
+    const orgLookup = db.prepare('SELECT org_name FROM organization_master WHERE org_code = ? AND org_level = ? AND is_active = 1 AND display_order = 0').get(groupCodeOrName, 'group') as any
+    if (orgLookup) {
+      groupName = orgLookup.org_name
+    }
+
+    // Check if group exists in daily_analysis_results
     const groupExistsQuery = `
       SELECT DISTINCT group_name, center_name, team_name
-      FROM daily_analysis_results 
+      FROM daily_analysis_results
       WHERE group_name = ?
       LIMIT 1
     `
     const groupInfo = db.prepare(groupExistsQuery).get(groupName) as any
-    
+
     if (!groupInfo) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 })
     }

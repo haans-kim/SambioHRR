@@ -12,9 +12,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const groupName = decodeURIComponent(id);
+    const groupCodeOrName = decodeURIComponent(id);
     const searchParams = request.nextUrl.searchParams;
     const selectedMonth = searchParams.get('month') || getLatestMonth();
+
+    // First resolve org_code to org_name if needed
+    let groupName = groupCodeOrName;
+    const orgLookup = db.prepare('SELECT org_name FROM organization_master WHERE org_code = ? AND org_level = ? AND is_active = 1 AND display_order = 0').get(groupCodeOrName, 'group') as any;
+    if (orgLookup) {
+      groupName = orgLookup.org_name;
+    }
 
     const cacheKey = `group-stats-fast:v1:group=${groupName}:month=${selectedMonth}`;
     const cached = getFromCache<any>(cacheKey);
@@ -28,8 +35,11 @@ export async function GET(
     const stats = getPrecomputedGroupStats(selectedMonth, groupName) as any;
 
     if (!stats) {
-      // 사전 계산이 없으면 기존 API로 리다이렉트
-      return NextResponse.redirect(new URL(`/api/group-stats/${id}?month=${selectedMonth}`, request.url));
+      // 사전 계산이 없으면 404 반환하고 클라이언트가 fallback API 사용하도록 함
+      return new NextResponse(JSON.stringify({ error: 'Precomputed stats not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     // 계층 정보는 이미 precomputed stats에 있으므로 사용
