@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const teamCode = searchParams.get('team');
   const selectedMonth = searchParams.get('month') || getLatestMonth();
-  const cacheKey = `groups:v10:team=${teamCode || ''}:month=${selectedMonth}`;
+  const cacheKey = `groups:v12:team=${teamCode || ''}:month=${selectedMonth}`;
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
@@ -94,11 +94,6 @@ export async function GET(request: NextRequest) {
     });
   }
   
-  // Filter out groups with 0 employees
-  console.log('Groups before filtering:', groups.length, groups.map(g => ({name: g.orgName, employees: g.stats?.totalEmployees})));
-  groups = groups.filter((group: any) => group.stats?.totalEmployees > 0);
-  console.log('Groups after filtering:', groups.length);
-  
   // Calculate totals and weighted averages based on monthly data
   // startDate와 endDate는 이미 위에서 선언됨
   let totalEmployees = 0;
@@ -115,7 +110,7 @@ export async function GET(request: NextRequest) {
     }
 
     const row = db.prepare(
-      `SELECT 
+      `SELECT
          COUNT(DISTINCT dar.employee_id) as unique_employees,
          AVG(dar.confidence_score) as avg_confidence
        FROM daily_analysis_results dar
@@ -126,6 +121,17 @@ export async function GET(request: NextRequest) {
 
     totalEmployees = row?.unique_employees || 0;
     avgDataReliability = row?.avg_confidence ? Math.round(row.avg_confidence * 10) / 10 : 0;
+
+  // If totalEmployees is 0 (no data in daily_analysis_results for this month), return empty groups
+  if (totalEmployees === 0) {
+    console.log('No data in daily_analysis_results for selected month, returning empty groups');
+    groups = [];
+  } else {
+    // Filter out groups with 0 employees only if we have data
+    console.log('Groups before filtering:', groups.length, groups.map(g => ({name: g.orgName, employees: g.stats?.totalEmployees})));
+    groups = groups.filter((group: any) => group.stats?.totalEmployees > 0);
+    console.log('Groups after filtering:', groups.length);
+  }
     
     // Calculate efficiency from groups stats instead of raw data
     if (groups.length > 0) {

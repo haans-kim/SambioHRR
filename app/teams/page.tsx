@@ -56,14 +56,23 @@ export default function TeamsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
         const params = new URLSearchParams();
         if (centerCode) params.append('center', centerCode);
         if (divisionCode) params.append('division', divisionCode);
         params.append('month', selectedMonth);
 
-        const response = await fetch(`/api/teams?${params}`);
+        console.log('Fetching teams data for month:', selectedMonth);
+        const response = await fetch(`/api/teams?${params}`, {
+          cache: 'no-store'
+        });
         if (!response.ok) throw new Error('Failed to fetch');
         const teamData = await response.json();
+        console.log('Received teams data:', {
+          month: selectedMonth,
+          teamsCount: teamData.teams?.length,
+          totalEmployees: teamData.summary?.totalEmployees
+        });
         setData(teamData);
       } catch (error) {
         console.error('Failed to fetch team data:', error);
@@ -111,6 +120,14 @@ export default function TeamsPage() {
       : []
   };
 
+  // Log data changes
+  console.log('Rendering TeamsPage with data:', {
+    month: selectedMonth,
+    teamsCount: data.teams?.length,
+    totalEmployees: data.summary?.totalEmployees,
+    firstTeam: data.teams?.[0]
+  });
+
   return (
     <DashboardLayout
       totalEmployees={data.summary?.totalEmployees || 0}
@@ -129,8 +146,9 @@ export default function TeamsPage() {
       availableMetrics={availableMetrics}
       dataQuality={dataQuality}
     >
-      <TeamPlantCards 
-        teams={data.teams} 
+      <TeamPlantCards
+        key={`teams-${selectedMonth}`}
+        teams={data.teams}
         parentOrg={data.parentOrg}
         selectedMetric={selectedMetric}
         avgEfficiency={data.summary?.avgEfficiency || 0}

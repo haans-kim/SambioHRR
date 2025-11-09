@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   const centerCode = searchParams.get('center');
   const divisionCode = searchParams.get('division');
   const selectedMonth = searchParams.get('month') || getLatestMonth();
-  const cacheKey = `teams:v10:center=${centerCode || ''}:division=${divisionCode || ''}:month=${selectedMonth}`;
+  const cacheKey = `teams:v12:center=${centerCode || ''}:division=${divisionCode || ''}:month=${selectedMonth}`;
   const cached = getFromCache<any>(cacheKey);
   if (cached) {
     return new NextResponse(JSON.stringify(cached), { headers: buildCacheHeaders(true, 180) });
@@ -114,9 +114,6 @@ export async function GET(request: NextRequest) {
     teams = getOrganizationsWithStats('team');
   }
   
-  // Filter out teams with 0 employees
-  teams = teams.filter((team: any) => team.stats?.totalEmployees > 0);
-  
   // Calculate totals and weighted averages based on monthly data
   // startDate와 endDate는 이미 위에서 선언됨
   let totalEmployees = 0;
@@ -126,7 +123,7 @@ export async function GET(request: NextRequest) {
   try {
     let where = 'dar.analysis_date BETWEEN ? AND ?';
     const params: any[] = [startDate, endDate];
-    
+
     if (parentOrg && parentOrg.orgLevel === 'division') {
       // Filter by teams under division - use the resolved orgCode
       const resolvedDivisionCode = parentOrg.orgCode;
@@ -144,9 +141,9 @@ export async function GET(request: NextRequest) {
       where += ' AND e.center_name = ?';
       params.push(parentOrg.orgName);
     }
-    
+
     const summary = db.prepare(`
-      SELECT 
+      SELECT
         COUNT(DISTINCT dar.employee_id) as unique_employees,
         ROUND(AVG(dar.confidence_score), 1) as avgDataReliability
       FROM daily_analysis_results dar
@@ -154,9 +151,18 @@ export async function GET(request: NextRequest) {
       WHERE ${where}
         AND (dar.actual_work_hours > 0 OR dar.claimed_work_hours > 0)
     `).get(...params) as any;
-    
+
     totalEmployees = summary?.unique_employees || 0;
     avgDataReliability = summary?.avgDataReliability || 0;
+
+  // If totalEmployees is 0 (no data in daily_analysis_results for this month), return empty teams
+  if (totalEmployees === 0) {
+    console.log('No data in daily_analysis_results for selected month, returning empty teams');
+    teams = [];
+  } else {
+    // Filter out teams with 0 employees only if we have data
+    teams = teams.filter((team: any) => team.stats?.totalEmployees > 0);
+  }
     
     // Calculate efficiency from teams stats instead of raw data
     if (teams.length > 0) {

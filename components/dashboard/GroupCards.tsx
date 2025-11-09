@@ -247,8 +247,8 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
   );
 }
 
-export function GroupCards({ 
-  groups, 
+export function GroupCards({
+  groups,
   parentOrg,
   selectedMetric = 'efficiency',
   avgEfficiency = 88,
@@ -263,6 +263,13 @@ export function GroupCards({
 }: GroupCardsProps) {
   const router = useRouter();
   const { isDevMode } = useDevMode();
+
+  console.log('GroupCards received data:', {
+    groupsCount: groups?.length,
+    avgEfficiency,
+    avgDataReliability,
+    firstGroup: groups?.[0]
+  });
   
   const getCurrentThresholds = () => {
     return thresholds?.[selectedMetric]?.thresholds;

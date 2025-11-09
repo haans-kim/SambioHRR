@@ -50,13 +50,22 @@ export default function GroupsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
         const params = new URLSearchParams();
         if (teamCode) params.append('team', teamCode);
         params.append('month', selectedMonth);
 
-        const response = await fetch(`/api/groups?${params}`);
+        console.log('Fetching groups data for month:', selectedMonth);
+        const response = await fetch(`/api/groups?${params}`, {
+          cache: 'no-store'
+        });
         if (!response.ok) throw new Error('Failed to fetch');
         const groupData = await response.json();
+        console.log('Received groups data:', {
+          month: selectedMonth,
+          groupsCount: groupData.groups?.length,
+          totalEmployees: groupData.totalEmployees
+        });
         setData(groupData);
       } catch (error) {
         console.error('Failed to fetch group data:', error);
@@ -104,6 +113,14 @@ export default function GroupsPage() {
       : []
   };
 
+  // Log data changes
+  console.log('Rendering GroupsPage with data:', {
+    month: selectedMonth,
+    groupsCount: data.groups?.length,
+    totalEmployees: data.totalEmployees,
+    firstGroup: data.groups?.[0]
+  });
+
   return (
     <DashboardLayout
       totalEmployees={data.totalEmployees}
@@ -122,8 +139,9 @@ export default function GroupsPage() {
       availableMetrics={availableMetrics}
       dataQuality={dataQuality}
     >
-      <GroupCards 
-        groups={data.groups} 
+      <GroupCards
+        key={`groups-${selectedMonth}`}
+        groups={data.groups}
         parentOrg={data.parentOrg}
         selectedMetric={selectedMetric}
         avgEfficiency={data.avgEfficiency}

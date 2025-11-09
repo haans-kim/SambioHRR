@@ -253,8 +253,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
   );
 }
 
-export function TeamPlantCards({ 
-  teams, 
+export function TeamPlantCards({
+  teams,
   parentOrg,
   selectedMetric = 'efficiency',
   avgEfficiency = 88,
@@ -268,6 +268,13 @@ export function TeamPlantCards({
   thresholds
 }: TeamPlantCardsProps) {
   const router = useRouter();
+
+  console.log('TeamPlantCards received data:', {
+    teamsCount: teams?.length,
+    avgEfficiency,
+    avgDataReliability,
+    firstTeam: teams?.[0]
+  });
   
   // Handle card click to navigate to groups
   const handleCardClick = (team: OrganizationWithStats) => {
