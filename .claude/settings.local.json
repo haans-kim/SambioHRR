@@ -115,7 +115,12 @@
       "Bash(tee:*)",
       "Bash(xcopy:*)",
       "Bash(xcopy /Y package.json \"D:\\SambioHRR\"\" && xcopy /Y next.config.ts \"D:SambioHRR\"\")",
-      "Bash(robocopy:*)"
+      "Bash(robocopy:*)",
+      "Bash(nul)",
+      "Bash(for commit in 3e3545e 30e24e9 675e1d8 ee6f785 31d204b 71eef77)",
+      "Bash(do echo \"=== $commit ===\")",
+      "Bash(git fetch:*)",
+      "Bash(git cherry-pick:*)"
     ],
     "deny": []
   }

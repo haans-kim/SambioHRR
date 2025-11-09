@@ -71,3 +71,10 @@ dist/
 build/
 *.exe
 release/
+
+# Debug and analysis scripts
+check-*.js
+test-*.js
+debug-*.js
+verify-*.js
+MERGE_ANALYSIS.md
