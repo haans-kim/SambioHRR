@@ -1,13 +1,20 @@
-import sqlite3
+import sys
+sys.path.insert(0, r'C:\Project\SambioHRR\excel-upload-server')
+from core.db_manager import DatabaseManager
 
-conn = sqlite3.connect('sambio_human.db')
+db_path = r'C:\Project\SambioHRR\sambio_human.db'
+db = DatabaseManager(db_path)
+conn = db.get_connection()
 cursor = conn.cursor()
 
-print("=== claim_data 테이블 컬럼 ===")
-info = cursor.execute('PRAGMA table_info(claim_data)').fetchall()
-for col in info:
-    print(f"{col[1]} ({col[2]})")
+print('=== claim_data 테이블 구조 ===\n')
+cursor.execute("PRAGMA table_info(claim_data)")
+for row in cursor.fetchall():
+    print(f'{row[1]}: {row[2]}')
 
-print(f"\n총 {len(info)}개 컬럼")
+print('\n=== 샘플 데이터 (1-6월) ===\n')
+cursor.execute("SELECT * FROM claim_data WHERE date >= '2025-01-01' AND date <= '2025-01-31' LIMIT 5")
+for row in cursor.fetchall():
+    print(row)
 
-conn.close()
+db.close()

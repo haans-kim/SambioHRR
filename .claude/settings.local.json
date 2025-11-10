@@ -123,7 +123,8 @@
       "Bash(git cherry-pick:*)",
       "Bash(python scripts/test_mes_transform.py:*)",
       "Bash(python scripts/upload_mes_data.py:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(ping:*)"
     ],
     "deny": []
   }
