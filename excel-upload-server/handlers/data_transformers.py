@@ -786,6 +786,49 @@ class DataTransformers:
         logger.info(f"mdm_data transformation complete: {len(df):,} rows")
         return df
 
+    @staticmethod
+    def transform_lims_data(df: pd.DataFrame) -> pd.DataFrame:
+        """Transform LIMS data Excel to DB format
+
+        Excel columns:
+        - timestamp: 2025-08-01 09:00:02.337
+        - userno: 20250454
+        - event: "Edit", "Create"
+
+        DB columns:
+        - User_No (REAL): userno
+        - DATE (TEXT): timestamp (datetime string)
+        - Task (TEXT): event (lowercase)
+        """
+        logger.info("Transforming lims_data...")
+
+        # 컬럼명 매핑
+        column_map = {
+            'timestamp': 'DATE',
+            'userno': 'User_No',
+            'event': 'Task'
+        }
+
+        df = df.rename(columns=column_map)
+
+        # DATE를 datetime 문자열로 변환
+        if 'DATE' in df.columns:
+            df['DATE'] = pd.to_datetime(df['DATE'], errors='coerce')
+            df['DATE'] = df['DATE'].apply(
+                lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(x) else None
+            )
+
+        # User_No는 float로 변환 (DB 컬럼이 REAL)
+        if 'User_No' in df.columns:
+            df['User_No'] = pd.to_numeric(df['User_No'], errors='coerce')
+
+        # Task를 소문자로 변환
+        if 'Task' in df.columns:
+            df['Task'] = df['Task'].str.lower()
+
+        logger.info(f"lims_data transformation complete: {len(df):,} rows")
+        return df
+
 
 # Registry of transformation functions
 TRANSFORM_FUNCTIONS: Dict[str, Callable[[pd.DataFrame], pd.DataFrame]] = {
@@ -801,6 +844,7 @@ TRANSFORM_FUNCTIONS: Dict[str, Callable[[pd.DataFrame], pd.DataFrame]] = {
     "lams_data": DataTransformers.transform_lams_data,
     "mes_data": DataTransformers.transform_mes_data,
     "mdm_data": DataTransformers.transform_mdm_data,
+    "lims_data": DataTransformers.transform_lims_data,
 }
 
 
