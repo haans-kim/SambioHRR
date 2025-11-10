@@ -668,27 +668,43 @@ class DataTransformers:
 
     @staticmethod
     def transform_mes_data(df: pd.DataFrame) -> pd.DataFrame:
-        """Transform MES data Excel to DB format"""
+        """Transform MES data Excel to DB format
+
+        Excel columns (new format):
+        - Unnamed: 0 (index, empty)
+        - DATETIME (KST): 2025-08-01 00:00:04
+        - 사번: 20240562
+        - APPLICATION: "SBL CEM"
+
+        DB columns:
+        - session (TEXT): APPLICATION 값
+        - login_time (TIMESTAMP): DATETIME (KST)
+        - USERNo (INTEGER): 사번
+        """
         logger.info("Transforming mes_data...")
 
+        # 컬럼명 매핑
         column_map = {
-            '로그인일시': '로그인일시',
-            '사번': '사번',
-            '이름': '이름',
-            '라인': '라인',
-            '공정': '공정'
+            'DATETIME (KST)': 'login_time',
+            '사번': 'USERNo',
+            'APPLICATION': 'session'
         }
+
+        # Unnamed 컬럼 제거
+        df = df.drop(columns=[col for col in df.columns if 'Unnamed' in str(col)], errors='ignore')
 
         df = df.rename(columns=column_map)
 
-        if '로그인일시' in df.columns:
-            df['로그인일시'] = pd.to_datetime(df['로그인일시'], errors='coerce')
-            df['로그인일시'] = df['로그인일시'].apply(
-                lambda x: int(x.strftime('%Y%m%d%H%M%S')) if pd.notna(x) else None
+        # login_time을 datetime 형식으로 변환 (문자열 형식 유지)
+        if 'login_time' in df.columns:
+            df['login_time'] = pd.to_datetime(df['login_time'], errors='coerce')
+            df['login_time'] = df['login_time'].apply(
+                lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(x) else None
             )
 
-        if '사번' in df.columns:
-            df['사번'] = pd.to_numeric(df['사번'], errors='coerce')
+        # USERNo를 integer로 변환
+        if 'USERNo' in df.columns:
+            df['USERNo'] = pd.to_numeric(df['USERNo'], errors='coerce')
 
         logger.info(f"mes_data transformation complete: {len(df):,} rows")
         return df
