@@ -659,27 +659,43 @@ class DataTransformers:
 
     @staticmethod
     def transform_lams_data(df: pd.DataFrame) -> pd.DataFrame:
-        """Transform LAMS data Excel to DB format"""
+        """Transform LAMS data Excel to DB format
+
+        Excel columns (new format):
+        - Timestamp: 2025-08-01 00:00:00.000
+        - USERNO( ID->사번매칭 ): 20190146.0 (float)
+        - Event: "Create", "Modify"
+
+        DB columns:
+        - User_No (REAL): USERNO (float)
+        - DATE (TEXT): Timestamp
+        - Task (TEXT): Event (소문자)
+        """
         logger.info("Transforming lams_data...")
 
+        # 컬럼명 매핑
         column_map = {
-            '작성일시': '작성일시',
-            '사번': '사번',
-            '이름': '이름',
-            '작업유형': '작업유형',
-            '스케줄ID': '스케줄ID'
+            'Timestamp': 'DATE',
+            'USERNO( ID->사번매칭 )': 'User_No',
+            'Event': 'Task'
         }
 
         df = df.rename(columns=column_map)
 
-        if '작성일시' in df.columns:
-            df['작성일시'] = pd.to_datetime(df['작성일시'], errors='coerce')
-            df['작성일시'] = df['작성일시'].apply(
-                lambda x: int(x.strftime('%Y%m%d%H%M%S')) if pd.notna(x) else None
+        # DATE를 datetime 문자열로 변환
+        if 'DATE' in df.columns:
+            df['DATE'] = pd.to_datetime(df['DATE'], errors='coerce')
+            df['DATE'] = df['DATE'].apply(
+                lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(x) else None
             )
 
-        if '사번' in df.columns:
-            df['사번'] = pd.to_numeric(df['사번'], errors='coerce')
+        # User_No는 float로 유지 (DB 컬럼이 REAL)
+        if 'User_No' in df.columns:
+            df['User_No'] = pd.to_numeric(df['User_No'], errors='coerce')
+
+        # Task를 소문자로 변환
+        if 'Task' in df.columns:
+            df['Task'] = df['Task'].str.lower()
 
         logger.info(f"lams_data transformation complete: {len(df):,} rows")
         return df
