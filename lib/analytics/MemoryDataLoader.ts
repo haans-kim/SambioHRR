@@ -223,14 +223,14 @@ export class MemoryDataLoader {
     // 신고 근무시간은 Human DB에서 로딩
     const humanDbPath = path.join(process.cwd(), 'sambio_human.db')
     const humanDb = new Database(humanDbPath, { readonly: true })
-    
+
     try {
       // claim_data 테이블 존재 확인
       const tableCheck = humanDb.prepare(`
-        SELECT name FROM sqlite_master 
+        SELECT name FROM sqlite_master
         WHERE type='table' AND name='claim_data'
       `).get()
-      
+
       if (!tableCheck) {
         console.log('📊 claim_data table not found - using empty claim data')
         return new Map()
@@ -238,48 +238,42 @@ export class MemoryDataLoader {
 
       const placeholders = employeeIds.map(() => '?').join(',')
 
-      // 근무일 필드는 정수형 YYYYMMDD (예: 20250701)
-      // startDate/endDate는 'YYYY-MM-DD' 형식이므로 변환 필요
-      const startDateInt = parseInt(startDate.replace(/-/g, ''))
-      const endDateInt = parseInt(endDate.replace(/-/g, ''))
-
+      // claim_data 테이블의 실제 컬럼명 사용:
+      // - 근무일 (index 1, DATETIME 형식: 'YYYY-MM-DD HH:MM:SS')
+      // - 사번 (index 4, BIGINT)
+      // - 실제근무시간 (index 17, FLOAT)
       const stmt = humanDb.prepare(`
         SELECT
           사번 as employee_id,
-          printf('%04d-%02d-%02d',
-            근무일 / 10000,
-            (근무일 / 100) % 100,
-            근무일 % 100
-          ) as date,
-          근무시간 as claimed_hours
+          DATE(근무일) as date,
+          실제근무시간 as claimed_hours
         FROM claim_data
         WHERE 사번 IN (${placeholders})
-          AND 근무일 >= ?
-          AND 근무일 <= ?
-          AND 근무시간 IS NOT NULL
-          AND 근무시간 > 0
+          AND DATE(근무일) BETWEEN ? AND ?
+          AND 실제근무시간 IS NOT NULL
+          AND 실제근무시간 > 0
       `)
-      
-      const rows = stmt.all(...employeeIds, startDateInt, endDateInt) as any[]
+
+      const rows = stmt.all(...employeeIds, startDate, endDate) as any[]
       const claimData = new Map<number, Map<string, ClaimData>>()
 
       console.log(`📊 Claim data loaded: ${rows.length} records for ${employeeIds.length} employees`)
-      
+
       for (const row of rows) {
         const employeeId = row.employee_id
         const date = row.date
-        
+
         if (!claimData.has(employeeId)) {
           claimData.set(employeeId, new Map())
         }
-        
+
         claimData.get(employeeId)!.set(date, {
           employeeId,
           date,
           claimedHours: row.claimed_hours || 0
         })
       }
-      
+
       return claimData
     } finally {
       humanDb.close()
