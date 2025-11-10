@@ -71,11 +71,11 @@ export class MemoryCalculator {
           date,
           metrics: this.createEmptyMetrics(),
           error: 'No events found for this date',
-          centerId: employee.groupName || '',
-          centerName: employee.groupName || '',
-          teamId: employee.teamName ? employee.teamName.split(' ')[0] : '',
+          centerId: employee.centerCode || '',
+          centerName: employee.centerName || '',
+          teamId: employee.teamCode || '',
           teamName: employee.teamName || '',
-          groupId: employee.groupName || '',
+          groupId: employee.groupCode || '',
           groupName: employee.groupName || ''
         }
       }
@@ -126,27 +126,29 @@ export class MemoryCalculator {
         date,
         metrics,
         claimedHours,
-        centerId: employee.groupName || '',
-        centerName: employee.groupName || '',
-        teamId: employee.teamName ? employee.teamName.split(' ')[0] : '',
+        centerId: employee.centerCode || '',
+        centerName: employee.centerName || '',
+        teamId: employee.teamCode || '',
         teamName: employee.teamName || '',
-        groupId: employee.groupName || '',
+        groupId: employee.groupCode || '',
         groupName: employee.groupName || ''
       }
 
     } catch (error) {
+      // 에러 발생 시에도 employee 정보가 있으면 조직 정보 포함
+      const employee = this.dataset.employees.get(employeeId)
       return {
         employeeId,
-        employeeName: 'Unknown',
+        employeeName: employee?.employeeName || 'Unknown',
         date,
         metrics: this.createEmptyMetrics(),
         error: error instanceof Error ? error.message : 'Unknown calculation error',
-        centerId: '',
-        centerName: '',
-        teamId: '',
-        teamName: '',
-        groupId: '',
-        groupName: ''
+        centerId: employee?.centerCode || '',
+        centerName: employee?.centerName || '',
+        teamId: employee?.teamCode || '',
+        teamName: employee?.teamName || '',
+        groupId: employee?.groupCode || '',
+        groupName: employee?.groupName || ''
       }
     }
   }

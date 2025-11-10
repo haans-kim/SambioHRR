@@ -10,7 +10,13 @@ import * as path from 'path'
 export interface EmployeeData {
   employeeId: number
   employeeName: string
+  centerCode: string
+  centerName: string
+  divisionCode: string
+  divisionName: string
+  teamCode: string
   teamName: string
+  groupCode: string
   groupName: string
   jobGroup: string
 }
@@ -96,26 +102,38 @@ export class MemoryDataLoader {
       SELECT DISTINCT
         employee_id,
         employee_name,
+        center_code,
+        center_name,
+        division_code,
+        division_name,
+        team_code,
         team_name,
+        group_code,
         group_name,
         job_group
       FROM master_events_table
       WHERE employee_id IN (${placeholders})
     `)
-    
+
     const rows = stmt.all(...employeeIds) as any[]
     const employees = new Map<number, EmployeeData>()
-    
+
     for (const row of rows) {
       employees.set(row.employee_id, {
         employeeId: row.employee_id,
         employeeName: row.employee_name || '',
+        centerCode: row.center_code || '',
+        centerName: row.center_name || '',
+        divisionCode: row.division_code || '',
+        divisionName: row.division_name || '',
+        teamCode: row.team_code || '',
         teamName: row.team_name || '',
+        groupCode: row.group_code || '',
         groupName: row.group_name || '',
         jobGroup: row.job_group || ''
       })
     }
-    
+
     return employees
   }
 
