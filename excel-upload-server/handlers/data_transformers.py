@@ -584,27 +584,45 @@ class DataTransformers:
 
     @staticmethod
     def transform_eam_data(df: pd.DataFrame) -> pd.DataFrame:
-        """Transform EAM data Excel to DB format"""
+        """Transform EAM data Excel to DB format
+
+        Excel columns (new format):
+        - Timestamp: 2025-08-01 00:07:15
+        - USERNO( ID->사번매칭 ): 20200181.0 (float)
+        - Event: "LOGIN"
+        - APP: NaN or app name
+
+        DB columns:
+        - ATTEMPTDATE (TEXT): Timestamp
+        - USERNO (TEXT): USERNO (float → int → str)
+        - ATTEMPTRESULT (TEXT): Event
+        - APP (TEXT): APP
+        """
         logger.info("Transforming eam_data...")
 
+        # 컬럼명 매핑
         column_map = {
-            '로그인일시': '로그인일시',
-            '사번': '사번',
-            '이름': '이름',
-            '시스템': '시스템',
-            '기능': '기능'
+            'Timestamp': 'ATTEMPTDATE',
+            'USERNO( ID->사번매칭 )': 'USERNO',
+            'Event': 'ATTEMPTRESULT',
+            'APP': 'APP'
         }
 
         df = df.rename(columns=column_map)
 
-        if '로그인일시' in df.columns:
-            df['로그인일시'] = pd.to_datetime(df['로그인일시'], errors='coerce')
-            df['로그인일시'] = df['로그인일시'].apply(
-                lambda x: int(x.strftime('%Y%m%d%H%M%S')) if pd.notna(x) else None
+        # ATTEMPTDATE를 datetime 문자열로 변환
+        if 'ATTEMPTDATE' in df.columns:
+            df['ATTEMPTDATE'] = pd.to_datetime(df['ATTEMPTDATE'], errors='coerce')
+            df['ATTEMPTDATE'] = df['ATTEMPTDATE'].apply(
+                lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(x) else None
             )
 
-        if '사번' in df.columns:
-            df['사번'] = pd.to_numeric(df['사번'], errors='coerce')
+        # USERNO를 text로 변환 (float → int → str)
+        if 'USERNO' in df.columns:
+            df['USERNO'] = pd.to_numeric(df['USERNO'], errors='coerce')
+            df['USERNO'] = df['USERNO'].apply(
+                lambda x: str(int(x)) if pd.notna(x) else None
+            )
 
         logger.info(f"eam_data transformation complete: {len(df):,} rows")
         return df
