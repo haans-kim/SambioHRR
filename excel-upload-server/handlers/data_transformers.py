@@ -829,6 +829,35 @@ class DataTransformers:
         logger.info(f"lims_data transformation complete: {len(df):,} rows")
         return df
 
+    @staticmethod
+    def transform_tag_data_aug(df: pd.DataFrame) -> pd.DataFrame:
+        """Transform Tag Data (August-October format) Excel to DB format
+
+        Excel columns:
+        - REGDATE, EVENTLOGSEQ, EMPLOYEENAME, CARDNO, EMPLOYEENO,
+          COMPANYCD, CARDTYPE, DOORNAME, EQUIPNO, DOMAINID,
+          EVENTSTATUSCODE, PROCDATE, BICD
+
+        DB columns (tag_data_aug):
+        - Same as Excel columns, minimal transformation
+        """
+        logger.info("Transforming tag_data_aug...")
+
+        # EMPLOYEENO를 integer로 변환 (NaN은 그대로)
+        if 'EMPLOYEENO' in df.columns:
+            df['EMPLOYEENO'] = pd.to_numeric(df['EMPLOYEENO'], errors='coerce')
+            df['EMPLOYEENO'] = df['EMPLOYEENO'].apply(
+                lambda x: int(x) if pd.notna(x) else None
+            )
+
+        # REGDATE와 PROCDATE를 문자열로 변환
+        for col in ['REGDATE', 'PROCDATE']:
+            if col in df.columns:
+                df[col] = df[col].astype(str)
+
+        logger.info(f"tag_data_aug transformation complete: {len(df):,} rows")
+        return df
+
 
 # Registry of transformation functions
 TRANSFORM_FUNCTIONS: Dict[str, Callable[[pd.DataFrame], pd.DataFrame]] = {
@@ -845,6 +874,7 @@ TRANSFORM_FUNCTIONS: Dict[str, Callable[[pd.DataFrame], pd.DataFrame]] = {
     "mes_data": DataTransformers.transform_mes_data,
     "mdm_data": DataTransformers.transform_mdm_data,
     "lims_data": DataTransformers.transform_lims_data,
+    "tag_data_aug": DataTransformers.transform_tag_data_aug,
 }
 
 
