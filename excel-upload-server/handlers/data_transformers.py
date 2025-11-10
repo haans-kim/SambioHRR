@@ -843,6 +843,9 @@ class DataTransformers:
         """
         logger.info("Transforming tag_data_aug...")
 
+        # Unnamed 컬럼 제거
+        df = df.drop(columns=[col for col in df.columns if 'Unnamed' in str(col)], errors='ignore')
+
         # EMPLOYEENO를 integer로 변환 (NaN은 그대로)
         if 'EMPLOYEENO' in df.columns:
             df['EMPLOYEENO'] = pd.to_numeric(df['EMPLOYEENO'], errors='coerce')
