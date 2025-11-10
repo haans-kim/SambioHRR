@@ -745,27 +745,43 @@ class DataTransformers:
 
     @staticmethod
     def transform_mdm_data(df: pd.DataFrame) -> pd.DataFrame:
-        """Transform MDM data Excel to DB format"""
+        """Transform MDM data Excel to DB format
+
+        Excel columns (new format):
+        - Client: 2025-08-01 06:10:50
+        - 사번: 20240616
+        - Audit Log Msg. Text: "Logon failed "
+
+        DB columns:
+        - UserNo (INTEGER): 사번
+        - Timestap (TIMESTAMP): Client (datetime string)
+        - task (TEXT): Audit Log Msg. Text (stripped)
+        """
         logger.info("Transforming mdm_data...")
 
+        # 컬럼명 매핑
         column_map = {
-            '처리일시': '처리일시',
-            '사번': '사번',
-            '이름': '이름',
-            '처리구분': '처리구분',
-            '데이터유형': '데이터유형'
+            'Client': 'Timestap',
+            '사번': 'UserNo',
+            'Audit Log Msg. Text': 'task'
         }
 
         df = df.rename(columns=column_map)
 
-        if '처리일시' in df.columns:
-            df['처리일시'] = pd.to_datetime(df['처리일시'], errors='coerce')
-            df['처리일시'] = df['처리일시'].apply(
-                lambda x: int(x.strftime('%Y%m%d%H%M%S')) if pd.notna(x) else None
+        # Timestap을 datetime 문자열로 변환
+        if 'Timestap' in df.columns:
+            df['Timestap'] = pd.to_datetime(df['Timestap'], errors='coerce')
+            df['Timestap'] = df['Timestap'].apply(
+                lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(x) else None
             )
 
-        if '사번' in df.columns:
-            df['사번'] = pd.to_numeric(df['사번'], errors='coerce')
+        # UserNo를 integer로 변환
+        if 'UserNo' in df.columns:
+            df['UserNo'] = pd.to_numeric(df['UserNo'], errors='coerce')
+
+        # task 텍스트 정리 (앞뒤 공백 제거)
+        if 'task' in df.columns:
+            df['task'] = df['task'].str.strip()
 
         logger.info(f"mdm_data transformation complete: {len(df):,} rows")
         return df
