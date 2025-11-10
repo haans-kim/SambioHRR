@@ -289,13 +289,13 @@ export function CenterLevelGrid({
             <tr>
               <th className="text-center p-2 text-base font-semibold text-gray-600 w-[90px]">구분</th>
               {centers.map((center, index) => (
-                <th key={center.orgCode || `center-${index}`} className="text-center p-2 text-sm font-medium text-gray-600">
+                <th key={center.orgCode || `center-${index}`} className="text-center p-2 text-sm font-medium text-gray-600 w-[120px]">
                   <TextAnimate delay={0.1}>
                     <span className="text-base font-semibold">{center.orgName}</span>
                   </TextAnimate>
                 </th>
               ))}
-              <th className="text-center p-2 text-base font-semibold text-gray-600 min-w-[100px]">평균</th>
+              <th className="text-center p-2 text-base font-semibold text-gray-600 w-[100px]">평균</th>
             </tr>
           </thead>
           <tbody>
