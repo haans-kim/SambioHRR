@@ -95,7 +95,16 @@ export function precomputeMonthlyStats(month: string) {
   // 등급별 통계 계산 및 저장
   const insertGradeStats = db.prepare(`
     INSERT INTO monthly_grade_stats (month, center_name, grade_level, total_employees, weekly_claimed_hours, weekly_adjusted_hours, efficiency)
-    WITH claimed AS (
+    WITH valid_employees AS (
+      -- 월별 총 근무시간이 100시간 이상인 정상 직원만 선별
+      SELECT DISTINCT c.사번
+      FROM claim_data c
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
+      GROUP BY c.사번
+      HAVING SUM(COALESCE(c.실제근무시간, 0)) >= 100
+    ),
+    claimed AS (
       SELECT
         e.center_name,
         c.employee_level as grade_level,
@@ -112,9 +121,9 @@ export function precomputeMonthlyStats(month: string) {
       FROM claim_data c
       LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      INNER JOIN valid_employees ve ON c.사번 = ve.사번
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
         AND c.employee_level IS NOT NULL
       GROUP BY e.center_name, c.employee_level
     ),
@@ -145,9 +154,9 @@ export function precomputeMonthlyStats(month: string) {
         ON dar.employee_id = CAST(c.사번 AS TEXT)
         AND DATE(dar.analysis_date) = DATE(c.근무일)
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      INNER JOIN valid_employees ve ON c.사번 = ve.사번
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
         AND c.employee_level IS NOT NULL
       GROUP BY e.center_name, c.employee_level
     )
@@ -251,6 +260,7 @@ export function precomputeMonthlyStats(month: string) {
     );
 
     insertGradeStats.run(
+      startDate, endDate, // valid_employees
       startDate, endDate, // claimed
       startDate, endDate, // adjusted (EXISTS check)
       startDate, endDate, // adjusted (WHERE clause)
