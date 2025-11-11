@@ -33,7 +33,7 @@ export function precomputeMonthlyStats(month: string) {
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
       GROUP BY e.center_name
     ),
     adjusted AS (
@@ -65,7 +65,7 @@ export function precomputeMonthlyStats(month: string) {
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
       GROUP BY e.center_name
     ),
     reliability AS (
@@ -76,7 +76,7 @@ export function precomputeMonthlyStats(month: string) {
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150', '20200459')
       GROUP BY e.center_name
     )
     SELECT
@@ -114,7 +114,7 @@ export function precomputeMonthlyStats(month: string) {
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
         AND c.employee_level IS NOT NULL
       GROUP BY e.center_name, c.employee_level
     ),
@@ -147,7 +147,7 @@ export function precomputeMonthlyStats(month: string) {
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
         AND c.employee_level IS NOT NULL
       GROUP BY e.center_name, c.employee_level
     )
@@ -183,7 +183,7 @@ export function precomputeMonthlyStats(month: string) {
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
     ),
     adjusted AS (
       SELECT
@@ -212,7 +212,7 @@ export function precomputeMonthlyStats(month: string) {
       JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
     ),
     reliability AS (
       SELECT
@@ -221,7 +221,7 @@ export function precomputeMonthlyStats(month: string) {
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
-        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150', '20200459')
     )
     SELECT
       ?,
@@ -360,7 +360,7 @@ export function precomputeGroupStats(month: string) {
       WHERE c.근무일 BETWEEN ? AND ?
         AND e.group_name IS NOT NULL
         AND e.group_name != ''
-        AND c.사번 NOT IN ('20190287', '20200207', '20120150')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
       GROUP BY e.group_name, e.center_name, e.team_name
     ),
     dar_stats AS (
@@ -377,7 +377,7 @@ export function precomputeGroupStats(month: string) {
       JOIN employees e ON e.employee_id = dar.employee_id
       WHERE dar.analysis_date BETWEEN ? AND ?
         AND e.group_name IS NOT NULL
-        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150')
+        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150', '20200459')
       GROUP BY e.group_name
     )
     SELECT
