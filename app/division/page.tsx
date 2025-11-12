@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/queries/organization";
 import { getLatestMonth } from "@/lib/db/queries/analytics";
 import { redirect } from "next/navigation";
+import { mapOrganizationName } from "@/lib/organization-mapping";
 
 export const dynamic = 'force-dynamic';
 
@@ -49,10 +50,10 @@ export default async function DivisionPage({ searchParams }: DivisionPageProps) 
         <Breadcrumb
           items={[
             { label: "센터", href: "/" },
-            { label: center.orgName }
+            { label: mapOrganizationName(center.orgName) }
           ]}
         />
-        <h2 className="text-2xl font-bold mt-4">{center.orgName} - 담당별 현황</h2>
+        <h2 className="text-2xl font-bold mt-4">{mapOrganizationName(center.orgName)} - 담당별 현황</h2>
         <p className="text-neutral-600 dark:text-neutral-400 mt-1">
           {divisions.length}개 담당 운영 현황
         </p>

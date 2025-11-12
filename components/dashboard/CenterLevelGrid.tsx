@@ -9,6 +9,7 @@ import { TextAnimate } from "@/components/ui/text-animate";
 import { useRouter } from "next/navigation";
 import { MetricSelector, MetricType } from "./MetricSelector";
 import { useState } from "react";
+import { mapOrganizationName } from "@/lib/organization-mapping";
 
 interface CenterLevelGridProps {
   organizations: OrganizationWithStats[];
@@ -291,7 +292,7 @@ export function CenterLevelGrid({
               {centers.map((center, index) => (
                 <th key={center.orgCode || `center-${index}`} className="text-center p-2 text-sm font-medium text-gray-600 w-[120px]">
                   <TextAnimate delay={0.1}>
-                    <span className="text-base font-semibold">{center.orgName}</span>
+                    <span className="text-base font-semibold">{mapOrganizationName(center.orgName)}</span>
                   </TextAnimate>
                 </th>
               ))}

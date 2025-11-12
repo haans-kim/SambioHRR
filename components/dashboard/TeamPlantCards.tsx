@@ -6,6 +6,7 @@ import { NumberTicker } from "@/components/ui/number-ticker";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { MetricType } from "./MetricSelector";
+import { mapOrganizationName } from "@/lib/organization-mapping";
 
 interface TeamPlantCardsProps {
   teams: OrganizationWithStats[];
@@ -213,8 +214,8 @@ function PlantCard({ org, selectedMetric, thresholds, onClick }: PlantCardProps)
       onClick={onClick}
     >
       <div className="flex flex-col h-full">
-        <h3 className="text-sm font-semibold text-gray-900 mb-2 truncate">{org.orgName}</h3>
-        
+        <h3 className="text-sm font-semibold text-gray-900 mb-2 truncate">{mapOrganizationName(org.orgName)}</h3>
+
         <div className="flex items-center justify-between flex-1">
           <div className="flex flex-col">
             <div className="flex items-center gap-1">
@@ -394,18 +395,18 @@ export function TeamPlantCards({
   return (
     <div className="bg-white rounded-lg border-2 border-gray-300 shadow-lg p-6">
       <h2 className="text-lg font-semibold mb-4">
-        {parentOrg ? `${parentOrg.orgName} 현황` : '전체 팀 현황'}
+        {parentOrg ? `${mapOrganizationName(parentOrg.orgName)} 현황` : '전체 팀 현황'}
       </h2>
-      
+
       <div className="space-y-6">
         {Object.entries(groupedTeams).map(([center, centerTeams]) => {
           // 항상 전체 기준으로 비교
           const { top, middle, bottom, localThresholds } = categorizeTeams(centerTeams, false);
           const effectiveThresholds = getCurrentThresholds();
-          
+
           return (
             <div key={center} className="border rounded-lg p-4 bg-gray-50">
-              <h3 className="text-base font-semibold mb-3 text-gray-900">{center}</h3>
+              <h3 className="text-base font-semibold mb-3 text-gray-900">{mapOrganizationName(center)}</h3>
               
               {/* 개별 센터 뷰에서는 모든 팀을 한 행에 표시 */}
               {parentOrg ? (

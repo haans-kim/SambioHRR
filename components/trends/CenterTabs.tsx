@@ -2,6 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
+import { mapOrganizationName } from "@/lib/organization-mapping";
 
 interface CenterTabsProps {
   centers: { id: string; name: string }[];
@@ -18,7 +19,7 @@ export function CenterTabs({ centers, selectedCenter, onCenterChange, currentCen
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold text-gray-900">
-          트렌드 분석 - {currentCenterName}
+          트렌드 분석 - {mapOrganizationName(currentCenterName)}
         </h2>
         <p className="text-sm text-gray-500">
           2025년 1월 ~ 12월 레벨별 근무시간 추이
@@ -37,7 +38,7 @@ export function CenterTabs({ centers, selectedCenter, onCenterChange, currentCen
                 : "bg-gray-100 text-gray-800 hover:bg-gray-200"
             )}
           >
-            {center.name}
+            {mapOrganizationName(center.name)}
           </button>
         ))}
       </div>

@@ -8,6 +8,7 @@ import { Organization } from "@/lib/types/organization";
 import { MetricType, MetricSelector } from "@/components/dashboard/MetricSelector";
 import { MonthSelector } from "@/components/dashboard/MonthSelector";
 import { DataQualityIndicator } from "@/components/dashboard/DataQualityIndicator";
+import { mapOrganizationName } from "@/lib/organization-mapping";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -57,10 +58,10 @@ export function DashboardLayout({
   if (parentOrg) {
     if (parentOrg.orgLevel === 'center') {
       // 센터 클릭 시 기본 이동: 팀 목록 (센터에 담당이 있어도 우선 팀 페이지로 연결)
-      defaultBreadcrumb.push({ label: parentOrg.orgName, href: `/teams?center=${parentOrg.orgCode}` });
+      defaultBreadcrumb.push({ label: mapOrganizationName(parentOrg.orgName), href: `/teams?center=${parentOrg.orgCode}` });
     } else if (parentOrg.orgLevel === 'division') {
       defaultBreadcrumb.push({ label: "담당" });
-      defaultBreadcrumb.push({ label: parentOrg.orgName });
+      defaultBreadcrumb.push({ label: mapOrganizationName(parentOrg.orgName) });
     }
   }
   const breadcrumbItems = breadcrumb && breadcrumb.length > 0 ? breadcrumb : defaultBreadcrumb;
@@ -72,7 +73,7 @@ export function DashboardLayout({
         <div className="bg-gradient-to-br from-blue-50 to-white border-b border-gray-200">
           <div className="max-w-[1600px] mx-auto px-6 py-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              조직별 분석 {parentOrg && `- ${parentOrg.orgName}`}
+              조직별 분석 {parentOrg && `- ${mapOrganizationName(parentOrg.orgName)}`}
             </h1>
             <p className="text-gray-600">
               실시간 업무패턴 분석 및 근무 추정시간 모니터링

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import useAppStore from '@/stores/useAppStore'
+import { mapOrganizationName } from '@/lib/organization-mapping'
 
 interface OrganizationNode {
   code: string
@@ -232,7 +233,7 @@ export default function MillerColumn() {
             })
           }}
           renderItem={(item: OrganizationNode) => ({
-            label: item.name,
+            label: mapOrganizationName(item.name),
             value: item.code
           })}
         />
@@ -270,7 +271,7 @@ export default function MillerColumn() {
               })
             }}
             renderItem={(item: any) => ({
-              label: item.name,
+              label: mapOrganizationName(item.name),
               value: item.code
             })}
           />
@@ -315,7 +316,7 @@ export default function MillerColumn() {
               })
             }}
             renderItem={(item: any) => ({
-              label: item.name,
+              label: mapOrganizationName(item.name),
               value: item.code
             })}
           />
@@ -348,7 +349,7 @@ export default function MillerColumn() {
               })
             }}
             renderItem={(item: OrganizationNode) => ({
-              label: item.name,
+              label: mapOrganizationName(item.name),
               value: item.code
             })}
           />

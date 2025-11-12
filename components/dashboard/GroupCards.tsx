@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { MetricType } from "./MetricSelector";
 import { useRouter } from "next/navigation";
 import { useDevMode } from "@/contexts/DevModeContext";
+import { mapOrganizationName } from "@/lib/organization-mapping";
 
 interface GroupCardsProps {
   groups: OrganizationWithStats[];
@@ -203,8 +204,8 @@ function GroupCard({ org, selectedMetric, thresholds, onClick }: GroupCardProps)
       onClick={onClick}
     >
       <div className="flex flex-col h-full">
-        <h3 className="text-sm font-semibold text-gray-900 mb-2 truncate">{org.orgName}</h3>
-        
+        <h3 className="text-sm font-semibold text-gray-900 mb-2 truncate">{mapOrganizationName(org.orgName)}</h3>
+
         <div className="flex items-center justify-between flex-1">
           <div className="flex flex-col">
             <div className="flex items-center gap-1">
@@ -384,9 +385,9 @@ export function GroupCards({
   return (
     <div className="bg-white rounded-lg border-2 border-gray-300 shadow-lg p-6">
       <h2 className="text-lg font-semibold mb-4">
-        {parentOrg ? `${parentOrg.orgName} 현황` : '전체 그룹 현황'}
+        {parentOrg ? `${mapOrganizationName(parentOrg.orgName)} 현황` : '전체 그룹 현황'}
       </h2>
-      
+
       <div className="space-y-6">
         {Object.entries(groupedGroups).map(([center, centerGroups]) => {
           const effectiveThresholds = getCurrentThresholds();
@@ -422,8 +423,8 @@ export function GroupCards({
           
           return (
             <div key={center} className="border rounded-lg p-4 bg-gray-50">
-              <h3 className="text-base font-semibold mb-3 text-gray-900">{center}</h3>
-              
+              <h3 className="text-base font-semibold mb-3 text-gray-900">{mapOrganizationName(center)}</h3>
+
               {/* 모든 그룹을 한 행에 표시 */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                 {sortedGroups.map((group) => (

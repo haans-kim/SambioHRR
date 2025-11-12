@@ -5,6 +5,7 @@ import { NumberTicker } from "@/components/ui/number-ticker";
 import { AnimatedCircularProgressBar } from "@/components/ui/animated-circular-progress-bar";
 import { cn } from "@/lib/utils";
 import { Users, TrendingUp, Clock } from "lucide-react";
+import { mapOrganizationName } from "@/lib/organization-mapping";
 
 interface MetricCardProps {
   orgName: string;
@@ -117,7 +118,7 @@ export function MetricCard({
       <div className="flex flex-col h-full">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="font-bold text-lg">{orgName}</h3>
+            <h3 className="font-bold text-lg">{mapOrganizationName(orgName)}</h3>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
               {childrenCount > 0 && `${childrenCount}개 하위조직`}
             </p>
