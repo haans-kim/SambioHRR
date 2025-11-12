@@ -472,13 +472,16 @@ export const getTagData = (employeeId: number, date: string) => {
     const dateInt = parseInt(date.replace(/-/g, ''))
     
     const stmt = db.getDb().prepare(`
-      SELECT 
-        SUBSTR(td.ENTE_DT, 1, 4) || '-' || 
-        SUBSTR(td.ENTE_DT, 5, 2) || '-' || 
+      SELECT
+        SUBSTR(td.ENTE_DT, 1, 4) || '-' ||
+        SUBSTR(td.ENTE_DT, 5, 2) || '-' ||
         SUBSTR(td.ENTE_DT, 7, 2) || ' ' ||
-        SUBSTR('000000' || td.출입시각, -6, 2) || ':' ||
-        SUBSTR('000000' || td.출입시각, -4, 2) || ':' ||
-        SUBSTR('000000' || td.출입시각, -2, 2) as ENTE_DT,
+        CASE
+          WHEN td.출입시각 LIKE '%-%' THEN SUBSTR(td.출입시각, 11, 8)
+          ELSE SUBSTR('000000' || td.출입시각, -6, 2) || ':' ||
+               SUBSTR('000000' || td.출입시각, -4, 2) || ':' ||
+               SUBSTR('000000' || td.출입시각, -2, 2)
+        END as ENTE_DT,
         td.사번,
         td.NAME,
         td.DR_NM as Location,
@@ -518,13 +521,16 @@ export const getNightShiftTagData = (employeeId: number, date: string) => {
     const currDateInt = parseInt(date.replace(/-/g, ''))
     
     const stmt = db.getDb().prepare(`
-      SELECT 
-        SUBSTR(td.ENTE_DT, 1, 4) || '-' || 
-        SUBSTR(td.ENTE_DT, 5, 2) || '-' || 
+      SELECT
+        SUBSTR(td.ENTE_DT, 1, 4) || '-' ||
+        SUBSTR(td.ENTE_DT, 5, 2) || '-' ||
         SUBSTR(td.ENTE_DT, 7, 2) || ' ' ||
-        SUBSTR('000000' || td.출입시각, -6, 2) || ':' ||
-        SUBSTR('000000' || td.출입시각, -4, 2) || ':' ||
-        SUBSTR('000000' || td.출입시각, -2, 2) as ENTE_DT,
+        CASE
+          WHEN td.출입시각 LIKE '%-%' THEN SUBSTR(td.출입시각, 11, 8)
+          ELSE SUBSTR('000000' || td.출입시각, -6, 2) || ':' ||
+               SUBSTR('000000' || td.출입시각, -4, 2) || ':' ||
+               SUBSTR('000000' || td.출입시각, -2, 2)
+        END as ENTE_DT,
         td.사번,
         td.NAME,
         td.DR_NM as Location,
@@ -557,7 +563,7 @@ export const getNightShiftTagData = (employeeId: number, date: string) => {
 export const getMealData = (employeeId: number, date: string) => {
   try {
     const stmt = db.getDb().prepare(`
-      SELECT 
+      SELECT
         취식일시 as timestamp,
         사번 as employee_id,
         성명 as name,
@@ -566,11 +572,11 @@ export const getMealData = (employeeId: number, date: string) => {
         테이크아웃 as takeout,
         배식구 as serving_point
       FROM meal_data
-      WHERE 사번 = ? 
+      WHERE CAST(사번 AS INTEGER) = ?
         AND DATE(취식일시) = ?
       ORDER BY 취식일시
     `)
-    const results = stmt.all(String(employeeId), date)
+    const results = stmt.all(employeeId, date)
     
     // Convert to MealData format with tag codes
     return results.map((row: any) => {

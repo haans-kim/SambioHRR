@@ -1,51 +1,38 @@
-import Database from 'better-sqlite3'
-import * as path from 'path'
+import Database from 'better-sqlite3';
+import { precomputeMonthlyStats, precomputeGroupStats } from '../lib/db/queries/precompute-stats';
 
-const dbPath = path.join(process.cwd(), 'sambio_human.db')
-const db = new Database(dbPath)
+const db = new Database('./sambio_human.db');
 
-console.log('='.repeat(80))
-console.log('10월 통계 재생성')
-console.log('='.repeat(80))
+console.log('=== 10월 통계 재생성 ===\n');
 
-// Delete existing October stats
-const deletedCenter = db.prepare("DELETE FROM monthly_center_stats WHERE month = '2025-10'").run()
-const deletedGrade = db.prepare("DELETE FROM monthly_grade_stats WHERE month = '2025-10'").run()
+// 기존 삭제
+const deletedCenter = db.prepare("DELETE FROM monthly_center_stats WHERE month = ?").run('2025-10');
+const deletedGrade = db.prepare("DELETE FROM monthly_grade_stats WHERE month = ?").run('2025-10');
+const deletedGroup = db.prepare("DELETE FROM monthly_group_stats WHERE month = ?").run('2025-10');
 
-console.log(`\n기존 통계 삭제:`)
-console.log(`  monthly_center_stats: ${deletedCenter.changes}건`)
-console.log(`  monthly_grade_stats: ${deletedGrade.changes}건`)
+console.log('기존 통계 삭제:');
+console.log(`  monthly_center_stats: ${deletedCenter.changes}건`);
+console.log(`  monthly_grade_stats: ${deletedGrade.changes}건`);
+console.log(`  monthly_group_stats: ${deletedGroup.changes}건\n`);
 
-// Import and run precompute
-const { precomputeMonthlyStats, precomputeGroupStats } = require('../lib/db/queries/precompute-stats')
+// 재생성
+console.log('통계 재생성 중...');
+precomputeMonthlyStats('2025-10');
+precomputeGroupStats('2025-10');
 
-console.log(`\n통계 재생성 중...`)
-precomputeMonthlyStats('2025-10')
-precomputeGroupStats('2025-10')
-
-// Check results
-const centerCount = db.prepare("SELECT COUNT(*) FROM monthly_center_stats WHERE month = '2025-10'").pluck().get()
-const gradeCount = db.prepare("SELECT COUNT(*) FROM monthly_grade_stats WHERE month = '2025-10'").pluck().get()
-
-console.log(`\n재생성된 통계:`)
-console.log(`  monthly_center_stats: ${centerCount}건`)
-console.log(`  monthly_grade_stats: ${gradeCount}건`)
-
-// Show sample data
-const sample = db.prepare(`
+// 확인
+const result = db.prepare(`
   SELECT center_name, weekly_claimed_hours, weekly_adjusted_hours
   FROM monthly_center_stats
   WHERE month = '2025-10'
   ORDER BY center_name
-  LIMIT 3
-`).all()
+`).all();
 
-console.log(`\n샘플 데이터:`)
-for (const row of sample as any[]) {
-  console.log(`  ${row.center_name}: 근태=${row.weekly_claimed_hours}h, 추정=${row.weekly_adjusted_hours}h`)
-}
+console.log('\n재생성 완료:');
+result.forEach((r: any) => {
+  console.log(`  ${r.center_name}: 근태=${r.weekly_claimed_hours}h, 추정=${r.weekly_adjusted_hours}h`);
+});
 
-db.close()
-console.log(`\n${'='.repeat(80)}`)
-console.log('완료!')
-console.log('='.repeat(80))
+db.close();
+
+console.log('\n✓ 10월 통계 재생성 완료!');
