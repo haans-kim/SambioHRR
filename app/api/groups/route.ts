@@ -127,9 +127,9 @@ export async function GET(request: NextRequest) {
     console.log('No data in daily_analysis_results for selected month, returning empty groups');
     groups = [];
   } else {
-    // Filter out groups with 0 employees only if we have data
+    // Filter out groups with 0 or 1 employees (usually just managers/leads)
     console.log('Groups before filtering:', groups.length, groups.map(g => ({name: g.orgName, employees: g.stats?.totalEmployees})));
-    groups = groups.filter((group: any) => group.stats?.totalEmployees > 0);
+    groups = groups.filter((group: any) => (group.stats?.totalEmployees || 0) > 1);
     console.log('Groups after filtering:', groups.length);
   }
     

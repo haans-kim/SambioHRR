@@ -160,8 +160,8 @@ export async function GET(request: NextRequest) {
     console.log('No data in daily_analysis_results for selected month, returning empty teams');
     teams = [];
   } else {
-    // Filter out teams with 0 employees only if we have data
-    teams = teams.filter((team: any) => team.stats?.totalEmployees > 0);
+    // Filter out teams with 0 or 1 employees (usually just managers/leads)
+    teams = teams.filter((team: any) => (team.stats?.totalEmployees || 0) > 1);
   }
     
     // Calculate efficiency from teams stats instead of raw data
