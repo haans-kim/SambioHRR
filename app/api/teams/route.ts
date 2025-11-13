@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
       breadcrumb.push({ label: parentOrg.orgName, href: `/teams?center=${parentOrg.orgCode}` });
     }
   } else {
-    // Default: show all teams
-    teams = getOrganizationsWithStats('team');
+    // Default: show all teams - use monthly stats
+    teams = getOrganizationsWithStatsForPeriod('team', startDate, endDate);
   }
   
   // Calculate totals and weighted averages based on monthly data

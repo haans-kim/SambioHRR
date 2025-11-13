@@ -60,7 +60,13 @@ export default function HomePage() {
     }
     return 'efficiency';
   });
-  const [selectedMonth, setSelectedMonth] = useState<string>(''); // 빈 문자열로 시작 - API에서 최신 월 가져옴
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('hrDashboard.selectedMonth');
+      if (saved) return saved;
+    }
+    return ''; // 빈 문자열로 시작 - API에서 최신 월 가져옴
+  });
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -131,6 +137,9 @@ export default function HomePage() {
 
   const handleMonthChange = (month: string) => {
     setSelectedMonth(month);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hrDashboard.selectedMonth', month);
+    }
   };
 
   if (loading) {

@@ -39,12 +39,30 @@ export default function GroupsPage() {
     }
     return 'efficiency';
   });
-  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('hrDashboard.selectedMonth');
+      if (saved) return saved;
+    }
+    return '2025-06';
+  });
   const [data, setData] = useState<GroupData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 지표 변경 핸들러
+  const handleMetricChange = (metric: MetricType) => {
+    setSelectedMetric(metric);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hrDashboard.selectedMetric', metric);
+    }
+  };
+
+  // 월 변경 핸들러
   const handleMonthChange = (month: string) => {
     setSelectedMonth(month);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hrDashboard.selectedMonth', month);
+    }
   };
 
   useEffect(() => {
@@ -129,7 +147,7 @@ export default function GroupsPage() {
       avgAdjustedWeeklyWorkHours={data.avgAdjustedWeeklyWorkHours}
       avgDataReliability={data.avgDataReliability}
       selectedMetric={selectedMetric}
-      onMetricChange={setSelectedMetric}
+      onMetricChange={handleMetricChange}
       parentOrg={data.parentOrg}
       breadcrumb={data.breadcrumb}
       selectedMonth={selectedMonth}
