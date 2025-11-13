@@ -118,7 +118,7 @@ function createWindow() {
         log(`Checking server readiness... attempt ${attempt}/${maxAttempts}`);
 
         // Try to fetch from the server
-        const response = await fetch('http://localhost:3003', {
+        const response = await fetch('http://localhost:5005', {
           method: 'HEAD',
           signal: AbortSignal.timeout(5000) // 5 second timeout per request
         });
@@ -132,8 +132,8 @@ function createWindow() {
               throw new Error('Main window is null');
             }
 
-            log('Loading URL: http://localhost:3003');
-            await mainWindow.loadURL('http://localhost:3003');
+            log('Loading URL: http://localhost:5005');
+            await mainWindow.loadURL('http://localhost:5005');
 
             log('✓ URL loaded successfully');
             log('Current URL:', mainWindow.webContents.getURL());
@@ -200,7 +200,7 @@ function startNextServer() {
     log('Next CLI:', nextCli);
     log('Next CLI exists:', fs.existsSync(nextCli));
 
-    nextServerProcess = spawn('node', [nextCli, 'start', '--port', '3003'], {
+    nextServerProcess = spawn('node', [nextCli, 'start', '--port', '5005'], {
       cwd: appPath,
       env: {
         ...process.env,
@@ -218,7 +218,7 @@ function startNextServer() {
 
     nextServerProcess.on('error', (error) => {
       log('Failed to start Next.js server:', error);
-      dialog.showErrorBox('Server Error', `Failed to start Next.js server.\n\nError: ${error.message}\n\nPlease check if port 4000 is already in use.`);
+      dialog.showErrorBox('Server Error', `Failed to start Next.js server.\n\nError: ${error.message}\n\nPlease check if port 5005 is already in use.\n\nTo fix:\n1. Close any programs using port 5005\n2. Or run: netstat -ano | findstr :5005\n3. Then: taskkill /F /PID <PID>`);
     });
 
     nextServerProcess.on('spawn', () => {
@@ -233,7 +233,7 @@ function startNextServer() {
         dialog.showErrorBox('Server Crashed',
           `Next.js server stopped unexpectedly.\n\nExit code: ${code}\nSignal: ${signal}\n\n` +
           `Common causes:\n` +
-          `- Port 3003 is already in use\n` +
+          `- Port 5005 is already in use\n` +
           `- Database connection failed\n\n` +
           `Check log file: ${path.join(appDataDir, 'nextjs-server.log')}`);
       }
@@ -259,10 +259,10 @@ function startNextServer() {
       // 포트 충돌 감지
       if (msg.includes('EADDRINUSE') || msg.includes('address already in use') || msg.includes('port') && msg.includes('already')) {
         dialog.showErrorBox('Port Conflict',
-          `Port 3003 is already in use!\n\n` +
-          `Please close any other applications using port 3003.\n\n` +
+          `Port 5005 is already in use!\n\n` +
+          `Please close any other applications using port 5005.\n\n` +
           `You can find which program is using it by running:\n` +
-          `netstat -ano | findstr ":3003"`);
+          `netstat -ano | findstr ":5005"`);
       }
 
       // 데이터베이스 에러 감지

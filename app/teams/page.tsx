@@ -42,15 +42,30 @@ export default function TeamsPage() {
     }
     return 'efficiency';
   });
-  const [selectedMonth, setSelectedMonth] = useState<string>('2025-06'); // 기본값 2025-06
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('hrDashboard.selectedMonth');
+      if (saved) return saved;
+    }
+    return '2025-06';
+  });
   const [data, setData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 월 변경 핸들러 (Legacy Analysis 버튼용)
+  // 지표 변경 핸들러
+  const handleMetricChange = (metric: MetricType) => {
+    setSelectedMetric(metric);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hrDashboard.selectedMetric', metric);
+    }
+  };
+
+  // 월 변경 핸들러
   const handleMonthChange = (month: string) => {
     setSelectedMonth(month);
-    // 현재는 UI만 업데이트, 실제 데이터는 6월 데이터 사용
-    // 추후 1-5월 데이터가 업로드되면 API 호출도 추가
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hrDashboard.selectedMonth', month);
+    }
   };
 
   useEffect(() => {
@@ -136,7 +151,7 @@ export default function TeamsPage() {
       avgAdjustedWeeklyWorkHours={data.summary?.avgAdjustedWeeklyWorkHours || 0}
       avgDataReliability={data.summary?.avgDataReliability || 0}
       selectedMetric={selectedMetric}
-      onMetricChange={setSelectedMetric}
+      onMetricChange={handleMetricChange}
       parentOrg={data.parentOrg}
       breadcrumb={data.breadcrumb}
       selectedMonth={selectedMonth}
