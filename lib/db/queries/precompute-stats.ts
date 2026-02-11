@@ -426,6 +426,248 @@ export function precomputeGroupStats(month: string) {
 }
 
 /**
+ * 팀별 통계를 미리 계산하여 저장
+ */
+export function precomputeTeamStats(month: string) {
+  const startDate = `${month}-01`;
+  const endDate = `${month}-31`;
+
+  // 팀 통계 테이블 생성 (없으면)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS monthly_team_stats (
+      month TEXT,
+      team_name TEXT,
+      center_name TEXT,
+      total_employees INTEGER,
+      weekly_claimed_hours REAL,
+      weekly_adjusted_hours REAL,
+      efficiency REAL,
+      data_reliability REAL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (month, team_name, center_name)
+    )
+  `).run();
+
+  // 기존 데이터 삭제
+  db.prepare('DELETE FROM monthly_team_stats WHERE month = ?').run(month);
+
+  // 팀별 통계 계산 및 저장
+  db.prepare(`
+    INSERT INTO monthly_team_stats (
+      month, team_name, center_name, total_employees,
+      weekly_claimed_hours, weekly_adjusted_hours, efficiency, data_reliability
+    )
+    WITH claimed AS (
+      SELECT
+        e.team_name,
+        e.center_name,
+        COUNT(DISTINCT c.사번) as total_employees,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) as total_claimed
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.team_name IS NOT NULL
+        AND e.team_name != ''
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
+      GROUP BY e.team_name, e.center_name
+    ),
+    adjusted AS (
+      SELECT
+        e.team_name,
+        e.center_name,
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM daily_analysis_results dar2
+            WHERE dar2.analysis_date BETWEEN ? AND ?
+            LIMIT 1
+          ) THEN
+            SUM(
+              CASE
+                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+                THEN COALESCE(h.standard_hours, 8.0)
+                ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+              END
+            )
+          ELSE NULL
+        END as total_adjusted
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      LEFT JOIN daily_analysis_results dar
+        ON dar.employee_id = CAST(c.사번 AS TEXT)
+        AND DATE(dar.analysis_date) = DATE(c.근무일)
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.team_name IS NOT NULL
+        AND e.team_name != ''
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
+      GROUP BY e.team_name, e.center_name
+    ),
+    reliability AS (
+      SELECT
+        e.team_name,
+        ROUND(AVG(dar.confidence_score), 1) as avg_reliability
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.team_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150', '20200459')
+      GROUP BY e.team_name
+    )
+    SELECT
+      ?,
+      c.team_name,
+      c.center_name,
+      c.total_employees,
+      ROUND(c.total_claimed / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1),
+      r.avg_reliability
+    FROM claimed c
+    LEFT JOIN adjusted a ON c.team_name = a.team_name AND c.center_name = a.center_name
+    LEFT JOIN reliability r ON c.team_name = r.team_name
+  `).run(
+    startDate, endDate, // claimed
+    startDate, endDate, // adjusted (EXISTS check)
+    startDate, endDate, // adjusted (WHERE clause)
+    startDate, endDate, // reliability
+    month,
+    endDate, startDate, // JULIANDAY for weekly_claimed
+    endDate, startDate  // JULIANDAY for weekly_adjusted
+  );
+}
+
+/**
+ * 담당별 통계를 미리 계산하여 저장
+ */
+export function precomputeDivisionStats(month: string) {
+  const startDate = `${month}-01`;
+  const endDate = `${month}-31`;
+
+  // 담당 통계 테이블 생성 (없으면)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS monthly_division_stats (
+      month TEXT,
+      division_name TEXT,
+      center_name TEXT,
+      total_employees INTEGER,
+      weekly_claimed_hours REAL,
+      weekly_adjusted_hours REAL,
+      efficiency REAL,
+      data_reliability REAL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (month, division_name, center_name)
+    )
+  `).run();
+
+  // 기존 데이터 삭제
+  db.prepare('DELETE FROM monthly_division_stats WHERE month = ?').run(month);
+
+  // 담당별 통계 계산 및 저장
+  db.prepare(`
+    INSERT INTO monthly_division_stats (
+      month, division_name, center_name, total_employees,
+      weekly_claimed_hours, weekly_adjusted_hours, efficiency, data_reliability
+    )
+    WITH claimed AS (
+      SELECT
+        e.division_name,
+        e.center_name,
+        COUNT(DISTINCT c.사번) as total_employees,
+        SUM(
+          CASE
+            WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+            THEN COALESCE(h.standard_hours, 8.0)
+            ELSE c.실제근무시간
+          END
+        ) as total_claimed
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.division_name IS NOT NULL
+        AND e.division_name != ''
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
+      GROUP BY e.division_name, e.center_name
+    ),
+    adjusted AS (
+      SELECT
+        e.division_name,
+        e.center_name,
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM daily_analysis_results dar2
+            WHERE dar2.analysis_date BETWEEN ? AND ?
+            LIMIT 1
+          ) THEN
+            SUM(
+              CASE
+                WHEN h.holiday_date IS NOT NULL AND c.실제근무시간 = 0
+                THEN COALESCE(h.standard_hours, 8.0)
+                ELSE c.실제근무시간 - COALESCE(dar.movement_minutes / 60.0 * 0.5, 0)
+              END
+            )
+          ELSE NULL
+        END as total_adjusted
+      FROM claim_data c
+      LEFT JOIN holidays h ON DATE(c.근무일) = h.holiday_date
+      LEFT JOIN daily_analysis_results dar
+        ON dar.employee_id = CAST(c.사번 AS TEXT)
+        AND DATE(dar.analysis_date) = DATE(c.근무일)
+      JOIN employees e ON e.employee_id = CAST(c.사번 AS TEXT)
+      WHERE c.근무일 BETWEEN ? AND ?
+        AND e.division_name IS NOT NULL
+        AND e.division_name != ''
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND c.사번 NOT IN ('20190287', '20200207', '20120150', '20200459')
+      GROUP BY e.division_name, e.center_name
+    ),
+    reliability AS (
+      SELECT
+        e.division_name,
+        ROUND(AVG(dar.confidence_score), 1) as avg_reliability
+      FROM daily_analysis_results dar
+      JOIN employees e ON e.employee_id = dar.employee_id
+      WHERE dar.analysis_date BETWEEN ? AND ?
+        AND e.division_name IS NOT NULL
+        AND e.center_name NOT IN ('경영진단팀', '대표이사', '이사회', '자문역/고문')
+        AND dar.employee_id NOT IN ('20190287', '20200207', '20120150', '20200459')
+      GROUP BY e.division_name
+    )
+    SELECT
+      ?,
+      c.division_name,
+      c.center_name,
+      c.total_employees,
+      ROUND(c.total_claimed / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(a.total_adjusted / c.total_employees / (JULIANDAY(?) - JULIANDAY(?) + 1) * 7, 1),
+      ROUND(MIN(a.total_adjusted / NULLIF(c.total_claimed, 0), 0.98) * 100, 1),
+      r.avg_reliability
+    FROM claimed c
+    LEFT JOIN adjusted a ON c.division_name = a.division_name AND c.center_name = a.center_name
+    LEFT JOIN reliability r ON c.division_name = r.division_name
+  `).run(
+    startDate, endDate, // claimed
+    startDate, endDate, // adjusted (EXISTS check)
+    startDate, endDate, // adjusted (WHERE clause)
+    startDate, endDate, // reliability
+    month,
+    endDate, startDate, // JULIANDAY for weekly_claimed
+    endDate, startDate  // JULIANDAY for weekly_adjusted
+  );
+}
+
+/**
  * 모든 월의 통계를 미리 계산
  */
 export function precomputeAllMonthlyStats() {
