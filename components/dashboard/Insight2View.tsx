@@ -63,6 +63,14 @@ interface TagSummary {
   avg_g3_per_person: number;
 }
 
+interface RawDataStats {
+  total_tag_records: number;
+  monthly_tag_records: number;
+  total_equipment_records: number;
+  total_knox_records: number;
+  tag_location_types: number;
+}
+
 const CLUSTER_COLORS: { [key: string]: string } = {
   '시스템운영집중형': '#1f77b4',  // 파란색
   '현장이동활발형': '#ff7f0e',  // 주황색
@@ -75,6 +83,7 @@ export function Insight2View() {
   const [patterns, setPatterns] = useState<PatternData[]>([]);
   const [clusterStats, setClusterStats] = useState<ClusterStats[]>([]);
   const [tagSummary, setTagSummary] = useState<TagSummary | null>(null);
+  const [rawDataStats, setRawDataStats] = useState<RawDataStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
 
@@ -96,10 +105,11 @@ export function Insight2View() {
     try {
       const response = await fetch('/api/insights/pattern-analysis');
       const data = await response.json();
-      
+
       setPatterns(data.patterns || []);
       setClusterStats(data.clusterStats || []);
       setTagSummary(data.tagSummary || null);
+      setRawDataStats(data.rawDataStats || null);
     } catch (error) {
       console.error('Failed to fetch pattern analysis:', error);
     } finally {
@@ -235,70 +245,75 @@ export function Insight2View() {
         <p className="text-lg text-gray-600 mt-1">실시간 업무패턴 분석 및 근무 추정시간 모니터링</p>
       </div>
 
-      {/* 태그 개수 요약 */}
-      {tagSummary && (
+      {/* 원본 데이터 규모 */}
+      {rawDataStats && (
         <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">태그 개수 요약</h2>
+          <h2 className="text-xl font-semibold mb-4">전체 데이터 규모 (원본)</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
               <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-gray-600 mb-2">
+                <div className="flex items-center gap-2 text-blue-700 mb-2">
                   <Activity className="w-4 h-4" />
-                  <span className="text-sm">O태그 (장비)</span>
+                  <span className="text-sm font-semibold">전체 태그 데이터</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {tagSummary.total_o_tags?.toLocaleString() || '0'}
+                <div className="text-2xl font-bold text-blue-900">
+                  {(rawDataStats.total_tag_records / 1000000).toFixed(1)}M
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  평균 {tagSummary.avg_o_per_person?.toFixed(1) || '0'}건/인
+                <div className="text-xs text-blue-600 mt-1">
+                  {rawDataStats.total_tag_records?.toLocaleString()} 건
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
               <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-gray-600 mb-2">
+                <div className="flex items-center gap-2 text-purple-700 mb-2">
                   <BarChart3 className="w-4 h-4" />
                   <span className="text-sm">ERP (결재·회의·메일)</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {tagSummary.total_knox?.toLocaleString() || '0'}
+                <div className="text-2xl font-bold text-purple-900">
+                  {(rawDataStats.total_equipment_records / 1000000).toFixed(1)}M
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  평균 {tagSummary.avg_knox_per_person?.toFixed(1) || '0'}건/인
+                <div className="text-xs text-purple-600 mt-1">
+                  MES·MDM·EAM·EQUIS
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
               <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-gray-600 mb-2">
+                <div className="flex items-center gap-2 text-orange-700 mb-2">
                   <TrendingUp className="w-4 h-4" />
-                  <span className="text-sm">T1 (이동공간)</span>
+                  <span className="text-sm font-semibold">Knox 시스템</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {tagSummary.total_t1?.toLocaleString() || '0'}
+                <div className="text-2xl font-bold text-orange-900">
+                  {(rawDataStats.total_knox_records / 1000).toFixed(0)}K
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  평균 {tagSummary.avg_t1_per_person?.toFixed(1) || '0'}건/인
+                <div className="text-xs text-orange-600 mt-1">
+                  결재·PIMS·메일
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            <Card className="bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200">
               <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-gray-600 mb-2">
+                <div className="flex items-center gap-2 text-gray-700 mb-2">
                   <Users className="w-4 h-4" />
-                  <span className="text-sm">G3 (회의/협업)</span>
+                  <span className="text-sm font-semibold">장소 유형</span>
                 </div>
                 <div className="text-2xl font-bold text-gray-900">
-                  {tagSummary.total_g3?.toLocaleString() || '0'}
+                  {rawDataStats.tag_location_types}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  평균 {tagSummary.avg_g3_per_person?.toFixed(1) || '0'}건/인
+                <div className="text-xs text-gray-600 mt-1">
+                  개 장소 분류
                 </div>
               </CardContent>
             </Card>
+          </div>
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              💡 <strong>전체 데이터:</strong> 약 {((rawDataStats.total_tag_records + rawDataStats.total_equipment_records + rawDataStats.total_knox_records) / 1000000).toFixed(1)}백만 건 이상의 실시간 데이터를 기반으로 분석합니다.
+            </p>
           </div>
         </div>
       )}

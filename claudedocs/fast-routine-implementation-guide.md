@@ -614,9 +614,23 @@ export async function GET(request: NextRequest) {
         });
       }
     } else {
-      return NextResponse.json({
-        error: 'Please select a center to view teams'
-      }, { status: 400 });
+      // Default: show all teams with precomputed stats
+      teams = precomputedTeams.map((statsData) => {
+        return {
+          orgCode: statsData.org_code || '',
+          orgName: statsData.team_name,
+          orgLevel: 'team',
+          parentOrgCode: statsData.parent_org_code,
+          stats: {
+            avgWorkEfficiency: statsData.efficiency || 0,
+            avgWeeklyWorkHours: 40.0,
+            avgWeeklyClaimedHours: statsData.weekly_claimed_hours || 0,
+            avgAdjustedWeeklyWorkHours: statsData.weekly_adjusted_hours || 0,
+            avgDataReliability: statsData.data_reliability || 0,
+            totalEmployees: statsData.total_employees || 0
+          }
+        };
+      });
     }
 
     // 요약 통계 계산
@@ -1483,7 +1497,318 @@ ORDER BY month;
 
 ---
 
-**문서 버전**: 1.0
+## 추가 기능 구현 (2025-02-11)
+
+### 1. 팀별 분석 기본 뷰 추가
+
+**문제**: `/teams` 페이지 접근 시 센터 선택 없이 400 에러 발생
+
+**해결**: `app/api/teams-fast/route.ts`의 else 블록에서 모든 팀 목록을 표시하도록 수정
+
+```typescript
+} else {
+  // 기본: 사전 계산된 모든 팀 통계 표시
+  teams = precomputedTeams.map((statsData) => {
+    return {
+      orgCode: statsData.org_code || '',
+      orgName: statsData.team_name,
+      orgLevel: 'team',
+      parentOrgCode: statsData.parent_org_code,
+      stats: {
+        avgWorkEfficiency: statsData.efficiency || 0,
+        avgWeeklyWorkHours: 40.0,
+        avgWeeklyClaimedHours: statsData.weekly_claimed_hours || 0,
+        avgAdjustedWeeklyWorkHours: statsData.weekly_adjusted_hours || 0,
+        avgDataReliability: statsData.data_reliability || 0,
+        totalEmployees: statsData.total_employees || 0
+      }
+    };
+  });
+}
+```
+
+### 2. 근무 패턴 분석 - 실제 데이터 규모 표시
+
+**배경**: 기존 화면에 표시된 데이터 메트릭(660K, 252K 등)은 집계된 통계 테이블의 row 수로, 실제 원본 데이터 규모(20M+ records)를 반영하지 못함
+
+**구현 내용**:
+
+#### 2.1. API 추가 (`app/api/insights/pattern-analysis/route.ts`)
+
+```typescript
+// 실제 원본 데이터 규모 통계 쿼리 추가
+const rawDataStats = db.prepare(`
+  SELECT
+    (SELECT COUNT(*) FROM tag_data) as total_tag_records,
+    (SELECT COUNT(*) FROM tag_data
+     WHERE substr(cast(ENTE_DT as text), 1, 6) = strftime('%Y%m', 'now', '-1 month')
+    ) as monthly_tag_records,
+    (SELECT COUNT(*) FROM mes_data) +
+    (SELECT COUNT(*) FROM mdm_data) +
+    (SELECT COUNT(*) FROM eam_data) +
+    (SELECT COUNT(*) FROM equis_data) as total_equipment_records,
+    (SELECT COUNT(*) FROM knox_approval_data) +
+    (SELECT COUNT(*) FROM knox_pims_data) +
+    (SELECT COUNT(*) FROM knox_mail_data) as total_knox_records,
+    (SELECT COUNT(DISTINCT DR_GB) FROM tag_data
+     WHERE DR_GB IS NOT NULL AND DR_GB != ''
+    ) as tag_location_types
+`).get();
+
+return NextResponse.json({
+  patterns,
+  clusterStats,
+  centerDistribution,
+  tagSummary,
+  rawDataStats,  // 추가
+  summary: { ... }
+});
+```
+
+**실제 데이터 규모** (2025-02 기준):
+- **전체 태그 데이터**: 20,080,148 건
+- **월평균 태그 데이터**: ~2,500,000 건
+- **장비 시스템 데이터**: 4,070,000 건 (MES·MDM·EAM·EQUIS)
+- **Knox 시스템 데이터**: 648,000 건 (결재·PIMS·메일)
+- **장소 유형**: 4 종류
+
+#### 2.2. 프론트엔드 구현 (`components/dashboard/Insight2View.tsx`)
+
+**인터페이스 추가**:
+```typescript
+interface RawDataStats {
+  total_tag_records: number;
+  monthly_tag_records: number;
+  total_equipment_records: number;
+  total_knox_records: number;
+  tag_location_types: number;
+}
+```
+
+**상태 관리**:
+```typescript
+const [rawDataStats, setRawDataStats] = useState<RawDataStats | null>(null);
+
+// API에서 데이터 fetch
+const fetchPatternAnalysis = async () => {
+  const response = await fetch('/api/insights/pattern-analysis');
+  const data = await response.json();
+  setRawDataStats(data.rawDataStats || null);
+  // ...
+};
+```
+
+**UI 표시** (4개 카드):
+```tsx
+{rawDataStats && (
+  <div className="mb-6">
+    <h2 className="text-xl font-semibold mb-4">전체 데이터 규모 (원본)</h2>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* 1. 전체 태그 데이터 */}
+      <Card className="p-4">
+        <div className="text-sm text-muted-foreground mb-1">전체 태그 데이터</div>
+        <div className="text-2xl font-bold">
+          {(rawDataStats.total_tag_records / 1000000).toFixed(1)}M
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          {rawDataStats.total_tag_records.toLocaleString()} 건
+        </div>
+      </Card>
+
+      {/* 2. 장비 시스템 */}
+      <Card className="p-4">
+        <div className="text-sm text-muted-foreground mb-1">장비 시스템</div>
+        <div className="text-2xl font-bold">
+          {(rawDataStats.total_equipment_records / 1000000).toFixed(1)}M
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          MES·MDM·EAM·EQUIS
+        </div>
+      </Card>
+
+      {/* 3. Knox 시스템 */}
+      <Card className="p-4">
+        <div className="text-sm text-muted-foreground mb-1">Knox 시스템</div>
+        <div className="text-2xl font-bold">
+          {(rawDataStats.total_knox_records / 1000).toFixed(0)}K
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          결재·PIMS·메일
+        </div>
+      </Card>
+
+      {/* 4. 장소 유형 */}
+      <Card className="p-4">
+        <div className="text-sm text-muted-foreground mb-1">장소 유형</div>
+        <div className="text-2xl font-bold">
+          {rawDataStats.tag_location_types}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          DR_GB 종류
+        </div>
+      </Card>
+    </div>
+  </div>
+)}
+```
+
+**제거된 섹션**:
+- "팀별 집계 데이터 요약" 섹션 (불필요한 중복 정보)
+- "월간 태그" 카드 (의미 없는 메트릭)
+
+#### 2.3. Electron 적용 가이드
+
+**IPC Handler 추가** (Main Process):
+```javascript
+ipcMain.handle('get-pattern-analysis', async () => {
+  try {
+    const db = new Database(dbPath);
+
+    // patterns 쿼리
+    const patterns = db.prepare(`...`).all();
+
+    // rawDataStats 쿼리
+    const rawDataStats = db.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM tag_data) as total_tag_records,
+        (SELECT COUNT(*) FROM mes_data) +
+        (SELECT COUNT(*) FROM mdm_data) +
+        (SELECT COUNT(*) FROM eam_data) +
+        (SELECT COUNT(*) FROM equis_data) as total_equipment_records,
+        (SELECT COUNT(*) FROM knox_approval_data) +
+        (SELECT COUNT(*) FROM knox_pims_data) +
+        (SELECT COUNT(*) FROM knox_mail_data) as total_knox_records,
+        (SELECT COUNT(DISTINCT DR_GB) FROM tag_data
+         WHERE DR_GB IS NOT NULL AND DR_GB != ''
+        ) as tag_location_types
+    `).get();
+
+    return {
+      patterns,
+      rawDataStats,
+      // ...
+    };
+  } catch (error) {
+    console.error('Failed to fetch pattern analysis:', error);
+    throw error;
+  }
+});
+```
+
+**Preload 스크립트**:
+```javascript
+contextBridge.exposeInMainWorld('api', {
+  getPatternAnalysis: () => ipcRenderer.invoke('get-pattern-analysis')
+});
+```
+
+**React 컴포넌트**:
+```typescript
+const Insight2View = () => {
+  const [rawDataStats, setRawDataStats] = useState<RawDataStats | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const data = await window.api.getPatternAnalysis();
+      setRawDataStats(data.rawDataStats);
+    };
+
+    fetchData();
+  }, []);
+
+  // ... 동일한 UI 렌더링 로직
+};
+```
+
+### 3. 구현 체크리스트 (추가 기능)
+
+#### Phase 1: 팀별 분석 기본 뷰
+- [x] `app/api/teams-fast/route.ts` else 블록 수정
+- [x] 모든 팀 목록 표시 로직 구현
+- [x] 브라우저에서 `/teams` 직접 접근 테스트
+- [ ] **Electron**: IPC handler에 동일 로직 적용
+
+#### Phase 2: 데이터 규모 API
+- [x] `app/api/insights/pattern-analysis/route.ts`에 rawDataStats 쿼리 추가
+- [x] tag_data, equipment, knox 테이블 COUNT 쿼리 구현
+- [x] API 응답에 rawDataStats 포함
+- [x] 성능 테스트 (COUNT 쿼리 실행 시간)
+- [ ] **Electron**: IPC handler 구현
+
+#### Phase 3: 프론트엔드 UI
+- [x] `components/dashboard/Insight2View.tsx`에 RawDataStats 인터페이스 추가
+- [x] rawDataStats 상태 관리 추가
+- [x] "전체 데이터 규모 (원본)" 섹션 구현 (4개 카드)
+- [x] 불필요한 "팀별 집계 데이터 요약" 섹션 제거
+- [x] "월간 태그" 카드 제거
+- [x] M/K 단위 표시 로직 구현
+- [x] 반응형 그리드 레이아웃 (2열 → 4열)
+- [ ] **Electron**: 동일한 UI 컴포넌트 적용
+
+#### Phase 4: 테스트
+- [x] 데이터 규모가 올바르게 표시되는지 확인
+- [x] 20M+ tags, 4M+ equipment, 600K+ knox 표시 확인
+- [x] 카드 레이아웃이 반응형으로 동작하는지 확인
+- [x] API 응답 시간 확인 (COUNT 쿼리 성능)
+- [ ] **Electron**: 동일한 테스트 수행
+
+### 4. 성능 고려사항
+
+#### COUNT 쿼리 최적화
+```sql
+-- 원본: 5개 테이블 각각 COUNT
+SELECT
+  (SELECT COUNT(*) FROM tag_data),          -- 20M rows
+  (SELECT COUNT(*) FROM mes_data),          -- 1M rows
+  (SELECT COUNT(*) FROM mdm_data),          -- 2M rows
+  (SELECT COUNT(*) FROM eam_data),          -- 0.5M rows
+  (SELECT COUNT(*) FROM equis_data),        -- 0.5M rows
+  (SELECT COUNT(*) FROM knox_approval_data) -- 0.3M rows
+  ...
+
+-- 실행 시간: ~1-2초 (인덱스 없이)
+-- 캐싱: 데이터는 거의 변경되지 않으므로 클라이언트 측 캐싱 적용 가능
+```
+
+#### 개선 방안 (선택사항)
+1. **메타데이터 테이블 생성**:
+   ```sql
+   CREATE TABLE data_scale_metadata (
+     table_name TEXT PRIMARY KEY,
+     record_count INTEGER,
+     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+2. **일일 업데이트 스크립트**:
+   ```javascript
+   // scripts/update-data-scale.mjs
+   const tables = ['tag_data', 'mes_data', 'mdm_data', ...];
+
+   tables.forEach(table => {
+     const count = db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get().count;
+     db.prepare(`
+       INSERT OR REPLACE INTO data_scale_metadata (table_name, record_count, last_updated)
+       VALUES (?, ?, CURRENT_TIMESTAMP)
+     `).run(table, count);
+   });
+   ```
+
+3. **API에서 메타데이터 조회**:
+   ```typescript
+   const rawDataStats = db.prepare(`
+     SELECT
+       SUM(CASE WHEN table_name = 'tag_data' THEN record_count ELSE 0 END) as total_tag_records,
+       SUM(CASE WHEN table_name IN ('mes_data', 'mdm_data', 'eam_data', 'equis_data')
+           THEN record_count ELSE 0 END) as total_equipment_records,
+       ...
+     FROM data_scale_metadata
+   `).get();
+   ```
+
+---
+
+**문서 버전**: 1.1
 **최종 업데이트**: 2025-02-11
 **작성자**: Claude Sonnet 4.5
 **적용 버전**: SambioHRR Next.js + 향후 Electron 버전

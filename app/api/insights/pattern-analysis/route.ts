@@ -109,11 +109,27 @@ export async function GET() {
       center: mapOrganizationName(d.center),
     }));
 
+    // 실제 원본 데이터 규모 통계
+    const rawDataStats = db.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM tag_data) as total_tag_records,
+        (SELECT COUNT(*) FROM tag_data WHERE substr(cast(ENTE_DT as text), 1, 6) = strftime('%Y%m', 'now', '-1 month')) as monthly_tag_records,
+        (SELECT COUNT(*) FROM mes_data) +
+        (SELECT COUNT(*) FROM mdm_data) +
+        (SELECT COUNT(*) FROM eam_data) +
+        (SELECT COUNT(*) FROM equis_data) as total_equipment_records,
+        (SELECT COUNT(*) FROM knox_approval_data) +
+        (SELECT COUNT(*) FROM knox_pims_data) +
+        (SELECT COUNT(*) FROM knox_mail_data) as total_knox_records,
+        (SELECT COUNT(DISTINCT DR_GB) FROM tag_data WHERE DR_GB IS NOT NULL AND DR_GB != '') as tag_location_types
+    `).get();
+
     return NextResponse.json({
       patterns: mappedPatterns,
       clusterStats,
       centerDistribution: mappedCenterDistribution,
       tagSummary,
+      rawDataStats,
       summary: {
         totalTeams: mappedPatterns.length,
         totalEmployees: mappedPatterns.reduce((sum: number, p: any) => sum + p.employee_count, 0),
