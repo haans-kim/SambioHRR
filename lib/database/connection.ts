@@ -19,18 +19,23 @@ class DatabaseManager {
     // DB 경로 결정 로직
     const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
     const isDevelopment = process.env.NODE_ENV === 'development'
-    const isWindows = process.platform === 'win32'
+
+    // 빌드 타임: in-memory DB 반환 (실제 쿼리 실행 안됨)
+    if (isBuildTime) {
+      if (!this.db) {
+        console.log('[DatabaseManager] Build time - using in-memory database')
+        this.db = new Database(':memory:')
+        this.currentDbPath = ':memory:'
+      }
+      return this.db
+    }
 
     let dbPath: string
 
-    // 1순위: 환경변수로 전달된 경로 (Electron용)
+    // 1순위: 환경변수로 전달된 경로 (Electron/Docker용)
     if (process.env.DB_PATH) {
       dbPath = process.env.DB_PATH
-    } else if (isBuildTime || isDevelopment) {
-      // 빌드 타임 또는 개발 모드: 프로젝트 루트의 DB 사용
-      dbPath = path.join(process.cwd(), 'sambio_human.db')
     } else {
-      // 프로덕션 모드: 프로젝트 루트의 DB 사용 (npm start용)
       dbPath = path.join(process.cwd(), 'sambio_human.db')
     }
 

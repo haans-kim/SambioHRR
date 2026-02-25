@@ -1,0 +1,15 @@
+services:
+  sambio-hrr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sambio-hrr
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - DB_PATH=/data/sambio_human.db
+    volumes:
+      # DB 파일을 호스트에서 컨테이너로 마운트 (읽기/쓰기)
+      - ./sambio_human.db:/data/sambio_human.db
+    restart: unless-stopped
