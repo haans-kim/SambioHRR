@@ -63,7 +63,7 @@ export default function TeamsPage() {
         params.append('month', selectedMonth);
 
         console.log('Fetching teams data for month:', selectedMonth);
-        const response = await fetch(`/api/teams?${params}`, {
+        const response = await fetch(`/api/teams-fast?${params}`, {
           cache: 'no-store'
         });
         if (!response.ok) throw new Error('Failed to fetch');
