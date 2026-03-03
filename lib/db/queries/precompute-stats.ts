@@ -517,7 +517,7 @@ export function getPrecomputedStats(month: string): {
 }
 
 /**
- * 사전 계산된 그룹 통계 가져오기
+ * 사전 계산된 그룹 통계 가져오기 (단일 그룹)
  */
 export function getPrecomputedGroupStats(month: string, groupName: string) {
   const groupStats = db.prepare(`
@@ -526,6 +526,33 @@ export function getPrecomputedGroupStats(month: string, groupName: string) {
   `).get(month, groupName);
 
   return groupStats;
+}
+
+/**
+ * 사전 계산된 그룹 통계 전체 가져오기 (목록용)
+ */
+export function getPrecomputedGroupStatsAll(month: string, teamName?: string) {
+  let query = `
+    SELECT
+      mgs.*,
+      om.org_code,
+      om.parent_org_code
+    FROM monthly_group_stats mgs
+    LEFT JOIN organization_master om ON om.org_name = mgs.group_name
+      AND om.org_level = 'group'
+      AND om.is_active = 1
+    WHERE mgs.month = ?
+  `;
+  const params: any[] = [month];
+
+  if (teamName) {
+    query += ` AND mgs.team_name = ?`;
+    params.push(teamName);
+  }
+
+  query += ` ORDER BY mgs.group_name`;
+
+  return db.prepare(query).all(...params);
 }
 
 /**

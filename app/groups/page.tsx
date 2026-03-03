@@ -56,7 +56,7 @@ export default function GroupsPage() {
         params.append('month', selectedMonth);
 
         console.log('Fetching groups data for month:', selectedMonth);
-        const response = await fetch(`/api/groups?${params}`, {
+        const response = await fetch(`/api/groups-fast?${params}`, {
           cache: 'no-store'
         });
         if (!response.ok) throw new Error('Failed to fetch');
