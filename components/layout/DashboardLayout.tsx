@@ -123,11 +123,22 @@ export function DashboardLayout({
               
               {/* 지표 선택기 */}
               {onMetricChange && (
-                <div className="flex-shrink-0">
-                  <MetricSelector 
+                <div className="flex-shrink-0 flex items-center gap-3">
+                  <MetricSelector
                     selectedMetric={selectedMetric}
                     onMetricChange={onMetricChange}
                   />
+                  {/* 디자인센터(바이오연구소)일 때만 스킬레벨 버튼 표시 */}
+                  {parentOrg?.orgName === '바이오연구소' && (
+                    <a
+                      href="http://dashboard.insightgroup.biz:3000/hyundai-bfm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                    >
+                      스킬레벨
+                    </a>
+                  )}
                 </div>
               )}
             </div>

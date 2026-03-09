@@ -25,7 +25,7 @@ const ORG_NAME_MAPPING: Record<string, string> = {
   "EPCV센터": "생산기술본부",
   "품질운영센터": "품질관리본부",
   "CDO개발센터": "기술개발본부",
-  "바이오연구소": "중앙연구소",
+  "바이오연구소": "디자인센터",
   "경영지원센터": "경영지원본부",
   "People센터": "인사본부",
   "상생협력센터": "협력사업본부",
@@ -131,11 +131,11 @@ const ORG_NAME_MAPPING: Record<string, string> = {
   "AAV기술그룹": "바이러스기술그룹",
   "DNA기술그룹": "유전자기술그룹",
   "mRNA기술그룹": "RNA기술그룹",
-  "GT기술Lab": "유전자Lab",
-  "항체기술Lab": "단백질Lab",
+  "GT기술Lab": "CMF디자인팀",
+  "항체기술Lab": "외장디자인팀",
   "항체기술개발그룹": "단백질개발그룹",
   "항체기술응용그룹": "단백질응용그룹",
-  "선행공정개발Lab": "선행공정Lab",
+  "선행공정개발Lab": "내장디자인팀",
 
   // 생산 그룹 (배양/정제 → 생산1/생산2)
   "Plant 1 배양그룹": "제1공장 생산1그룹",
@@ -228,7 +228,7 @@ const ORG_NAME_MAPPING: Record<string, string> = {
   // 기술지원
   "DP Tech Support그룹": "완제품기술지원그룹",
   "DP Tech Transfer그룹": "완제품기술이전그룹",
-  "Bio R&D지원그룹": "R&D지원그룹",
+  "Bio R&D지원그룹": "디자인기획팀",
   "CDO SE그룹": "기술영업그룹",
   "CMO SE1그룹": "생산영업1그룹",
   "CMO SE2그룹": "생산영업2그룹",
@@ -254,7 +254,7 @@ const ORG_NAME_MAPPING: Record<string, string> = {
   "DI Governance그룹": "데이터거버넌스그룹",
   "Master Data Management그룹": "마스터데이터그룹",
   "정보전략그룹": "정보전략그룹",
-  "AI Lab": "AI Lab",
+  "AI Lab": "디지털디자인팀",
   "AI&I그룹": "AI혁신그룹",
 
   // 생산운영
@@ -325,7 +325,7 @@ const ORG_NAME_MAPPING: Record<string, string> = {
   "CDO지원그룹": "기술개발지원그룹",
   "경영지원그룹": "경영지원그룹",
   "SBA Support그룹": "중소기업지원그룹",
-  "Open Innovation그룹": "개방형혁신그룹",
+  "Open Innovation그룹": "글로벌디자인팀",
   "New Modality그룹": "신기술그룹",
   "기술교육그룹": "기술교육그룹",
 
@@ -348,7 +348,7 @@ const ORG_NAME_MAPPING: Record<string, string> = {
   "P5 T/F": "5공장TF",
   "P6 T/F": "6공장TF",
   "신사업추진 T/F": "신사업TF",
-  "펩타이드 T/F": "펩타이드TF",
+  "펩타이드 T/F": "스타일링팀",
 };
 
 /**

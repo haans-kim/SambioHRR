@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SambioHRR - 통합 HR 분석 시스템",
+  title: "HR Dashboard - 통합 HR 분석 시스템",
   description: "개인별 및 조직별 근무 데이터 통합 분석 대시보드",
 };
 
