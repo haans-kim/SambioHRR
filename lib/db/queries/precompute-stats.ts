@@ -494,14 +494,14 @@ export function getPrecomputedStats(month: string): {
     ORDER BY
       CASE
         WHEN mcs.center_name = '영업센터' THEN 1
-        WHEN mcs.center_name = '오퍼레이션센터' THEN 2
-        WHEN mcs.center_name = 'EPCV센터' THEN 3
-        WHEN mcs.center_name = '품질운영센터' THEN 4
-        WHEN mcs.center_name = 'CDO개발센터' THEN 5
-        WHEN mcs.center_name = '바이오연구소' THEN 6
+        WHEN mcs.center_name = '생산운영센터' THEN 2
+        WHEN mcs.center_name = '엔지니어링센터' THEN 3
+        WHEN mcs.center_name = '품질관리센터' THEN 4
+        WHEN mcs.center_name = '신제품개발센터' THEN 5
+        WHEN mcs.center_name = '기술연구소' THEN 6
         WHEN mcs.center_name = '경영지원센터' THEN 7
-        WHEN mcs.center_name = 'People센터' THEN 8
-        WHEN mcs.center_name = '상생협력센터' THEN 9
+        WHEN mcs.center_name = '인재개발센터' THEN 8
+        WHEN mcs.center_name = '협력센터' THEN 9
         ELSE 99
       END,
       mcs.center_name

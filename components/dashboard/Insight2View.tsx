@@ -28,7 +28,7 @@ interface PatternData {
   equipment_per_person: number;  // X축: 장비 사용 (건/인)
   movement_per_person: number;  // Y축: 이동성 지수
   cluster_type: string;  // 클러스터 타입
-  knox_per_person: number;  // Knox 사용량
+  knox_per_person: number;  // ERP 사용량
   meeting_per_person: number;  // 회의 활동
   reliability_score: number;
   correction_factor: number;
@@ -208,7 +208,7 @@ export function Insight2View() {
             <p>직원수: {data.employee_count}명</p>
             <p>장비 사용: {data.equipment_per_person?.toFixed(1) || '0.0'}건/인</p>
             <p>이동성 지수: {data.movement_per_person?.toFixed(1) || '0.0'}</p>
-            <p>Knox 사용: {data.knox_per_person?.toFixed(1) || '0.0'}건/인</p>
+            <p>ERP 사용: {data.knox_per_person?.toFixed(1) || '0.0'}건/인</p>
             <p>회의 활동: {data.meeting_per_person?.toFixed(1) || '0.0'}건/인</p>
             <p>패턴 유형: {data.cluster_type}</p>
             <p>신뢰도: {((data.reliability_score || 0) * 100).toFixed(1)}%</p>
@@ -259,7 +259,7 @@ export function Insight2View() {
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-gray-600 mb-2">
                   <BarChart3 className="w-4 h-4" />
-                  <span className="text-sm">Knox (결재·회의·메일)</span>
+                  <span className="text-sm">ERP (결재·회의·메일)</span>
                 </div>
                 <div className="text-2xl font-bold text-gray-900">
                   {tagSummary.total_knox?.toLocaleString() || '0'}
@@ -315,7 +315,7 @@ export function Insight2View() {
                 <TableHead className="w-16 text-base">패턴 유형</TableHead>
                 <TableHead className="text-center text-base">팀 수</TableHead>
                 <TableHead className="text-center text-base">직원 수</TableHead>
-                <TableHead className="text-center text-base">평균 Knox</TableHead>
+                <TableHead className="text-center text-base">평균 ERP</TableHead>
                 <TableHead className="text-center text-base">평균 장비</TableHead>
                 <TableHead className="text-base">주요 팀</TableHead>
               </TableRow>
@@ -463,7 +463,7 @@ export function Insight2View() {
         {/* Knox 활동 분포 */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">패턴별 Knox 활동 분포</CardTitle>
+            <CardTitle className="text-xl">패턴별 ERP 활동 분포</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px] relative">
@@ -817,7 +817,7 @@ export function Insight2View() {
                       <div className="bg-gray-50 p-3 rounded">
                         <div className="flex items-center gap-2 text-gray-600 text-base mb-1">
                           <Activity className="w-3 h-3" />
-                          <span>평균 Knox 활동</span>
+                          <span>평균 ERP 활동</span>
                         </div>
                         <div className="text-lg font-semibold">{stat.avg_knox_per_person?.toFixed(1)}건/인</div>
                       </div>

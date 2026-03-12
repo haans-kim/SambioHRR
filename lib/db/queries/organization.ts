@@ -37,14 +37,14 @@ export function getOrganizationsWithStats(level: OrgLevel): OrganizationWithStat
     ORDER BY
       CASE
         WHEN o.org_name = '영업센터' THEN 1
-        WHEN o.org_name = '오퍼레이션센터' THEN 2
-        WHEN o.org_name = 'EPCV센터' THEN 3
-        WHEN o.org_name = '품질운영센터' THEN 4
-        WHEN o.org_name = 'CDO개발센터' THEN 5
-        WHEN o.org_name = '바이오연구소' THEN 6
+        WHEN o.org_name = '생산운영센터' THEN 2
+        WHEN o.org_name = '엔지니어링센터' THEN 3
+        WHEN o.org_name = '품질관리센터' THEN 4
+        WHEN o.org_name = '신제품개발센터' THEN 5
+        WHEN o.org_name = '기술연구소' THEN 6
         WHEN o.org_name = '경영지원센터' THEN 7
-        WHEN o.org_name = 'People센터' THEN 8
-        WHEN o.org_name = '상생협력센터' THEN 9
+        WHEN o.org_name = '인재개발센터' THEN 8
+        WHEN o.org_name = '협력센터' THEN 9
         ELSE 99
       END,
       o.org_name
@@ -559,14 +559,14 @@ export function getOrganizationsWithStatsForPeriod(level: OrgLevel, startDate: s
     ORDER BY
       CASE
         WHEN o.org_name = '영업센터' THEN 1
-        WHEN o.org_name = '오퍼레이션센터' THEN 2
-        WHEN o.org_name = 'EPCV센터' THEN 3
-        WHEN o.org_name = '품질운영센터' THEN 4
-        WHEN o.org_name = 'CDO개발센터' THEN 5
-        WHEN o.org_name = '바이오연구소' THEN 6
+        WHEN o.org_name = '생산운영센터' THEN 2
+        WHEN o.org_name = '엔지니어링센터' THEN 3
+        WHEN o.org_name = '품질관리센터' THEN 4
+        WHEN o.org_name = '신제품개발센터' THEN 5
+        WHEN o.org_name = '기술연구소' THEN 6
         WHEN o.org_name = '경영지원센터' THEN 7
-        WHEN o.org_name = 'People센터' THEN 8
-        WHEN o.org_name = '상생협력센터' THEN 9
+        WHEN o.org_name = '인재개발센터' THEN 8
+        WHEN o.org_name = '협력센터' THEN 9
         ELSE 99
       END,
       o.org_name

@@ -128,10 +128,10 @@ export function DashboardLayout({
                     selectedMetric={selectedMetric}
                     onMetricChange={onMetricChange}
                   />
-                  {/* 디자인센터(바이오연구소)일 때만 스킬레벨 버튼 표시 */}
-                  {parentOrg?.orgName === '바이오연구소' && (
+                  {/* 디자인센터(기술연구소)일 때만 스킬레벨 버튼 표시 */}
+                  {parentOrg?.orgName === '기술연구소' && (
                     <a
-                      href="http://dashboard.insightgroup.biz:3000/hyundai-bfm"
+                      href="http://dashboard.insightgroup.biz:3000/auto-bfm"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"

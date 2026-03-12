@@ -50,14 +50,14 @@ export function FocusedWorkChart({ visible }: FocusedWorkChartProps) {
           // Define the desired center order (same as table)
           const centerOrder = [
             '영업센터',
-            '오퍼레이션센터', 
-            'EPCV센터',
-            '품질운영센터',
-            'CDO개발센터',
-            '바이오연구소',
+            '생산운영센터',
+            '엔지니어링센터',
+            '품질관리센터',
+            '신제품개발센터',
+            '기술연구소',
             '경영지원센터',
-            'People센터',
-            '상생협력센터'
+            '인재개발센터',
+            '협력센터'
           ];
           
           // Create a map for easy lookup
