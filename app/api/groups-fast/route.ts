@@ -3,6 +3,7 @@ import { getOrganizationById, getChildOrganizations, getOrganizationByName } fro
 import { getPrecomputedGroupStatsAll } from '@/lib/db/queries/precompute-stats';
 import { getLatestMonth } from '@/lib/db/queries/analytics';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 export const dynamic = 'force-dynamic';
 
@@ -132,6 +133,18 @@ export async function GET(request: NextRequest) {
 
     // Filter out groups with 0 employees
     groups = groups.filter((group: any) => group.stats?.totalEmployees > 0);
+
+    // Apply organization name mapping
+    groups = groups.map((group: any) => ({
+      ...group,
+      orgName: mapOrganizationName(group.orgName),
+    }));
+    if (parentOrg) {
+      parentOrg = { ...parentOrg, orgName: mapOrganizationName(parentOrg.orgName) };
+    }
+    breadcrumb.forEach((item, i) => {
+      if (i > 0) item.label = mapOrganizationName(item.label);
+    });
 
     // Calculate summary from precomputed data
     const totalEmployees = groups.reduce((sum: number, g: any) => sum + (g.stats?.totalEmployees || 0), 0);

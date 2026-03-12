@@ -11,6 +11,7 @@ import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import db from '@/lib/db/client';
 import { calculateAdjustedWorkHours, calculateAIAdjustmentFactor, FLEXIBLE_WORK_ADJUSTMENT_FACTOR } from '@/lib/utils';
 import { getLatestMonth } from '@/lib/db/queries/analytics';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -252,6 +253,18 @@ export async function GET(request: NextRequest) {
       }
     }
   };
+
+  // Apply organization name mapping
+  groups = groups.map((group: any) => ({
+    ...group,
+    orgName: mapOrganizationName(group.orgName),
+  }));
+  if (parentOrg) {
+    parentOrg = { ...parentOrg, orgName: mapOrganizationName(parentOrg.orgName) };
+  }
+  breadcrumb.forEach((item, i) => {
+    if (i > 0) item.label = mapOrganizationName(item.label);
+  });
 
   const payload = {
     groups,

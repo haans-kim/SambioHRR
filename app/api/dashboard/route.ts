@@ -30,6 +30,7 @@ import {
   getGradeWeeklyClaimedHoursMatrixFromClaim,
   getTotalEmployeesFromClaim
 } from "@/lib/db/queries/claim-analytics";
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 export async function GET(request: NextRequest) {
   try {
@@ -96,19 +97,40 @@ export async function GET(request: NextRequest) {
     const dataReliabilityThresholds = getMetricThresholdsForGridForPeriod('dataReliability', startDate, endDate);
     const adjustedWeeklyWorkThresholds = getMetricThresholdsForGridForPeriod('adjustedWeeklyWorkHours', startDate, endDate);
 
+    // Apply organization name mapping to centers and matrices
+    const mappedCenters = centers.map((c: any) => ({
+      ...c,
+      orgName: mapOrganizationName(c.orgName),
+    }));
+    const mapMatrixCenters = (matrix: any) => {
+      if (!matrix?.centers) return matrix;
+      const mapped = { ...matrix, centers: matrix.centers.map((n: string) => mapOrganizationName(n)) };
+      if (mapped.matrix) {
+        const newMatrix: any = {};
+        for (const [grade, centerData] of Object.entries(mapped.matrix)) {
+          newMatrix[grade] = {};
+          for (const [rawCenter, value] of Object.entries(centerData as any)) {
+            newMatrix[grade][mapOrganizationName(rawCenter)] = value;
+          }
+        }
+        mapped.matrix = newMatrix;
+      }
+      return mapped;
+    };
+
     const payload = {
-      centers,
+      centers: mappedCenters,
       totalEmployees,
       avgEfficiency,
       avgWeeklyWorkHours,
       avgWeeklyClaimedHours,
       avgAdjustedWeeklyWorkHours,
       avgDataReliability,
-      gradeMatrix,
-      weeklyWorkHoursMatrix,
-      weeklyClaimedHoursMatrix,
-      adjustedWeeklyWorkHoursMatrix,
-      dataReliabilityMatrix,
+      gradeMatrix: mapMatrixCenters(gradeMatrix),
+      weeklyWorkHoursMatrix: mapMatrixCenters(weeklyWorkHoursMatrix),
+      weeklyClaimedHoursMatrix: mapMatrixCenters(weeklyClaimedHoursMatrix),
+      adjustedWeeklyWorkHoursMatrix: mapMatrixCenters(adjustedWeeklyWorkHoursMatrix),
+      dataReliabilityMatrix: mapMatrixCenters(dataReliabilityMatrix),
       thresholds: {
         efficiency: efficiencyThresholds,
         adjustedWeeklyWorkHours: adjustedWeeklyWorkThresholds,

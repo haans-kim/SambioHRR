@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkTimeStatistics } from '@/lib/queries/statistics';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,8 +14,11 @@ export async function GET(request: NextRequest) {
       ? { start: startDate, end: endDate }
       : undefined;
     
-    const statistics = getWorkTimeStatistics(orgLevel, parentId, dateRange);
-    
+    const statistics = getWorkTimeStatistics(orgLevel, parentId, dateRange).map((s: any) => ({
+      ...s,
+      org_name: mapOrganizationName(s.org_name),
+    }));
+
     return NextResponse.json({ statistics });
   } catch (error) {
     console.error('Failed to fetch work time statistics:', error);

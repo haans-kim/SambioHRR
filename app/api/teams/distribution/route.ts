@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCenterTeamDistribution } from '@/lib/queries/statistics';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,8 +22,8 @@ export async function GET(request: NextRequest) {
       })
       .map((team: any) => ({
         team_id: team.team_id,
-        team_name: team.team_name,
-        center_name: team.center_name,
+        team_name: mapOrganizationName(team.team_name),
+        center_name: mapOrganizationName(team.center_name),
         headcount: team.headcount,
         avg_work_hours: Math.min(team.avg_work_hours, 12), // 최대 12시간으로 제한
         avg_weekly_adjusted_hours: team.avg_weekly_adjusted_hours, // 필터링으로 범위 보장

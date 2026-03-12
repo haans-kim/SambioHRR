@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db/client';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 export async function GET(
   request: NextRequest,
@@ -102,8 +103,17 @@ export async function GET(
       totalManDays: totalManDays
     };
     
+    // Apply organization name mapping
+    const mappedGroupInfo = {
+      ...groupInfo,
+      orgName: mapOrganizationName(groupInfo.orgName),
+      parentTeam: groupInfo.parentTeam ? mapOrganizationName(groupInfo.parentTeam) : groupInfo.parentTeam,
+      parentCenter: groupInfo.parentCenter ? mapOrganizationName(groupInfo.parentCenter) : groupInfo.parentCenter,
+      parentDivision: groupInfo.parentDivision ? mapOrganizationName(groupInfo.parentDivision) : groupInfo.parentDivision,
+    };
+
     return NextResponse.json({
-      group: groupInfo,
+      group: mappedGroupInfo,
       employees: employees.map(e => ({
         ...e,
         efficiencyRatio: e.efficiencyRatio || 0,

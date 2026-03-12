@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Database from 'better-sqlite3';
 import { DB_PATH } from '@/lib/db';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,8 +148,11 @@ export async function GET() {
       center.center_total_salary = totalSalary;
     });
     
-    const finalResults = Array.from(centerMap.values());
-    
+    const finalResults = Array.from(centerMap.values()).map(center => ({
+      ...center,
+      center_name: mapOrganizationName(center.center_name),
+    }));
+
     return NextResponse.json(finalResults);
     
   } catch (error) {

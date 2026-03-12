@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
 
     const availableCenters = centersFromDB.map(c => ({
       id: c.code,
-      name: c.name
+      name: mapOrganizationName(c.name)
     }));
 
     // 현재 선택된 센터 이름 찾기
@@ -217,7 +218,7 @@ export async function GET(request: NextRequest) {
     const efficiency = 100.5;
 
     const response = {
-      centerName,
+      centerName: mapOrganizationName(centerName),
       period: {
         year,
         startMonth,

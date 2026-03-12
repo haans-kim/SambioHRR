@@ -3,6 +3,7 @@ import { getOrganizationById, getChildOrganizations } from '@/lib/db/queries/org
 import { getPrecomputedTeamStats } from '@/lib/db/queries/precompute-stats';
 import { getLatestMonth } from '@/lib/db/queries/analytics';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 import db from '@/lib/db/client';
 
 export const dynamic = 'force-dynamic';
@@ -192,6 +193,18 @@ export async function GET(request: NextRequest) {
 
     // Filter out teams with 0 employees
     teams = teams.filter((team: any) => team.stats?.totalEmployees > 0);
+
+    // Apply organization name mapping
+    teams = teams.map((team: any) => ({
+      ...team,
+      orgName: mapOrganizationName(team.orgName),
+    }));
+    if (parentOrg) {
+      parentOrg = { ...parentOrg, orgName: mapOrganizationName(parentOrg.orgName) };
+    }
+    breadcrumb.forEach((item, i) => {
+      if (i > 0) item.label = mapOrganizationName(item.label);
+    });
 
     // Calculate summary from precomputed data
     const totalEmployees = teams.reduce((sum: number, t: any) => sum + (t.stats?.totalEmployees || 0), 0);

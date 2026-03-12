@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import db from '@/lib/db'
+import { mapOrganizationName } from '@/lib/organization-mapping'
 
 export async function GET() {
   try {
@@ -18,7 +19,12 @@ export async function GET() {
       ORDER BY display_order, org_name
     `).all(...excludedCenters)
 
-    return NextResponse.json({ centers })
+    const mappedCenters = (centers as any[]).map((c: any) => ({
+      ...c,
+      orgName: mapOrganizationName(c.orgName),
+    }))
+
+    return NextResponse.json({ centers: mappedCenters })
   } catch (error) {
     console.error('API Error:', error)
     return NextResponse.json(

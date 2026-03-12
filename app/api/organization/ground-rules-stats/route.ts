@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getOrganizationStatsWithGroundRules, getDailyAnalysisResultsWithGroundRules } from '@/lib/database/queries'
+import { mapOrganizationName } from '@/lib/organization-mapping'
 
 interface GroundRulesStatsRequest {
   organizationType: 'center' | 'division' | 'team' | 'group'
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
 
     const response: GroundRulesStatsResponse = {
       organizationType,
-      organizationName,
+      organizationName: mapOrganizationName(organizationName),
       dateRange: { startDate, endDate },
       summary: {
         totalRecords: stats.total_records || 0,

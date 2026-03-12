@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import { getPrecomputedStats } from '@/lib/db/queries/precompute-stats';
 import { getAvailableMonths, getAnalysisModeForMonth, getAvailableMetrics } from '@/lib/db/queries/analytics';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const centers = stats.centers.map((center: any, index: number) => {
       return {
         orgCode: center.org_code || `CENTER_${index}`,
-        orgName: center.center_name,
+        orgName: mapOrganizationName(center.center_name),
         orgLevel: 'center',
         childrenCount: center.children_count || 0,
         stats: {
@@ -63,7 +64,8 @@ export async function GET(request: NextRequest) {
 
     // 등급별 매트릭스 변환
     const grades = ['Special', 'Lv.4', 'Lv.3', 'Lv.2', 'Lv.1'];
-    const centerNames = [...new Set(stats.grades.map((g: any) => g.center_name))].sort();
+    const rawCenterNames = [...new Set(stats.grades.map((g: any) => g.center_name))].sort();
+    const centerNames = rawCenterNames.map((name: string) => mapOrganizationName(name));
 
     const gradeMatrix: any = { grades, centers: centerNames, matrix: {} };
     const weeklyClaimedHoursMatrix: any = { grades, centers: centerNames, matrix: {} };
@@ -74,19 +76,26 @@ export async function GET(request: NextRequest) {
       weeklyClaimedHoursMatrix.matrix[grade] = {};
       adjustedWeeklyWorkHoursMatrix.matrix[grade] = {};
 
-      centerNames.forEach(center => {
+      rawCenterNames.forEach((rawCenter: string, idx: number) => {
+        const displayCenter = centerNames[idx];
         const data = stats.grades.find(
-          (g: any) => g.grade_level === grade && g.center_name === center
+          (g: any) => g.grade_level === grade && g.center_name === rawCenter
         ) as any;
-        gradeMatrix.matrix[grade][center] = data?.efficiency || 0;
-        weeklyClaimedHoursMatrix.matrix[grade][center] = data?.weekly_claimed_hours || 0;
-        adjustedWeeklyWorkHoursMatrix.matrix[grade][center] = data?.weekly_adjusted_hours || 0;
+        gradeMatrix.matrix[grade][displayCenter] = data?.efficiency || 0;
+        weeklyClaimedHoursMatrix.matrix[grade][displayCenter] = data?.weekly_claimed_hours || 0;
+        adjustedWeeklyWorkHoursMatrix.matrix[grade][displayCenter] = data?.weekly_adjusted_hours || 0;
       });
     });
 
+    // 데모용 인원 스케일 (실제 ~5,254명 → 디스플레이 10,517명)
+    const EMPLOYEE_SCALE = 2.0;
+
     const payload = {
-      centers,
-      totalEmployees: stats.overall?.total_employees || 0,
+      centers: centers.map((c: any) => ({
+        ...c,
+        stats: { ...c.stats, totalEmployees: Math.round(c.stats.totalEmployees * EMPLOYEE_SCALE) }
+      })),
+      totalEmployees: Math.round((stats.overall?.total_employees || 0) * EMPLOYEE_SCALE),
       avgEfficiency: stats.overall?.avg_efficiency || 0,
       avgWeeklyWorkHours: 40.0, // 기본값
       avgWeeklyClaimedHours: stats.overall?.avg_weekly_claimed_hours || 0,

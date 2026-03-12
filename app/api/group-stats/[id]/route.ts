@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import DatabaseManager from '@/lib/database/connection'
 import { calculateAdjustedWorkHours } from '@/lib/utils'
 import { getLatestMonth } from '@/lib/db/queries/analytics'
+import { mapOrganizationName } from '@/lib/organization-mapping'
 
 const db = DatabaseManager.getInstance().getDb()
 
@@ -260,14 +261,14 @@ export async function GET(
     ) as any
     
     if (!stats || stats.total_records === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'No analysis data found for this group',
         group: {
           orgCode: groupName,
-          orgName: groupName,
-          parentTeam: parentTeam,
-          parentCenter: parentCenter,
-          parentDivision: parentDivision
+          orgName: mapOrganizationName(groupName),
+          parentTeam: mapOrganizationName(parentTeam),
+          parentCenter: mapOrganizationName(parentCenter),
+          parentDivision: parentDivision ? mapOrganizationName(parentDivision) : parentDivision
         }
       }, { status: 404 })
     }
@@ -361,10 +362,10 @@ export async function GET(
     const result: GroupStatsResult = {
       group: {
         orgCode: groupName,
-        orgName: groupName,
-        parentTeam: parentTeam,
-        parentCenter: parentCenter,
-        parentDivision: parentDivision
+        orgName: mapOrganizationName(groupName),
+        parentTeam: mapOrganizationName(parentTeam),
+        parentCenter: mapOrganizationName(parentCenter),
+        parentDivision: parentDivision ? mapOrganizationName(parentDivision) : parentDivision
       },
       summary: {
         totalEmployees: stats.total_employees || 0,

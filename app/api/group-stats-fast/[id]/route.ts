@@ -3,6 +3,7 @@ import { getFromCache, setToCache, buildCacheHeaders } from '@/lib/cache';
 import { getPrecomputedGroupStats } from '@/lib/db/queries/precompute-stats';
 import DatabaseManager from '@/lib/database/connection';
 import { getLatestMonth } from '@/lib/db/queries/analytics';
+import { mapOrganizationName } from '@/lib/organization-mapping';
 
 const db = DatabaseManager.getInstance().getDb();
 
@@ -66,9 +67,9 @@ export async function GET(
     const result = {
       group: {
         orgCode: groupName,
-        orgName: groupName,
-        parentTeam,
-        parentCenter,
+        orgName: mapOrganizationName(groupName),
+        parentTeam: mapOrganizationName(parentTeam),
+        parentCenter: mapOrganizationName(parentCenter),
         parentDivision,
       },
       summary: {
