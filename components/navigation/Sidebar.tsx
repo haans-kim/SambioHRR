@@ -179,7 +179,7 @@ export function Sidebar() {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  if (password === "0000") {
+                  if (password === "0011") {
                     setDevMode(true);
                     setShowPasswordDialog(false);
                     setPassword("");
@@ -196,7 +196,7 @@ export function Sidebar() {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => {
-                  if (password === "0000") {
+                  if (password === "0011") {
                     setDevMode(true);
                     setShowPasswordDialog(false);
                     setPassword("");
